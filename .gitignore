@@ -1,0 +1,6 @@
+# Development-only files (not needed at runtime)
+docs/
+
+# User-generated learning data (should not be in version control)
+.learning-profile/
+courses/
