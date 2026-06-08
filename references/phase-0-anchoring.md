@@ -40,28 +40,29 @@ If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node =
 
 ### Q1: Scope — "想学到什么程度？"
 
-Present these options based on the topic:
+Present these to the user — keep it short, no internal details. Remove day estimates
+（每个人速度不同，无法预测）:
 
-- 🏃 **速成导览**（3-7 天）
-  快速上手，能干活。每个模块 **800-2000 字**（精简解释，跳过原理深挖和版本对比）。
-  1-2 个思考题。代码和图表不限——能帮理解就加。目标：读完能独立完成一个 mini-task。
+- 🏃 **速成导览** — 快速上手，能干活。适合紧急换技术栈。
+- 📚 **系统精讲** — 从原理到实战全覆盖。适合深入掌握。
+- 🎯 **面试冲刺** — 高频考点 + 手写题 + 项目追问。适合求职准备。
+- 📝 **考试备考** — 对齐考纲，只学要考的。适合学校考试、考研考证。
 
-- 📚 **系统精讲**（2-4 周）
-  从原理到实战全覆盖。每个模块 **2000-5000 字**（3-5 个"为什么这样设计"的解释，
-  3-8 个对比表）。3-5 个思考题+参考思路。每模块有"常见误区"和"本章小结"（5-7 条要点）。
-  代码和图表不限。目标：读完能独立设计+实现。
+If user's intent is unclear: "是工作需要快速上手，还是系统学？还是为了面试/考试？"
 
-- 🎯 **面试冲刺**（1-2 周）
-  高频考点 + 手写题 + 项目追问。每个模块 **500-1500 字**（聚焦 1 个面试高频考点）。
-  1 个起始代码骨架（含 TODO）+ 1 个参考解法，1 组追问+回答要点。附带常见面试陷阱
-  和评分标准。目标：模拟面试能答到点子上。
+#### Agent Depth Rules (NOT shown to user)
 
-- 📝 **考试备考**（按考纲）
-  对齐教学大纲/考试范围。每个模块 **800-2000 字**（1-2 个核心概念+推导）。
-  3-5 个练习题（含答案），1 组历年真题或模拟题。标注考频和分值权重。
-  目标：覆盖考纲，模拟考试能过线。
+These are internal quality constraints. Do NOT mention word counts or exercise counts
+to the user — apply them silently when generating content.
 
-If user mentions exams/courses/school: "是应对学校考试还是自己想系统学？" — this helps choose between 考试备考 and 系统精讲.
+| Mode | 字数/模块 | 思考题/模块 | 解释深度 |
+|------|----------|------------|---------|
+| 速成导览 | 800-2000 | 1-2 | 精简解释，跳过原理深挖和版本对比 |
+| 系统精讲 | 2000-5000 | 3-5 | 3-5 个"为什么这样设计"，3-8 个对比表，常见误区+本章小结(5-7条) |
+| 面试冲刺 | 500-1500 | 1 组追问 | 聚焦 1 个高频考点，含代码骨架+参考解法+追问+评分标准+面试陷阱 |
+| 考试备考 | 800-2000 | 3-5 | 1-2 核心概念+推导，含练习题答案，标注考频和分值权重 |
+
+Code examples and diagrams are NOT constrained — include whenever they aid understanding.
 
 ### Q1.5: Materials — "手头有现成材料吗？"
 

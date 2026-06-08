@@ -96,8 +96,10 @@ status icons, showing branches and paths. **Omit RPG elements** (XP, levels,
 achievements, quests, boss nodes). Only when user explicitly requests
 progress/achievements, render the full RPG view with those elements.
 
-Ask questions **one at a time**. Determine: scope (incl. 考试备考 mode), materials
-(syllabus/textbook/past papers), baseline, time, location.
+Ask questions **one at a time**. Determine: scope (速成导览/系统精讲/面试冲刺/考试备考),
+materials (syllabus/textbook/past papers), baseline, time, location.
+Internal depth rules are in `phase-0-anchoring.md` under "Agent Depth Rules" —
+apply them silently, never mention word counts or exercise counts to the user.
 
 **Gate:** Present 学习路线图预览. User must confirm before Phase 1.
 After confirmation, if `{learning_root}/.learning-profile/` does not exist,
