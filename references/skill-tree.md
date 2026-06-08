@@ -17,47 +17,45 @@ Do NOT generate a tree when the topic is already specific (e.g., "学 React useS
 
 ## Skill Tree Format
 
-Use the following ASCII tree format. 3 tiers maximum, 5-8 branches per tier.
+Use indented bullet-style with emoji status markers. No box-drawing characters
+(╔══╗, ━━━) — these misalign across terminals and fonts. 3 tiers, 5-8 branches per tier.
 
 ```
-🌳 {领域名} 技能树 — Lv.{level}（{xp} XP）| 🔥 {streak}天
+🌳 {领域名} 技能树
 
-╔══════════════════════════════════════════════════════════╗
-║                       {领域名}                            ║
-║         {一句话描述这个领域是干什么的}                       ║
-╚══════════════════════════════════════════════════════════╝
+> {一句话描述这个领域是干什么的}
 
-📚 {TIER_1_NAME} ────────────────────── [████████░░] 80%
-│
-├─ ✅ {NODE_ID}: {Node Name} ──────────────── 100%
-├─ 🔄 {NODE_ID}: {Node Name} ──────── [██████░░] 60%
-│   └─ ↳ {completed}/{total} 节 | 包含: {key topics}
-├─ ⬜ {NODE_ID}: {Node Name} ─────── [░░░░░░░░] 0%
-│   └─ ↳ 包含: {key topics}
-└─ 🔒 {NODE_ID}: {Node Name} ──────── [░░░░░░░░] 0%
-    └─ 🔒 需要: {prerequisite_node} ✅
+### 📚 {TIER_1_NAME} — [████████░░] 80%
 
-🎯 {TIER_2_NAME} ────────────────────── [████░░░░] 40%
-│
-├─ 🔄 {NODE_ID}: {Node Name} ──────── [████████] 80%
-│   ├─ ✅ {sub_item}
-│   ├─ 🔄 {sub_item} ──────────── [████░░░░] 40%
-│   └─ ⬜ {sub_item}
-├─ ⬜ {NODE_ID}: {Node Name} ───────── [░░░░░░░░] 0%
-│   └─ 🔒 需要: {prereq} (40%+)
-└─ 🔒 {NODE_ID}: {Node Name} ────────── [░░░░░░░░] 0%
-    └─ 🔒 需要: {prereq_1} + {prereq_2}
+- ✅ {NODE_ID}: {Node Name} — 100%
+  - 包含: {key topics}
+- 🔄 {NODE_ID}: {Node Name} — [██████░░] 60%
+  - {completed}/{total} 节
+  - 包含: {key topics}
+- ⬜ {NODE_ID}: {Node Name} — 0%
+  - 包含: {key topics}
+- 🔒 {NODE_ID}: {Node Name} — 0%
+  - 需要: {prerequisite_node} ✅
 
-🚀 {TIER_3_NAME} ────────────────────── [░░░░░░░░] 0%
-│
-├── 🔒 {NODE_ID}: {Node Name} ─────────── [░░░░░░░░] 0%
-│    └─ 🔒 需要: {prereq_list}
-├── 🔒 {NODE_ID}: {Node Name} ───────── [░░░░░░░░] 0%
-└── 🔒 {NODE_ID}: {Node Name} ─────────── [░░░░░░░░] 0%
+### 🎯 {TIER_2_NAME} — [████░░░░] 40%
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 今日任务：{daily_quest}
-🏆 下一个成就：{next_achievement_name}（{requirement}）
+- 🔄 {NODE_ID}: {Node Name} — [████████] 80%
+  - ✅ {sub_item}
+  - 🔄 {sub_item} — [████░░░░] 40%
+  - ⬜ {sub_item}
+- ⬜ {NODE_ID}: {Node Name} — 0%
+  - 需要: {prereq} (40%+)
+- 🔒 {NODE_ID}: {Node Name} — 0%
+  - 需要: {prereq_1} + {prereq_2}
+
+### 🚀 {TIER_3_NAME} — [░░░░░░░░] 0%
+
+- 🔒 {NODE_ID}: {Node Name} — 0%
+  - 需要: {prereq_list}
+- 🔒 {NODE_ID}: {Node Name} — 0%
+  - 需要: {prereq_list}
+
+---
 💡 建议路径：{recommended_path}
 ```
 
@@ -127,49 +125,44 @@ Once user picks a branch:
 - Show only that branch + its prerequisites
 - Proceed to normal Phase 0 Q1-Q4
 
-## Example: "我想学大模型" Skill Tree
+## Example: "我想学大模型" Domain Map
 
 ```
-🌳 大模型应用开发 技能树 — Lv.1（0 XP）
+🌳 大模型应用开发
 
-╔══════════════════════════════════════════════════════════╗
-║                    大模型应用开发                          ║
-║   从调用 API 到构建企业级 AI Agent 的完整技能体系            ║
-╚══════════════════════════════════════════════════════════╝
+> 从调用 API 到构建企业级 AI Agent 的完整技能体系
 
-📚 基础层 ──────────────────────────── [░░░░░░░░] 0%
-│
-├─ ⬜ llm-basics: 大模型认知与基础    ★★☆☆☆  预计 4h
-│   └─ ↳ Transformer原理 · Token与上下文 · API调用方式
-├─ ⬜ prompt-eng: 提示词工程         ★★☆☆☆  预计 6h
-│   └─ ↳ Few-shot · CoT · 结构化输出 · 提示词模板
-└─ ⬜ tools-env: 工具链与环境搭建     ★☆☆☆☆  预计 2h
-    └─ ↳ Python环境 · API Key管理 · 常用SDK
+### 📚 基础层 — [░░░░░░░░] 0%
 
-🎯 核心层（选择一个方向深入）─────────── [░░░░░░░░] 0%
-│
-├─ ⬜ lowcode: 低代码Agent开发        ★★☆☆☆  预计 10h
-│   └─ 🔒 需要: llm-basics, prompt-eng
-│   └─ ↳ Coze · Dify · 工作流设计 · 企业部署
-│
-├─ ⬜ framework: 开发框架深入          ★★★★☆  预计 20h
-│   └─ 🔒 需要: llm-basics, prompt-eng
-│   └─ ↳ LangChain · LangGraph · MCP协议 · A2A协议
-│
-└─ ⬜ finetune: 模型微调实践          ★★★★★  预计 16h
-    └─ 🔒 需要: llm-basics
-    └─ ↳ LoRA · QLoRA · 数据集构建 · 评估
+- ⬜ llm-basics: 大模型认知与基础 — ★★☆☆☆ 预计 4h
+  - Transformer原理 · Token与上下文 · API调用方式
+- ⬜ prompt-eng: 提示词工程 — ★★☆☆☆ 预计 6h
+  - Few-shot · CoT · 结构化输出 · 提示词模板
+- ⬜ tools-env: 工具链与环境搭建 — ★☆☆☆☆ 预计 2h
+  - Python环境 · API Key管理 · 常用SDK
 
-🚀 进阶层 ──────────────────────────── [░░░░░░░░] 0%
-│
-├── 🔒 rag-adv: 高级RAG架构            ★★★★☆  预计 12h
-│    └─ 🔒 需要: framework
-├── 🔒 agent-proj: 企业级Agent项目     ★★★★★  预计 24h
-│    └─ 🔒 需要: framework + lowcode
-└── 🔒 multi-agent: 多智能体系统       ★★★★★  预计 16h
-     └─ 🔒 需要: framework
+### 🎯 核心层（选择一个方向深入）— [░░░░░░░░] 0%
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- ⬜ lowcode: 低代码Agent开发 — ★★☆☆☆ 预计 10h
+  - 需要: llm-basics ✅, prompt-eng ✅
+  - Coze · Dify · 工作流设计 · 企业部署
+- ⬜ framework: 开发框架深入 — ★★★★☆ 预计 20h
+  - 需要: llm-basics ✅, prompt-eng ✅
+  - LangChain · LangGraph · MCP协议 · A2A协议
+- ⬜ finetune: 模型微调实践 — ★★★★★ 预计 16h
+  - 需要: llm-basics ✅
+  - LoRA · QLoRA · 数据集构建 · 评估
+
+### 🚀 进阶层 — [░░░░░░░░] 0%
+
+- 🔒 rag-adv: 高级RAG架构 — ★★★★☆ 预计 12h
+  - 需要: framework
+- 🔒 agent-proj: 企业级Agent项目 — ★★★★★ 预计 24h
+  - 需要: framework + lowcode
+- 🔒 multi-agent: 多智能体系统 — ★★★★★ 预计 16h
+  - 需要: framework
+
+---
 💡 建议路径：
   零基础：llm-basics → prompt-eng → lowcode → agent-proj
   有Python基础：跳过tools-env，从 llm-basics 开始
@@ -181,16 +174,16 @@ Once user picks a branch:
 When user picks a node (e.g., types `lowcode` or clicks on it):
 
 ```
-🔍 低代码Agent开发 ── ★★☆☆☆ ── 预计 10h
+🔍 低代码Agent开发 — ★★☆☆☆ — 预计 10h
 
 📋 前置：llm-basics ✅ | prompt-eng ✅
 
 📖 包含模块：
-├─ 1. Coze平台入门 ──────────── 创建第一个Bot
-├─ 2. 工作流与插件 ──────────── 设计复杂Agent逻辑
-├─ 3. 知识库与变量 ──────────── 让Agent记住信息
-├─ 4. Dify自部署 ───────────── Docker部署开源方案
-├─ 5. 企业级发布 ───────────── API接入 + 监控
+- 1. Coze平台入门 — 创建第一个Bot
+- 2. 工作流与插件 — 设计复杂Agent逻辑
+- 3. 知识库与变量 — 让Agent记住信息
+- 4. Dify自部署 — Docker部署开源方案
+- 5. 企业级发布 — API接入 + 监控
 
 🎯 学完你能：独立在 Coze/Dify 上构建和部署 AI Agent
 
@@ -207,7 +200,7 @@ When user picks a node (e.g., types `lowcode` or clicks on it):
 
 ```
 🎉 升级！ Lv.3 → Lv.4
-━━━━━━━━━━━━━━━━━━━━
+---
 📚 已解锁核心层技能树
 🔥 获得称号：「初出茅庐」
 ```

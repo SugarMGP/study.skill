@@ -120,11 +120,13 @@ the topic is genuinely niche (few resources exist), minimum 1 authoritative sour
 **Load:** `references/phase-2-generation.md` and `references/chinese-tutorial-guide.md`
 
 Generate course following the Chinese tutorial template. Start with Module 00
-(course overview), wait for confirmation, then generate Module 01. After Module 01
-is confirmed, offer: "剩下的模块一个一个确认，还是我先生成标题+目标占位，正文逐步确认？"
-Body content is always confirmed per-module; only titles/objectives can be pre-generated.
+(course overview). After user confirms Module 00, offer: "剩下模块一个一个确认还是一起生成？"
+If batch: generate all remaining at once, then present summary for one final review.
 
-**Gate:** User reviews Module 00 before starting. Module 01 must be individually confirmed.
+**Gate:** User reviews Module 00 before starting. Remaining modules confirmed once (individually or batch).
+
+**Transition:** After all modules generated, immediately offer to start learning:
+"课程生成完毕！要开始学 Module 01 吗？" with brief status: current position + streak.
 
 ### Phase 3 · 学习 — "手把手带你走"
 
@@ -147,6 +149,7 @@ In speedrun mode (速成导览): Foundation ≥75%, Core ≥60%, Enrichment opti
 **Load:** `references/phase-4-consolidation.md` and `references/fsrs-scheduler.md`
 
 Session-start review check. Spaced repetition sessions in batches of 5-7.
+Show brief status with streak and encouraging note at every session start.
 生成学习快报 with progress, streaks, encouraging notes.
 
 ## Quick Start (最小闭环)

@@ -42,7 +42,7 @@ If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node =
 
 Present these options based on the topic:
 
-- 🏃 **速成导览**（3-7 天）：快速上手，能干活
+- 🏃 **速成导览**（3-7 天）：快速上手，能干活。模块更少但每个模块仍扎实——更少的主题，不是更浅的讲解。
 - 📚 **系统精讲**（2-4 周）：从原理到实战全覆盖
 - 🎯 **面试冲刺**（1-2 周）：高频考点 + 手写题 + 项目追问
 - 📝 **考试备考**（按考纲）：学校考试、考研考证，只学要考的
