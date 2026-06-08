@@ -54,14 +54,24 @@ D' = clamp(D - 0.5 * (G - 3), 1, 10)
 
 **Stability update (successful recall, G >= 3):**
 
-Simplified rule of thumb:
-- Higher D → smaller S increase (hard items stabilize slower)
-- Higher S → smaller S increase (already stable = harder to improve further)
-- Lower R → larger S increase (overdue reviews give bigger stability boost if successful)
+```
+G=4 (轻松想起): S' = S * 1.3 * (1 + 0.5 * max(0, 1 - R))
+G=3 (记得大部分): S' = S * 1.1 * (1 + 0.5 * max(0, 1 - R))
+```
+
+Rule of thumb — D (Difficulty) is used mainly for review priority sorting, not as
+a core multiplier in the simplified formulas above. Apply these caps:
+- Higher D → cap S' ≤ S * 2 (for D≥8, hard items grow slower even when recalled well)
+- Higher S → cap S' ≤ S + 30 (already very stable items are hard to improve further)
+- Lower R → larger S increase (overdue but successfully recalled → big boost)
 
 **Post-lapse stability (forgotten, G < 3):**
 
-S drops significantly. New S is small (typically 1-2 days). Recovery is gradual.
+```
+S' = max(1, S * 0.2 * G)
+```
+- G=2: S' ≈ S * 0.4 (moderate drop)
+- G=1: S' ≈ S * 0.2 (severe drop, almost re-learning)
 
 ### Next Interval
 
@@ -116,17 +126,23 @@ max_review_batch = 7            # Cognitive load limit
 4. Present in batches of 5-7 (cognitive load limit)
 5. After each rating, recompute D, S, R, next_review
 6. Write back to `review-schedule.json`
-7. Items with R < 0.7 and lapses >= 3: set `status: "needs_relearning"`, preserve
-   the item record (don't delete). These concepts should be re-introduced in
-   a future learning session rather than recycled through review.
+7. Items with R < 0.7 and lapses >= 3: set `status: "needs_relearning"`, preserve record
+
+**Same-session vs. review-schedule boundary:**
+In-session active recall, self-tests, and spaced callbacks (Phase 3) are **teaching checks** —
+they do NOT go into `review-schedule.json`. Only items that have been formally introduced in
+a completed module and had ≥1 day since first exposure are added to the schedule.
+New flashcards created today get `next_review` ≥ tomorrow, never today.
 
 ## Interleaving Strategy
 
-Do NOT block all reviews together. Per session:
-- 60% new content learning
-- 40% review items
+Default session split: 60% new content, 40% review. Adapt when needed:
+- Overdue items >10 → 30% new, 70% review (clear backlog first)
+- Overdue items = 0 → 80% new, 20% review (maintain lightly)
+- Speedrun mode → 80% new, 20% review (prioritize progress)
+- Exam countdown < 1 week → 40% new, 60% review (more practice)
 
-Within the 40% review allocation, prioritize:
+Within the review allocation, prioritize:
 1. Most overdue (lowest R)
 2. Highest difficulty (highest D) among equally overdue
 3. Lowest review count (least practiced) as tiebreaker

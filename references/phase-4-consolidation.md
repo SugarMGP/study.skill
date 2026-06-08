@@ -125,33 +125,27 @@ After each rating:
 
 ### Re-Learning Policy
 
-Items with `lapses >= 3` AND `R < 0.7`: remove from review schedule, add to a "needs re-learning" list. Present to user in session end summary.
+Items with `lapses >= 3` AND `R < 0.7`: set `status: "needs_relearning"` in the review
+schedule record (do NOT delete). These concepts should be re-introduced in a future
+learning session. Present the list to user in session end summary.
 
 ## 学习快报（Learning Bulletin）
 
-### Generated at Session Start
+### Default: Brief Status (Session Start)
+
+Show this compact status. Don't render the full bulletin unless user asks.
 
 ```
-╔══════════════════════════════════════╗
-║        📊 学习快报 | {date}          ║
-╠══════════════════════════════════════╣
-║                                      ║
-║  🔥 连续学习：{streak} 天            ║
-║  📚 进行中课程：{active_count} 门    ║
-║  ✅ 已完成模块：{completed}/{total}  ║
-║  ⏰ 待复习：{overdue} 个知识点       ║
-║                                      ║
-║  🗺️ 学习进度                         ║
-║  {module_1}: ████████░░ 80%         ║
-║  {module_2}: ██████░░░░ 60%         ║
-║  {module_3}: ██░░░░░░░░ 20%         ║
-║                                      ║
-║  🎯 今日推荐：{next_action}          ║
-║                                      ║
-║  💡 师傅的话：{encouraging_note}     ║
-║                                      ║
-╚══════════════════════════════════════╝
+📍 {current_module_name}（{completed}/{total} 模块） | ⏰ {overdue} 待复习 | 🔥 {streak}天
+🎯 今日建议：{next_action_or_review_prompt}
 ```
+
+### Full Bulletin (On Demand)
+
+When user says "进度"/"快报"/"技能树" or any status query, render the complete
+bulletin with progress bars per module, streak count, overdue count, and
+encouraging note. The full format is a multi-line box with sections for each
+active course showing progress bars and next recommended action.
 
 ### Encouraging Notes Pool
 
@@ -207,7 +201,7 @@ Rotate contextual messages. Follow the "concrete celebration" principle — refe
       "name": "大模型应用开发 从零到一学习指南",
       "scope": "系统精讲",
       "baseline": "有Python基础",
-      "total_modules": 20,
+      "total_modules": 12,
       "completed_modules": ["01-llm-basics", "02-prompt-eng"],
       "current_module": "03-langchain",
       "start_date": "2026-06-01",

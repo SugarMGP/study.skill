@@ -90,54 +90,58 @@ Ask: "课程大纲 OK 吗？我开始写具体内容？"
 
 For each module, follow the chapter template in `references/chinese-tutorial-guide.md`.
 
-### Step 3: Quality Gate
+### Step 3: Quality Gate (Single Source of Truth)
 
-Before outputting any module, check against the tiered checklist below.
-Items are tagged: **[MUST]** = always required, **[SHOULD]** = required when applicable.
+Before outputting any module, check against this tiered checklist.
+**Foundation 模块** (intro/basics, Tier 1): use Foundation column.
+**Core 模块** (main content, Tier 2): use Core column.
+**Enrichment 模块** (advanced/optional, Tier 3): use Enrichment column.
+
+| Requirement | Foundation | Core | Enrichment |
+|-------------|-----------|------|------------|
+| **Learning objectives** | 2-3 at Understand/Apply | 3-5 at Apply/Analyze | 2-3 at Analyze/Evaluate |
+| **Diagram** | [SHOULD] if structure complex; else table/examples OK | [MUST] if content involves流程/架构/层级/对比/依赖; else table/examples OK | [SHOULD] |
+| **大白话→术语→例子/代码→小结** | [MUST] | [MUST] | [MUST] |
+| **思考题 + 参考思路** | [MUST] 1-2 questions | [MUST] 2-3 (1 apply + 1 analyze) | [SHOULD] 1-2 |
+| **建议下一步** | [MUST] | [MUST] | [MUST] |
+| **Source citations** | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
+| **踩坑指南** | [MUST] ≥2 pitfalls | [MUST] ≥2 pitfalls | [SHOULD] |
+| **面试题/考试题** | [SHOULD] in 面试/考试 mode | [MUST] in 面试 mode | [SHOULD] |
+| **Analogy + decision criteria** | [MUST] | [MUST] | [SHOULD] |
+| **No AI writing traces** | [MUST] | [MUST] | [MUST] |
+
+**Diagram rules** (3-tier priority):
+1. Reuse existing quality images from research sources → `![](path)` + cite source
+2. Platform image gen for complex diagrams (>15 nodes, UI mockups, visual explanations) → `![](path)` + Mermaid source in `<details>`
+3. Mermaid code block (universal fallback)
+
+**Quality gate protocol:** If any [MUST] item fails → fix and re-check. Max 2 retries. On 3rd failure, present with flagged warning.
+
+**Bloom keywords:** Understand = 描述 解释 总结. Apply = 实现 解决 修改 操作. Analyze = 对比 分析 区分 归类. Evaluate = 评估 判断 论证.
+
+**Max course size:** 30 讲 total. Split into series if larger.
+
+### Step 4: File Output (Incremental)
+
+Course directory grows module by module. After each confirmed module, append
+its content to the course directory. Module 00 creates the root structure;
+subsequent modules add their files incrementally.
 
 ```
-Output Quality Checklist:
-[MUST] ✓ 3-5 measurable learning objectives (Bloom's Apply/Analyze minimum)
-[MUST] ✓ Uses "大白话→术语→例子/代码→小结" pattern per section (code for tech, examples for general)
-[SHOULD] ✓ Code examples are runnable with Chinese annotations (for tech topics)
-[SHOULD] ✓ Comparison tables, flowcharts, or diagrams (when structure is complex)
-[MUST] ✓ 思考题 with 参考思路 (thought process, not just answers)
-[MUST] ✓ Ends with explicit 建议下一步
-[MUST] ✓ Cites sources: official docs / source code / authoritative tutorial
-[MUST] ✓ 踩坑指南 (at least 2 common pitfalls)
-[SHOULD] ✓ 面试题链接 (required for 面试冲刺 mode, optional otherwise)
-[MUST] ✓ Uses analogies and decision criteria ("when to use / when not")
-[SHOULD] ✓ Version notes (when API changed across versions)
-[MUST] ✓ No AI writing traces (no 夸大象征意义, 三段式, 空洞连接词)
-```
-
-Key changes from the chinese-tutorial-guide template:
-- Code examples → only for tech/programming topics
-- Diagrams → only when structure is complex enough to warrant them
-- Interview questions → only in 面试冲刺 mode
-- At least 2 pitfalls, not 3 (avoid filler)
-
-### Step 4: File Output
-
-Write the complete course to `{learning_root}/courses/{course-slug}/`:
-
-```
-{course-slug}/
+{learning_root}/courses/{course-slug}/
 ├── README.md              # Course overview (Module 00)
 ├── syllabus.md             # Full syllabus with learning objectives per module
 ├── 01-{module-name}/
 │   ├── content.md          # Module body
-│   └── exercises/
-│       ├── ex01.md         # Exercise description
-│       └── solution.md     # Reference solution (hidden by default)
+│   └── exercises/          # Placeholder — exercises created interactively in Phase 3
 ├── 02-{module-name}/
 │   └── content.md
 ├── ...
-├── flashcards.csv          # All knowledge items for spaced repetition import
-├── interview-qa.md         # Interview Q&A (面试冲刺 mode)
-├── exam-practice.md        # Exam practice problems (考试备考 mode)
-├── glossary.md             # 术语表 (terminology index)
-└── resources.md            # Further reading / reference links
+├── flashcards.csv          # Knowledge items for spaced repetition (appended incrementally)
+├── interview-qa.md         # Interview Q&A (面试冲刺 mode, appended incrementally)
+├── exam-practice.md        # Exam practice problems (考试备考 mode, appended incrementally)
+├── glossary.md             # 术语表 (appended incrementally)
+└── resources.md            # Further reading / reference links (appended incrementally)
 ```
 
 ### Generation Rules

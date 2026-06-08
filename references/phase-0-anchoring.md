@@ -13,11 +13,10 @@ Before asking any questions, determine if the user's topic is vague or specific.
 
 **Triggers**: "我想学编程", "学AI", "学大模型", "学前端", "学后端", "想转行IT", any topic that is a FIELD not a specific subject.
 
-**Action**: Load `references/skill-tree.md`. Generate a domain skill tree:
-1. Research the domain's major branches (quick, no subagent)
-2. Render as 3-tier ASCII tree with node status icons
-3. Present with guide text: "这就是 {领域} 的技能树。你现在站在哪？想往哪个方向走？"
-4. Let user navigate: pick a node → zoom in → confirm → proceed to Q1
+**Action**: Load `references/skill-tree.md` for the tree layout format only.
+Generate a domain map using the 3-tier ASCII tree structure and node status icons
+(✅🔄⬜🔒⭐). Present with guide text: "这就是 {领域} 的技能树。你现在站在哪？想往哪个方向走？"
+**Omit all RPG elements**: no XP, no levels, no achievements, no daily quests, no boss nodes.
 
 If user picks a node that is still too broad (e.g., "AI" → picks "机器学习" → still broad), zoom in one more level.
 
@@ -31,8 +30,12 @@ Generate skill tree for a popular domain (programming/AI), show hot paths (⭐ r
 
 ## Protocol
 
-Ask questions **one at a time**. Never batch multiple questions in one message.
-Use user's answers to skip questions that are already answered.
+**Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions
+in one message. Use user's answers to skip questions that are already answered.
+
+**Lite mode（用户选 Quick Start / 速成 / 时间紧张时）:** Batch Q1+Q2+Q3 in one message.
+Q4 follows separately. Don't repeat information the user already provided.
+
 If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node = their scope anchor).
 
 ### Q1: Scope — "想学到什么程度？"
@@ -78,6 +81,12 @@ Options:
 - 🟢 零基础：完全不熟悉这个领域
 - 🟡 有相关经验：了解类似技术，或有编程基础
 - 🔴 熟练但想深入：已经在用，想理解底层原理和最佳实践
+
+If user selects 🟡 or 🔴, offer a pretest:
+"要不要做个快速摸底？（3-5 题，2 分钟）这样我可以跳过你已经会的，不浪费时间。"
+- If user accepts: generate 3-5 questions covering the topic's core concepts.
+  Questions should test application, not trivia. Skip modules where user scores ≥85%.
+- If user declines: proceed with self-reported level.
 
 Implications:
 - 零基础 → 更密集的类比，"先记住一句话"口诀，慢节奏

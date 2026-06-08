@@ -26,13 +26,15 @@ the syllabus. The goal is "只学要考的" — only what's tested.
 3. Extract key concepts and their relationships from the material → Knowledge DAG
 4. Map material chapters to learning modules
 
-**Source count**: 1 primary (user's material) + 2 supplementary = 3 minimum.
+**Source count**: 1 primary (user's material) + 1-2 supplementary. Flag what's missing.
 
 **If no materials provided**: proceed with standard research below.
 
 ### Source Priority (Standard Research)
 
-Adapt sources to the topic type. Must research at least 3 of the applicable sources:
+Adapt sources to topic type. Default target: 3 quality sources (see Quality Rules below
+for screening criteria). Material-driven, niche topics, or exam-prep scenarios may use
+fewer — flag what's missing.
 
 **For tech/programming topics**（默认）:
 1. **官方文档** — Always first. Use ctx7 or WebFetch. Note version, changelog, API.
@@ -46,26 +48,33 @@ Adapt sources to the topic type. Must research at least 3 of the applicable sour
 3. **学术综述/入门论文** — arXiv or CNKI survey papers for the field
 4. **补充**: 得到/极客时间相关专栏目录, 维基百科知识结构
 
-**Minimum common requirement**: 3 sources, at least 1 from Chinese community.
+**Source count:** Default target: 3 quality sources. Accept fewer when justified:
+material-driven, niche topics, or exam prep where the syllabus IS the scope — but explicitly
+note what's missing. Chinese source: include when quality permits; if none exists, declare
+it and use English sources translated to Chinese explanations. Never pad with low-quality
+sources to hit a quota.
 
 ### Parallel Research Dispatch
 
-Use subagents for parallel research. Adapt based on topic type:
+If your platform supports subagents: dispatch in parallel. If not: research sequentially
+and clearly label the order. Never claim you dispatched subagents when you didn't.
 
-**For tech/programming topics:**
-- Subagent A: Official docs + API reference via ctx7
-- Subagent B: Source code structure analysis on GitHub (core modules, architecture)
-- Subagent C: Chinese tutorial landscape and high-star repos (GitHub, 掘金, CSDN)
+Adapt dispatches to topic type: select sources by **quality**, not by tool name.
 
-**For general/academic topics:**
-- Subagent A: Top course syllabi, standard textbooks, MOOC structures (via web search)
-- Subagent B: Chinese community learning resources (知乎专栏, B站课程, 豆瓣书单, GitHub repos)
-- Subagent C: Academic overview / survey papers (arXiv for sciences, CNKI for Chinese humanities)
+| Topic type | Primary source (must have) | Supplements |
+|-----------|---------------------------|-------------|
+| Tech API / library | Official docs (latest version) | Source code (architecture only), community tutorials |
+| Tech architecture / principle | Source code of reference implementation | Official docs, architecture blog posts |
+| Academic subject | Standard textbook / top university syllabus | Survey papers (arXiv/CNKI), Chinese learning resources |
+| Exam prep | User's syllabus/past papers | Textbook, exam prep guides |
 
-**For material-driven mode:**
-- Agent: Read and analyze user's material — extract topic list, key concepts, exam format
-- Subagent A: Supplementary explanations for difficult concepts in the material (Chinese sources)
-- Subagent B: Similar practice problems + past exam papers matching the material scope
+**Source count:** Target 3 quality sources. If user provides materials, they count as
+the primary source — then 1-2 supplements suffice.
+
+**Chinese source requirement:** Include at least 1 quality Chinese source when available.
+If no quality Chinese source exists for this topic, say so explicitly and use English
+sources translated to Chinese in your explanations. Never force low-quality Chinese
+sources just to meet a quota.
 
 ### What to Extract
 
@@ -90,6 +99,7 @@ For each source, extract:
 | Exam format and question types | → practice problem generation |
 | Grading criteria / 评分标准 | → what to emphasize in answers |
 | Topic weight in exam | → module priority (high-weight topics first) |
+| **Diagrams & visuals** | **→ collect quality existing images for reuse. Note URL + description. Prioritize: architecture diagrams, flowcharts, comparison tables, data visualizations.** |
 
 ### Output: Research Summary
 
@@ -186,8 +196,9 @@ Ask: "这个范围和结构符合你的预期吗？需要增加/删除什么？"
 
 ### Quality Rules
 
-- MUST cite specific URLs, not generic references
-- MUST note the version number of documentation used
-- MUST cross-reference at least 2 sources for: (a) safety-critical facts, (b) version-breaking changes, (c) performance claims, (d) interview/ exam answers
-- For standard API definitions and basic usage, official docs alone are sufficient
-- If sources conflict, flag the conflict explicitly and present both views
+- MUST cite specific URLs or identifiers, not generic references
+- MUST note version/year of sources used
+- **Source quality screening:** Prioritize official docs, textbooks, course syllabi, active
+  repos with ≥1k stars (for popular topics; stars are a signal, not a threshold), peer-reviewed papers.
+  unsourced articles, outdated versions without warnings, AI-generated slop.
+- For conflicting sources, flag both with attribution and let user decide if scope is affected
