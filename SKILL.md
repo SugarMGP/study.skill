@@ -120,10 +120,11 @@ the topic is genuinely niche (few resources exist), minimum 1 authoritative sour
 **Load:** `references/phase-2-generation.md` and `references/chinese-tutorial-guide.md`
 
 Generate course following the Chinese tutorial template. Start with Module 00
-(course overview). After user confirms Module 00, offer: "剩下模块一个一个确认还是一起生成？"
-If batch: generate all remaining at once, then present summary for one final review.
+(course overview). After user confirms Module 00, generate all remaining modules
+in one pass — no per-module confirmation needed. The outline confirmed in Module 00
+is the contract; execute it.
 
-**Gate:** User reviews Module 00 before starting. Remaining modules confirmed once (individually or batch).
+**Gate:** User confirms Module 00. No further confirmation for content modules.
 
 **Transition:** After all modules generated, immediately offer to start learning:
 "课程生成完毕！要开始学 Module 01 吗？" with brief status: current position + streak.

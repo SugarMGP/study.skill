@@ -146,9 +146,13 @@ subsequent modules add their files incrementally.
 
 ### Generation Rules
 
-1. **Generate modules sequentially** — Module 00 first, confirm, then Module 01, confirm, repeat. Do NOT batch-generate.
-2. **Generate flashcards.csv incrementally** — append 3-8 items per module as each is confirmed
-3. **Generate interview-qa.md** only if 面试冲刺 mode, and incrementally
-4. **Generate exam-practice.md** only if 考试备考 mode — extract practice problems aligned with exam format
-5. **Generate glossary.md** incrementally as terminology is introduced
-6. **Do NOT pre-generate exercises/solution.md** — exercises are presented interactively in Phase 3
+1. **Module 00 first, get confirmation, then generate all remaining modules in one pass.**
+   The outline IS the contract. No per-module confirmation.
+2. **Generate flashcards.csv** — 3-8 items per module as the course is generated
+3. **Generate interview-qa.md** only if 面试冲刺 mode
+4. **Generate exam-practice.md** only if 考试备考 mode — practice problems aligned with exam format
+5. **Generate glossary.md** as terminology is introduced
+6. **Do NOT pre-generate exercises/solution.md** — exercises presented interactively in Phase 3
+7. **Depth per mode:** See `phase-0-anchoring.md` Q1 for per-mode word count, code block,
+   exercise, diagram, and pitfall requirements. These are NOT suggestions — check each
+   module against its mode's spec before finalizing.
