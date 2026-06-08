@@ -37,7 +37,7 @@ for screening criteria). Material-driven, niche topics, or exam-prep scenarios m
 fewer — flag what's missing.
 
 **For tech/programming topics**（默认）:
-1. **官方文档** — Always first. Use ctx7 or WebFetch. Note version, changelog, API.
+1. **官方文档** — Always first. Use available documentation or web fetch tools. Note version, changelog, API.
 2. **优质源码** — Read core modules on GitHub. Extract architecture patterns, key designs.
 3. **中文社区高星教程** — GitHub repos 1k+ stars, 掘金/CSDN/知乎 high bookmarks.
 4. **补充**: 极客时间目录, arXiv, 面试题库
