@@ -12,6 +12,12 @@ No course generation without research first. Do not rely on memory alone for
 non-trivial courses. If the topic is tiny, niche, material-driven, or exam-scoped,
 use fewer sources only with a clear note about what is missing.
 
+Phase 1 is for building or revising a course, not for ordinary continuation.
+If the user says "继续学习" and the course already has README/syllabus/module
+content, stay in Phase 3 and use the local course files as the source of truth.
+Only do targeted external lookup when local content is missing, the user asks
+for latest/API/version details, or a runnable/API claim needs verification.
+
 ### Step 0: Material-Driven Mode Check
 
 If the user provided materials in Phase 0 (syllabus, textbook, exam outline, past

@@ -178,6 +178,9 @@ subsequent modules add their files incrementally.
 4. **Generate exam-practice.md** only if 考试备考 mode — practice problems aligned with exam format
 5. **Generate glossary.md** as terminology is introduced
 6. **Do NOT pre-generate exercises/solution.md** — exercises presented interactively in Phase 3
-7. **Depth per mode:** See `phase-0-anchoring.md` Q1 for per-mode word count and exercise count.
+7. **Generate or update `domain-tree.json`** when `meta.json.skill_tree_enabled=true`.
+   Its nodes should mirror the confirmed syllabus. RPG fields are included by default
+   when `meta.json.rpg_enabled=true`.
+8. **Depth per mode:** See `phase-0-anchoring.md` Q1 for per-mode word count and exercise count.
    Code examples and diagrams are NOT constrained by mode — include them whenever they
    aid understanding. Only word count and exercise density vary by mode.

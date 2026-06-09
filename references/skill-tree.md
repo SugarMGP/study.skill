@@ -4,16 +4,70 @@
 > human-skill-tree (24kchengYe, 550★) +
 > RPG progression mechanics (PoE/Diablo talent tree UX)
 
-## When to Generate a Skill Tree
+## Default Policy
 
-Generate a skill tree when:
+Skill trees are default for every formal course, across all learnable domains:
+programming, language learning, math, design, music, finance, writing, exam prep,
+craft skills, and general knowledge.
 
-1. **User's topic is vague**: "我想学编程", "我想学大模型", "我想学AI" — the topic is a field,
-   not a specific subject. User needs a map before picking a path.
-2. **User asks for the tree explicitly**: "有什么方向？", "有哪些分支？", "给我看看技能树"
-3. **Returning user wants overview**: "我学到哪了？", "看看进度"
+Use a skill tree in two ways:
 
-Do NOT generate a tree when the topic is already specific (e.g., "学 React useState").
+1. **Domain exploration tree**: for broad topics like "学AI", "学心理学", "学英语",
+   "学摄影", "学投资", "学历史". Show branches so the user can choose a path.
+2. **Course-local tree**: for specific topics like "学 React Hooks", "学微积分极限",
+   "学水彩入门". Map the generated modules, prerequisites, locks, and progress.
+
+Do not disable the tree because the topic is not programming. Disable only when
+`meta.json.skill_tree_enabled` is `false` or the user explicitly says they do not
+want a skill tree/map.
+
+## RPG Defaults and Opt-Out
+
+RPG progress is default on:
+
+- levels
+- XP
+- titles
+- achievements
+- quests
+- unlocks
+
+Turn RPG off only when `meta.json.rpg_enabled` is `false` or the user explicitly
+says they do not want game/entertainment/RPG elements. If the user opts out,
+update `meta.json` immediately through `write-state.py` when available:
+
+```json
+{
+  "skill_tree_enabled": true,
+  "rpg_enabled": false,
+  "rpg_preference_asked": true
+}
+```
+
+If the user rejects the skill tree itself, set both flags to false:
+
+```json
+{
+  "skill_tree_enabled": false,
+  "rpg_enabled": false,
+  "rpg_preference_asked": true
+}
+```
+
+Ask whether to keep RPG either before teaching starts or after the first teaching
+session. Ask once; after `rpg_preference_asked=true`, do not ask again unless the
+user brings it up. Store the answer in `meta.json`, not only in chat context.
+
+Suggested wording:
+
+```text
+我会默认保留技能树、等级、XP、成就这些轻量进度元素，方便你看到自己在往哪走。
+如果你觉得花哨，我可以关掉娱乐元素，只保留正常学习进度。要保留吗？
+```
+
+If the user keeps RPG, set `rpg_preference_asked=true` and leave
+`rpg_enabled=true`. If the user says no, set `rpg_enabled=false` and
+`rpg_preference_asked=true`.
 
 ## Skill Tree Format
 
@@ -57,6 +111,8 @@ Use indented bullet-style with emoji status markers. No box-drawing characters
 
 ---
 💡 建议路径：{recommended_path}
+
+🎮 进度：Lv.{level} · {xp} XP · 称号「{title}」
 ```
 
 ## Node Status Icons
@@ -85,11 +141,11 @@ Each node carries:
 | `key_topics` | Keywords for what this covers | `["useState","useEffect","useRef"]` |
 | `interview_weight` | Relevance to interviews (1-5) | `4` |
 
-## Generating a Skill Tree from Vague Topics
+## Generating a Domain Tree from Broad Topics
 
 ### Step 1: Identify the domain
 
-When user says "我想学编程":
+When user says "我想学编程", "学AI", "学心理学", "学英语", or any broad field:
 - Recognize this as a FIELD, not a topic
 - The domain is "编程" (Programming), which has many branches
 
@@ -124,6 +180,31 @@ Once user picks a branch:
 - Zoom into that branch as a sub-tree
 - Show only that branch + its prerequisites
 - Proceed to normal Phase 0 Q1-Q4
+
+## Generating a Course-Local Tree from Specific Topics
+
+For a specific topic, generate a compact tree after Module 00 is confirmed:
+
+```text
+🌳 {课程名} 技能树
+
+### 📚 基础层
+- 🔄 module-01: {module_name} — 0%
+  - 包含: {key_topics}
+
+### 🎯 核心层
+- 🔒 module-02: {module_name} — 0%
+  - 需要: module-01
+
+### 🚀 进阶层
+- 🔒 module-03: {module_name} — 0%
+  - 需要: module-02
+
+🎮 进度：Lv.1 · 0 XP · 称号「学徒」
+```
+
+The course-local tree should mirror the generated syllabus. Do not invent extra
+branches that are not part of the confirmed course.
 
 ## Example: "我想学大模型" Domain Map
 
@@ -192,6 +273,9 @@ When user picks a node (e.g., types `lowcode` or clicks on it):
 
 ## RPG Mechanics
 
+Keep RPG lightweight. It should make progress visible, not interrupt teaching.
+Do not turn every message into a game UI.
+
 ### 等级系统（Level System）
 
 - 1 Level = 1000 XP
@@ -229,7 +313,7 @@ When tree has multiple paths, offer Build options:
 🎯 选择你的路线：
 
 🏃 速成路线：llm-basics → prompt-eng(精简) → lowcode
-   ⏱ 最快 3 天能做出东西
+   ⏱ 目标是尽快做出第一个可用作品
 
 📚 精进路线：llm-basics → prompt-eng(深入) → framework → rag-adv
    ⏱ 适合想深入原理、做复杂系统的
@@ -240,33 +324,40 @@ When tree has multiple paths, offer Build options:
 
 ## State Integration
 
-The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tree.json`:
+The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tree.json`.
+`meta.json` is the source of truth for `skill_tree_enabled` and `rpg_enabled`;
+`domain-tree.json` mirrors those values for display.
 
 ```json
 {
-  "skill_tree": {
-    "domain": "大模型应用开发",
+  "schema_version": 1,
+  "course_slug": "llm-app-dev",
+  "domain": "大模型应用开发",
+  "enabled": true,
+  "rpg": {
+    "enabled": true,
     "level": 4,
     "xp": 3420,
     "title": "初出茅庐",
-    "path": "精进路线",
-    "nodes": {
-      "llm-basics": {"status": "mastered", "progress": 100, "started": "2026-06-01", "completed": "2026-06-03"},
-      "prompt-eng": {"status": "mastered", "progress": 100, "started": "2026-06-04", "completed": "2026-06-07"},
-      "lowcode": {"status": "available", "progress": 0},
-      "framework": {"status": "in_progress", "progress": 40, "started": "2026-06-08"},
-      "finetune": {"status": "available", "progress": 0},
-      "rag-adv": {"status": "locked", "progress": 0},
-      "agent-proj": {"status": "locked", "progress": 0},
-      "multi-agent": {"status": "locked", "progress": 0}
-    },
     "achievements": ["first_module", "foundation_complete"],
-    "stats": {
-      "total_sessions": 12,
-      "total_hours": 18.5,
-      "best_streak": 7,
-      "fastest_module": "tools-env (1.5h)"
-    }
+    "quests": []
+  },
+  "path": "精进路线",
+  "nodes": {
+    "llm-basics": {"status": "mastered", "progress": 100, "started": "2026-06-01", "completed": "2026-06-03"},
+    "prompt-eng": {"status": "mastered", "progress": 100, "started": "2026-06-04", "completed": "2026-06-07"},
+    "lowcode": {"status": "available", "progress": 0},
+    "framework": {"status": "in_progress", "progress": 40, "started": "2026-06-08"},
+    "finetune": {"status": "available", "progress": 0},
+    "rag-adv": {"status": "locked", "progress": 0},
+    "agent-proj": {"status": "locked", "progress": 0},
+    "multi-agent": {"status": "locked", "progress": 0}
+  },
+  "stats": {
+    "total_sessions": 12,
+    "total_hours": 18.5,
+    "best_streak": 7,
+    "fastest_module": "tools-env (1.5h)"
   }
 }
 ```

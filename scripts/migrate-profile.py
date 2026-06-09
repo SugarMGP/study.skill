@@ -12,6 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -29,6 +33,22 @@ def write_json(path: Path, data: dict) -> None:
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
+
+
+def verify_migration(courses_dir: Path, slugs: set[str]) -> None:
+    for slug in slugs:
+        course_dir = courses_dir / slug
+        for filename in ("meta.json", "params.json", "concepts.json", "domain-tree.json"):
+            data = read_json(course_dir / filename)
+            if data.get("schema_version") != 1:
+                raise ValueError(f"migration verification failed: {course_dir / filename}")
+
+
+def delete_old_files(*paths: Path) -> None:
+    for path in paths:
+        if path.exists():
+            path.unlink()
+            print(f"Deleted old file: {path.name}")
 
 
 def mode_from_scope(scope: str) -> str:
@@ -74,6 +94,57 @@ def mode_defaults(mode: str) -> dict:
     }[mode]
 
 
+def build_domain_tree(slug: str, name: str, old_course: dict, review_items: list[dict]) -> dict:
+    completed = old_course.get("completed_modules", [])
+    current = old_course.get("current_module")
+    modules = []
+    for module in completed:
+        if module and module not in modules:
+            modules.append(module)
+    if current and current not in modules:
+        modules.append(current)
+    for item in review_items:
+        if item["course_slug"] != slug:
+            continue
+        module = item.get("module")
+        if module and module not in modules:
+            modules.append(module)
+
+    nodes = {}
+    for module in modules:
+        if module in completed:
+            status = "mastered"
+            progress = 100
+        elif module == current:
+            status = "in_progress"
+            progress = 50
+        else:
+            status = "available"
+            progress = 0
+        nodes[module] = {
+            "status": status,
+            "progress": progress,
+        }
+
+    skill_tree_enabled = old_course.get("skill_tree_enabled", True)
+    rpg_enabled = old_course.get("rpg_enabled", True)
+    return {
+        "schema_version": 1,
+        "course_slug": slug,
+        "domain": name,
+        "enabled": skill_tree_enabled,
+        "rpg": {
+            "enabled": rpg_enabled,
+            "level": 1,
+            "xp": 0,
+            "title": "学徒",
+            "achievements": [],
+            "quests": [],
+        },
+        "nodes": nodes,
+    }
+
+
 def migrate(profile_dir: Path) -> int:
     progress_path = profile_dir / "progress.json"
     review_path = profile_dir / "review-schedule.json"
@@ -105,20 +176,25 @@ def migrate(profile_dir: Path) -> int:
     slugs.update(item["course_slug"] for item in review_items)
 
     if not slugs:
-        print("No old course data found. Nothing to migrate.")
+        if progress or review:
+            raise ValueError("old state files exist but no migratable course data was found")
+        delete_old_files(progress_path, review_path)
+        print("No old course data found. Old files deleted.")
         return 0
 
     for slug in sorted(slugs):
         old_course = active_courses.get(slug, {})
+        course_review_items = [item for item in review_items if item["course_slug"] == slug]
         scope = old_course.get("scope", "系统精讲")
         mode = mode_from_scope(scope)
         defaults = mode_defaults(mode)
         course_dir = courses_dir / slug
+        course_name = old_course.get("name", slug)
 
         write_json(course_dir / "meta.json", {
             "schema_version": 1,
             "slug": slug,
-            "name": old_course.get("name", slug),
+            "name": course_name,
             "status": old_course.get("status", "active"),
             "mode": mode,
             "mode_label": scope,
@@ -127,6 +203,9 @@ def migrate(profile_dir: Path) -> int:
             "last_session": old_course.get("last_session"),
             "total_sessions": old_course.get("total_sessions", 0),
             "streak_days": old_course.get("streak_days", 0),
+            "skill_tree_enabled": old_course.get("skill_tree_enabled", True),
+            "rpg_enabled": old_course.get("rpg_enabled", True),
+            "rpg_preference_asked": old_course.get("rpg_preference_asked", False),
             "storage_path": old_course.get("storage_path", str(profile_dir.parent / "courses" / slug)),
             "created_at": old_course.get("created_at", timestamp),
         })
@@ -149,9 +228,7 @@ def migrate(profile_dir: Path) -> int:
         })
 
         concepts = []
-        for item in review_items:
-            if item["course_slug"] != slug:
-                continue
+        for item in course_review_items:
             concepts.append({
                 "id": item["id"],
                 "name": item["concept"],
@@ -173,9 +250,12 @@ def migrate(profile_dir: Path) -> int:
             "last_review_session": None,
             "concepts": concepts,
         })
+        write_json(course_dir / "domain-tree.json", build_domain_tree(slug, course_name, old_course, course_review_items))
         print(f"Migrated {slug}")
 
-    print("Migration complete. Old files preserved.")
+    verify_migration(courses_dir, slugs)
+    delete_old_files(progress_path, review_path)
+    print("Migration complete. Old files deleted.")
     return 0
 
 

@@ -17,10 +17,10 @@ Most agents only read the first ~160 lines. Use this table before doing anything
 
 | Situation | Must load |
 | --- | --- |
-| Existing `.learning-profile/progress.json` or `review-schedule.json` | `references/migration-guide.md` |
+| Existing `.learning-profile/progress.json` or `review-schedule.json` | `references/migration-guide.md`; migration is blocking |
 | Existing `.learning-profile/` state, any state write, mode switch, progress update | `references/state-schema.md` |
-| Vague field: "学AI/编程/前端/后端/转行IT" | `references/skill-tree.md` for a domain map; omit RPG elements |
-| User asks "技能树/进度/成就/等级/XP/解锁" | `references/skill-tree.md` full RPG view |
+| User says "继续学习" and course files already exist | `references/phase-3-learning.md`; local course content is primary |
+| Any formal course, progress map, skill tree, XP, levels, achievements | `references/skill-tree.md`; skill tree and RPG are default on |
 | Goal anchoring, mode choice, materials, baseline, time, storage path | `references/phase-0-anchoring.md` |
 | Research before course generation | `references/phase-1-research.md` |
 | Course/module generation | `references/phase-2-generation.md` + `references/chinese-tutorial-guide.md` |
@@ -58,9 +58,9 @@ Escape hatch: for explicitly tiny requests such as "just teach useState in 5 min
 
 Before answering a learning request:
 
-1. If `.learning-profile/progress.json` or `review-schedule.json` exists, load `migration-guide.md` and migrate or ask before continuing.
+1. If `.learning-profile/progress.json` or `review-schedule.json` exists, stop normal teaching. Load `migration-guide.md`, run migration when possible, verify it, and continue only after the old files are gone.
 2. If `.learning-profile/` exists, read `.learning-profile/courses/*/meta.json` for active/completed courses; run `.learning-profile/scripts/check-reviews.py` when present.
-3. If the user asks for progress, achievements, levels, XP, or a skill tree, load `skill-tree.md`.
+3. Respect `meta.json.skill_tree_enabled` and `meta.json.rpg_enabled`; if missing, default both to `true`.
 4. If no confirmed learning goal exists, start Phase 0.
 
 ## Phase 0: Anchor
@@ -75,15 +75,15 @@ Ask questions one at a time by default. Determine:
 - time budget and deadline
 - `{learning_root}` storage path
 
-For vague topics, load `skill-tree.md` and show a domain map first. Do not include XP, levels, achievements, quests, or boss nodes unless the user explicitly asks for those game-like progress elements.
+Load `skill-tree.md` for any formal course. Show a domain tree for broad fields. For specific topics, initialize course-local tree state now, but fill its module nodes only after Module 00/syllabus is confirmed. RPG elements (XP, levels, titles, achievements, quests) are on by default; if the user says no game/entertainment/RPG elements, persist `rpg_enabled: false` in `meta.json`.
 
-Gate: present 学习路线图预览 and wait for confirmation. After confirmation, initialize `.learning-profile/` if needed, write course state from `state-schema.md`, and do not overwrite existing state.
+Gate: present 学习路线图预览 and wait for confirmation. After confirmation, initialize `.learning-profile/` if needed, write course state from `state-schema.md` with skill tree/RPG defaults, and do not overwrite existing state.
 
 ## Phase 1: Research
 
 Load `references/phase-1-research.md`.
 
-Research before generation. Use user materials as primary scope when provided. For tech topics, prefer official docs and source code; for academic/general topics, prefer textbooks, syllabi, surveys, and strong Chinese resources when available.
+Research before new course generation. Do not rerun Phase 1 just because the user says "继续学习" for an already generated course. Use user materials as primary scope when provided. For tech topics, prefer official docs and source code; for academic/general topics, prefer textbooks, syllabi, surveys, and strong Chinese resources when available.
 
 Gate: present sources, conflicts, core concept structure, and proposed course shape. Wait for user confirmation before Phase 2.
 
@@ -99,7 +99,7 @@ After generation, offer to start Module 01.
 
 Load `references/phase-3-learning.md`.
 
-Teach with explanation -> practice -> feedback -> self-test. Use worked examples when helpful, but avoid answer-only responses. Target 75-85% exercise success; adjust scaffolding, speed, and depth from `params.json`.
+For generated courses, read the local README/syllabus/current `content.md` first and teach from that. External docs are only supplemental for missing content, explicit latest/API/version questions, or verification. Teach with explanation -> practice -> feedback -> self-test. Use worked examples when helpful, but avoid answer-only responses. Target 75-85% exercise success; adjust scaffolding, speed, and depth from `params.json`.
 
 When the user says "太快/太慢/太浅/太深/跟不上", update `params.json` immediately through `write-state.py` and append `adaptive_history`.
 
@@ -125,9 +125,11 @@ If the user wants reminders or automation, load `references/automation/README.md
 | If you think... | Reality |
 | --- | --- |
 | "This is simple; skip research." | Research first unless the request is explicitly tiny. |
+| "User said continue, so I should research the topic again." | Continue from local course files; use external docs only as a supplement. |
 | "The user probably wants depth X." | Ask or use the selected mode from `params.json`. |
-| "I can ignore old state files." | Load `migration-guide.md` if old files exist. |
-| "Skill tree means RPG." | Vague topics get a plain domain map; RPG only on explicit request. |
+| "I can keep using old progress files." | Old state migration is blocking; continue only after old files are removed. |
+| "Skill trees are only for programming." | Skill trees apply to any learnable domain. |
+| "RPG needs explicit opt-in." | RPG is on by default; turn it off only when the user asks or meta says false. |
 | "I can hand-write state quickly." | Use `state-schema.md` and `write-state.py`. |
 | "I can compute reviews in prose." | Prefer `check-reviews.py` and `record-review.py`. |
 | "One source is enough." | Target 3 quality sources; accept fewer only with a reason. |

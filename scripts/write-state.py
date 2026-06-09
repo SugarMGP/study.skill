@@ -14,6 +14,10 @@ import sys
 from pathlib import Path
 
 
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("Usage: python scripts/write-state.py path/to/file.json < new-content.json", file=sys.stderr)

@@ -1,6 +1,6 @@
 # Development-only files (not needed at runtime)
 docs/
-CONTEXT.md
+AGENTS.md
 
 # User-generated learning data (should not be in version control)
 .learning-profile/

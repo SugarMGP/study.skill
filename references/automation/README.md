@@ -40,6 +40,6 @@ study.skill 为多种主流 agent 平台提供复习提醒配置参考。根据�
 
 `scripts/init-profile.sh` 和 `init-profile.ps1` 会：
 1. 检测当前平台（通过 `.claude/`、`.codex/` 等目录判断）
-2. 将 `check-reviews.py`、`record-review.py` 和 `write-state.py` 复制到 `.learning-profile/scripts/`
+2. 将 `check-reviews.py`、`record-review.py`、`write-state.py` 和 `migrate-profile.py` 复制到 `.learning-profile/scripts/`
 3. 为 AGENTS.md 添加复习检查指令
 4. 检测到 `.claude/` 目录时提示按 Claude Code 文档配置 SessionStart hook

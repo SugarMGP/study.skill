@@ -13,7 +13,7 @@
 │           ├── meta.json             # 课程元数据
 │           ├── params.json           # 自适应参数
 │           ├── concepts.json         # 知识点状态
-│           └── domain-tree.json      # 技能树（可选）
+│           └── domain-tree.json      # 技能树与 RPG 进度
 └── courses/
     └── {course-slug}/                # 课程内容（学习资料）
 ```
@@ -64,6 +64,9 @@
   "last_session": "2026-06-09T14:30:00+08:00",
   "total_sessions": 5,
   "streak_days": 3,
+  "skill_tree_enabled": true,
+  "rpg_enabled": true,
+  "rpg_preference_asked": false,
   "storage_path": "/home/user/learning/courses/react-hooks",
   "created_at": "2026-06-01T10:00:00+08:00"
 }
@@ -81,6 +84,9 @@
 | last_session | ISO 8601 | — | null | — | 最后学习时间 |
 | total_sessions | int | ✅ | 0 | ≥0 | 总学习会话数 |
 | streak_days | int | ✅ | 0 | ≥0 | 连续学习天数 |
+| skill_tree_enabled | bool | ✅ | true | — | 是否启用技能树/学习地图 |
+| rpg_enabled | bool | ✅ | true | — | 是否启用等级、XP、称号、成就、任务等轻量游戏化元素 |
+| rpg_preference_asked | bool | ✅ | false | — | 是否已经询问过用户要不要保留游戏化元素 |
 | storage_path | string | ✅ | — | — | 课程内容存储路径 |
 | created_at | ISO 8601 | ✅ | 初始化时间 | — | 课程创建时间 |
 
@@ -214,14 +220,26 @@
 
 ---
 
-## domain-tree.json（技能树，可选）
+## domain-tree.json（技能树）
 
-仅当用户从技能树进入课程时生成。结构参考 `references/skill-tree.md`。
+默认生成。结构参考 `references/skill-tree.md`。当 `meta.json.skill_tree_enabled=false`
+时可以不展示、不更新；当 `meta.json.rpg_enabled=false` 时保留普通进度，但不展示
+等级、XP、称号、成就、任务等娱乐元素。
 
 ```json
 {
   "schema_version": 1,
+  "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
+  "enabled": true,
+  "rpg": {
+    "enabled": true,
+    "level": 1,
+    "xp": 0,
+    "title": "学徒",
+    "achievements": [],
+    "quests": []
+  },
   "nodes": {
     "llm-basics": {"status": "mastered", "progress": 100},
     "prompt-eng": {"status": "in_progress", "progress": 60},
@@ -230,6 +248,19 @@
   }
 }
 ```
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:---:|--------|------|
+| course_slug | string | ✅ | — | 所属课程标识 |
+| domain | string | ✅ | — | 技能树所属领域或课程名 |
+| enabled | bool | ✅ | true | 是否启用技能树；与 `meta.json.skill_tree_enabled` 同步 |
+| rpg.enabled | bool | ✅ | true | 是否启用 RPG 展示；与 `meta.json.rpg_enabled` 同步 |
+| rpg.level | int | ✅ | 1 | 当前等级 |
+| rpg.xp | int | ✅ | 0 | 当前经验值 |
+| rpg.title | string | ✅ | "学徒" | 当前称号 |
+| rpg.achievements | string[] | ✅ | [] | 已获得成就 |
+| rpg.quests | array | ✅ | [] | 当前任务 |
+| nodes | object | ✅ | {} | 技能节点，key 为节点 ID |
 
 ---
 

@@ -71,12 +71,14 @@ Show this compact line. Do NOT expand unless user asks.
 
 ```
 📍 {current_module}（{completed}/{total}）| ⏰ {overdue} 待复习 | 🔥 {streak}天
+{If rpg_enabled: 🎮 Lv.{level} · {xp} XP · 称号「{title}」}
 ```
 
 ### Full Bulletin (On Demand)
 
 When user says "进度"/"快报"/"技能树"/"review"/"复习": expand to full bulletin
 with progress bars per module, streak count, overdue details, encouraging note.
+If `meta.json.rpg_enabled=false`, omit XP, levels, titles, achievements, and quests.
 
 ### Encouraging Notes
 

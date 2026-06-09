@@ -11,22 +11,28 @@ Before asking any questions, determine if the user's topic is vague or specific.
 
 ### VAGUE TOPIC → Generate Skill Tree First
 
-**Triggers**: "我想学编程", "学AI", "学大模型", "学前端", "学后端", "想转行IT", any topic that is a FIELD not a specific subject.
+**Triggers**: any topic that is a FIELD not a specific subject, such as "学AI",
+"学心理学", "学摄影", "学英语", "学投资", "学历史", "学前端".
 
-**Action**: Load `references/skill-tree.md` for the tree layout format only.
-Generate a domain map using the 3-tier ASCII tree structure and node status icons
-(✅🔄⬜🔒⭐). Present with guide text: "这就是 {领域} 的技能树。你现在站在哪？想往哪个方向走？"
-**Omit all RPG elements**: no XP, no levels, no achievements, no daily quests, no boss nodes.
+**Action**: Load `references/skill-tree.md`. Generate a domain skill tree using
+the 3-tier structure, node status icons, and default RPG layer unless the user
+has opted out. Present with guide text: "这就是 {领域} 的技能树。你现在站在哪？想往哪个方向走？"
 
 If user picks a node that is still too broad (e.g., "AI" → picks "机器学习" → still broad), zoom in one more level.
 
-### SPECIFIC TOPIC → Go Directly to Q1
+### SPECIFIC TOPIC → Initialize Course-Local Tree Then Q1
 
-**Triggers**: "学 React Hooks", "学 PostgreSQL 索引", "学 Docker", topic is a concrete technology/skill.
+**Triggers**: concrete topics such as "学 React Hooks", "学 PostgreSQL 索引",
+"学水彩入门", "学微积分极限", "学英语口语发音".
+
+**Action**: Do not skip the skill-tree feature. Initialize `domain-tree.json`
+with defaults after route confirmation, but leave `nodes` empty until Module 00
+and the syllabus are confirmed. If the user explicitly wants a preview before
+that, show only a small "待生成" course tree, not invented module nodes.
 
 ### EDGE: User says "随便看看" / "有什么推荐"
 
-Generate skill tree for a popular domain (programming/AI), show hot paths (⭐ recommended nodes), let user explore.
+Generate a skill tree for a popular matching domain, show hot paths (⭐ recommended nodes), let user explore.
 
 ## Protocol
 
@@ -50,6 +56,20 @@ in one message. Use user's answers to skip questions that are already answered.
 Q4 follows separately. Don't repeat information the user already provided.
 
 If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node = their scope anchor).
+
+### Default Skill Tree and RPG Policy
+
+Skill tree and lightweight RPG progress are default features for every formal
+course, not only programming topics.
+
+- `skill_tree_enabled`: default `true`
+- `rpg_enabled`: default `true`
+- If user says "不要游戏化/不要娱乐元素/不要 RPG/别搞等级 XP 成就", set `rpg_enabled: false` in `meta.json`.
+- If user says "不要技能树/不用地图", set `skill_tree_enabled: false` and `rpg_enabled: false` in `meta.json`.
+- Ask whether to keep RPG either before the first teaching session starts or after
+  the first teaching session ends. Do not ask repeatedly once `rpg_preference_asked` is true.
+- Even when RPG is on, keep it lightweight: one short progress line, no long
+  celebrations unless a real milestone happens.
 
 ### Quick Start Minimum Loop
 
@@ -204,9 +224,9 @@ After all questions answered, synthesize. Adapt format to mode:
    → 课程范围：{extracted_scope}
 
 🗺 路线概览：
-模块一：{name} — {n} 讲，预计 {days} 天
-模块二：{name} — {n} 讲，预计 {days} 天
-模块三：{name} — {n} 讲，预计 {days} 天
+模块一：{name} — {n} 讲
+模块二：{name} — {n} 讲
+模块三：{name} — {n} 讲
 {For 考试备考:}
 🎯 考试对标：覆盖 {exam_name} {topics_covered}
 ```
@@ -216,7 +236,7 @@ Ask: "这个路线 OK 吗？需要调整哪里？" — **Wait for user confirmat
 After confirmation:
 1. Initialize `{learning_root}/.learning-profile/` if missing.
 2. Create the course directory under `.learning-profile/courses/{course-slug}/`.
-3. Write `meta.json`, `params.json`, and an empty `concepts.json` using the schema in `state-schema.md`.
+3. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`, and an empty `concepts.json` using the schema in `state-schema.md`.
 4. Use `write-state.py` when available; never overwrite existing state without reading it first.
 
 ## Edge Cases
@@ -227,12 +247,14 @@ After confirmation:
 | User provides materials in a format agent can't read | "这个格式我读不了。把关键内容贴给我就行：考哪些章节、什么题型、什么时候考？" |
 | Materials are very long (>50 pages syllabus) | "材料挺多，我先扫一下结构。你告诉我重点看哪几部分？" |
 | User has both a textbook AND wants to supplement | Phase 1: textbook = primary source, web research = supplementary exercises and explanations |
-| User says "随便" / idk | Show a popular domain skill tree: "看看编程/AI的技能树？挑个感兴趣的方向？" |
+| User says "随便" / idk | Show a popular matching domain skill tree: "先看看这个领域的技能树？挑个感兴趣的方向？" |
 | User has no time estimate | "先按一周每天30分钟规划，后面可以调整？" |
-| Topic too broad (e.g., "学AI") | **Generate skill tree first**. "AI 太大了，先看看技能树，你想走哪个分支？" |
-| User picks a node but it's still broad | Zoom in one more level. "机器学习也很大——监督学习/深度学习/NLP/CV，你对哪个更感兴趣？" |
+| Topic too broad (e.g., "学AI"/"学心理学") | **Generate skill tree first**. "这个领域太大了，先看看技能树，你想走哪个分支？" |
+| User picks a node but it's still broad | Zoom in one more level. "这个分支也很大，我们再拆一层，你对哪个方向更感兴趣？" |
 | Topic too narrow (e.g., "学 React useState") | Offer: "这是个具体 API，我帮你做个快速教学（10分钟），还是扩展为 React Hooks 系统学习？" |
 | User is a returning learner | Read `.learning-profile/courses/*/meta.json` first. Show progress. "上次你学到 {module}，继续还是换方向？" |
 | User wants to switch path/mode | **正式流程**：展示当前模式→新模式的差异（字数/练习数/深度变化）→ 用户确认 → 更新 `params.json`（mode, depth_chars, exercises, target_retention）+ `meta.json`（mode, mode_label）→ 不改已生成内容，只影响后续模块。 |
 | User says "看看进度" / "技能树" | Load `references/skill-tree.md`. Render current skill tree with all progress. |
+| User opts out of RPG | Update `meta.json.rpg_enabled=false`, `meta.json.rpg_preference_asked=true`; keep skill tree unless they also reject it. |
+| User opts out of skill tree | Update `meta.json.skill_tree_enabled=false`, `meta.json.rpg_enabled=false`, `meta.json.rpg_preference_asked=true`. |
 | User completes a module | Update node progress. |

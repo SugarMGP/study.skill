@@ -30,6 +30,9 @@ restored learning: **never give the answer directly.**
 
 ## Session Start
 
+0. If `.learning-profile/progress.json` or `review-schedule.json` exists, stop here.
+   Load `migration-guide.md`; migrate and verify first. Do not continue teaching
+   from old state files.
 1. Read `.learning-profile/courses/*/meta.json` to determine current position per course
 2. Run `.learning-profile/scripts/check-reviews.py` to check overdue reviews
 3. Open with a brief review of 1-2 key points from last session (active recall)
@@ -41,6 +44,34 @@ restored learning: **never give the answer directly.**
 ```
 
 Ask: "继续学 {next_module}，还是先快速复习？（2 分钟）"
+
+If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`,
+ask once either before teaching starts or after the first session summary:
+"我会默认保留技能树、等级、XP、成就这些轻量进度元素。如果你觉得花哨，我可以关掉。要保留吗？"
+If the user says no, update `meta.json.rpg_enabled=false` and
+`meta.json.rpg_preference_asked=true` through `write-state.py`. If the user says
+yes or does not object after the prompt, set `rpg_preference_asked=true`. If
+`domain-tree.json` already exists, keep its `enabled` and `rpg.enabled` fields
+in sync with `meta.json`.
+
+## Existing Course Continuation
+
+When the user says "继续学习", "继续", "下一节", or similar, and course files
+already exist:
+
+1. Read course state: `meta.json`, `params.json`, and due reviews.
+2. Read local course content first: course `README.md`, `syllabus.md` if present,
+   and the current module's `content.md`.
+3. Announce the exact course/module/subsection being taught.
+4. Teach from the local course. Do not restart Phase 1 and do not fetch external
+   docs just because the topic is a library or framework.
+5. External docs/source lookup is allowed only as a supplement when:
+   - local course content is missing or clearly incomplete
+   - the user asks for latest/API/version-specific details
+   - you need to verify a code/API claim before presenting it
+
+If external lookup is used, keep it narrow, cite what changed, and return to the
+current module instead of reshaping the course silently.
 
 ## Core Interaction: The Socratic Cycle
 
@@ -177,14 +208,25 @@ missing, follow `state-schema.md`'s temporary-file write rule.
 
 2. Update `{learning_root}/.learning-profile/courses/{course-slug}/meta.json`:
    - Update `current_module`, `completed_modules`, `last_session`
+   - Preserve `skill_tree_enabled`, `rpg_enabled`, and `rpg_preference_asked`
+   - If the user opted out of RPG, set `rpg_enabled=false`
+   - If the user opted out of the skill tree, set both `skill_tree_enabled=false` and `rpg_enabled=false`
 
-3. Present session summary:
+3. If `skill_tree_enabled=true`, update `domain-tree.json`:
+   - Keep `enabled` aligned with `meta.json.skill_tree_enabled`
+   - Keep `rpg.enabled` aligned with `meta.json.rpg_enabled`
+   - Update module node progress
+   - If `rpg_enabled=true`, update XP, level, title, achievements, and quests
+   - If `rpg_enabled=false`, update only ordinary node progress
+
+4. Present session summary:
 
 ```
 ✅ 今日完成：{module_name}
 📝 新知识点：{n} 个
 ⏰ 下次复习：{next_date}
 ➡ 建议下一步：{next_action}
+{If rpg_enabled: 🎮 Lv.{level} · {xp} XP · {new_achievement_or_title}}
 💪 连续学习：{streak} 天
 ```
 

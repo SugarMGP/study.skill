@@ -100,8 +100,8 @@ npx skills add SugarMGP/study.skill
 │       └── {课程名}/
 │           ├── meta.json        # 课程元数据：模式、当前模块、完成模块
 │           ├── params.json      # 自适应参数：深度、速度、复习频率
-│           ├── concepts.json    # 知识点状态：每个概念的 D/S/R 和复习历史
-│           └── domain-tree.json # 技能树结构（如有）
+│           ├── concepts.json    # 知识点状态：每个概念的 D/S 和复习历史，R 实时计算
+│           └── domain-tree.json # 技能树与轻量游戏化进度
 ├── courses/
 │   └── {课程名}/
 │       ├── README.md            # 课程概览
