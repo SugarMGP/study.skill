@@ -229,13 +229,13 @@ When tree has multiple paths, offer Build options:
 🎯 选择你的路线：
 
 🏃 速成路线：llm-basics → prompt-eng(精简) → lowcode
-   ⏱️ 最快 3 天能做出东西
+   ⏱ 最快 3 天能做出东西
 
 📚 精进路线：llm-basics → prompt-eng(深入) → framework → rag-adv
-   ⏱️ 适合想深入原理、做复杂系统的
+   ⏱ 适合想深入原理、做复杂系统的
 
 🎯 面试路线：llm-basics → prompt-eng → framework(原理重点) + 面试题库
-   ⏱️ 每个模块都附带面试追问和手写题
+   ⏱ 每个模块都附带面试追问和手写题
 ```
 
 ## State Integration

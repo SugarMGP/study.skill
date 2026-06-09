@@ -172,7 +172,7 @@ missing, follow `state-schema.md`'s temporary-file write rule.
 ✅ 今日完成：{module_name}
 📝 新知识点：{n} 个
 ⏰ 下次复习：{next_date}
-➡️ 建议下一步：{next_action}
+➡ 建议下一步：{next_action}
 💪 连续学习：{streak} 天
 ```
 

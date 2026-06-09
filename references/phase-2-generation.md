@@ -31,9 +31,9 @@ Write to `{learning_root}/courses/{course-slug}/README.md`.
 ## 🔰 适合人群
 
 - ✅ {who should take this}
-- ⚠️ 前置知识：{prerequisites}
+- ⚠ 前置知识：{prerequisites}
 
-## 🗺️ 学习路线图
+## 🗺 学习路线图
 
 ```
 模块一：{name}（基础入门，30%）
@@ -49,7 +49,7 @@ Write to `{learning_root}/courses/{course-slug}/README.md`.
 ```
 
 {For tech topics:}
-## 🛠️ 环境准备
+## 🛠 环境准备
 
 {install instructions, versions, IDE setup}
 

@@ -44,7 +44,7 @@ After user selects a course (or "都过一遍"):
 {answer}
 
 你的回忆程度？
-1️⃣ 完全忘了  2️⃣ 记得一点  3️⃣ 记得大部分  4️⃣ 轻松想起
+1⃣ 完全忘了  2⃣ 记得一点  3⃣ 记得大部分  4⃣ 轻松想起
 ```
 
 3. After each rating: run `record-review.py` when available to update D, S, next_review, reviews, lapses, and status. R is computed, not stored.

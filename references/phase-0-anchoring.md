@@ -172,14 +172,14 @@ After all questions answered, synthesize. Adapt format to mode:
 📋 学习路线图：{topic}
 
 👤 学习者画像：{baseline} → {scope}
-⏱️ 预计：{total_time}，每天 {daily_time}
+⏱ 预计：{total_time}，每天 {daily_time}
 📁 存放位置：{learning_root}
 
 {If material-driven:}
 📎 参考材料：{material_summary}
    → 课程范围：{extracted_scope}
 
-🗺️ 路线概览：
+🗺 路线概览：
 模块一：{name} — {n} 讲，预计 {days} 天
 模块二：{name} — {n} 讲，预计 {days} 天
 模块三：{name} — {n} 讲，预计 {days} 天

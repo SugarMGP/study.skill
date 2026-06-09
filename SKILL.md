@@ -65,13 +65,13 @@ you didn't do the step. (superpowers anti-rationalization pattern)
 **Verification is concrete, not a feeling:**
 - Tech topics: runnable code must be run and verified. If code can't run (architecture
   docs, SQL, cloud config, pseudocode), cross-check against official docs or source
-  instead, and label "⚠️ 未运行验证，已通过 {method} 检查". Never claim execution
+  instead, and label "⚠ 未运行验证，已通过 {method} 检查". Never claim execution
   verification without actually executing.
 - General/academic topics: cross-check key claims against source.
 - Math/theory: step through the derivation independently.
 - Exam prep: check alignment with syllabus/exam scope.
 - If verification is impossible (e.g., no execution environment): flag it explicitly.
-  "⚠️ 代码未运行验证，仅在逻辑上检查通过。" Never claim "verified" without evidence.
+  "⚠ 代码未运行验证，仅在逻辑上检查通过。" Never claim "verified" without evidence.
 
 **Escape hatch:** If user explicitly scopes their request ("just the useState hook,
 I know React, 5 minutes"), skip formal anchoring. Confirm with a single sentence

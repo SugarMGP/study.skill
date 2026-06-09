@@ -118,7 +118,7 @@ Present findings. Adapt the format to topic type.
 🧩 核心概念关系图：
 {concept_A} ──requires──→ {concept_B}
 
-⚠️ 常见误区与陷阱：
+⚠ 常见误区与陷阱：
 - ...
 
 🎯 建议课程结构：
@@ -144,7 +144,7 @@ Present findings. Adapt the format to topic type.
 🧩 核心知识结构：
 {concept_A} → {concept_B} → {concept_C}
 
-⚠️ 常见误区与易混淆点：
+⚠ 常见误区与易混淆点：
 - ...
 
 🎯 建议课程结构：
@@ -177,7 +177,7 @@ Present findings. Adapt the format to topic type.
 第X章 {chapter_name} → {key_concepts}
 第Y章 {chapter_name} → {key_concepts}
 
-⚠️ 常见误区与失分点：
+⚠ 常见误区与失分点：
 - ...
 
 🎯 建议课程结构（对齐教材/考纲）：
