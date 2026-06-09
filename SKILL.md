@@ -151,9 +151,16 @@ In speedrun mode (速成导览): Foundation ≥75%, Core ≥60%, Enrichment opti
 
 **Load:** `references/phase-4-consolidation.md` and `references/fsrs-scheduler.md`
 
-Session-start review check. Spaced repetition sessions in batches of 5-7.
-Show brief status with streak and encouraging note at every session start.
-生成学习快报 with progress, streaks, encouraging notes.
+Multi-course review check on every session start. Prefer running
+`.learning-profile/scripts/check-reviews.py`; it reads active/completed courses,
+computes overdue items using FSRS, and presents them grouped by course.
+Spaced repetition sessions in batches of 5-7. Show brief status with streak
+at every session start. Full bulletin on demand.
+
+**Automation:** Platform capabilities differ. Prefer native scheduled tasks or
+session-start checks where available. See `references/automation/` for per-platform
+setup guides (Claude Code, Codex, Cursor, Copilot, OpenClaw, Gemini CLI).
+The universal fallback is AGENTS.md instructions where the platform loads it.
 
 ## Quick Start (最小闭环)
 
@@ -179,6 +186,8 @@ source count. Module content and mastery gates are identical.
 | Schedule reviews / generate bulletin | `references/phase-4-consolidation.md` |
 | Write Chinese-style tutorials | `references/chinese-tutorial-guide.md` |
 | Apply spaced repetition scheduling | `references/fsrs-scheduler.md` |
+| Data model schema | `references/state-schema.md` |
+| Automation setup (per platform) | `references/automation/README.md` |
 
 ## Output Quality Checklist
 
@@ -204,7 +213,7 @@ the Quality Gate section. Key principles:
 | "The user can continue on their own from here" | Your job is to guide. Leave clear next-step pointers. |
 | "One source is enough for this topic" | Target 3 sources. Accept fewer only when material-driven, niche, or exam-scoped — but flag what's missing. |
 | "I'll batch all review items at once" | Batches of 5-7. Cognitive load matters. |
-| "用户问了我直接给答案比较快" | 不愤不启，不悱不发。给答案 = 剥夺学习。走 Socratic Cycle。 |
+| "用户问了我直接给答案比较快" | 默认先提示 1-2 轮。新手、连续卡住、时间紧、用户明确要求时，给 worked example（完整例题+推理过程）+ 变式练习。不要只甩最终答案。 |
 | "用户学得开心就好，不用太严格" | 开心 ≠ 学会。具体进步 > 空洞表扬。用 Concrete Celebration。 |
 | "多给点鼓励，夸一夸" | 空泛夸奖无效。引用具体的前后对比："上次X分钟，这次Y分钟"。 |
 | "这个话题中文资料很少，用英文源就行" | 必须先告知用户并等待确认。不能默认用户接受纯英文源。 |

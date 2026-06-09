@@ -240,7 +240,7 @@ When tree has multiple paths, offer Build options:
 
 ## State Integration
 
-The skill tree state lives in `.learning-profile/progress.json`:
+The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tree.json`:
 
 ```json
 {

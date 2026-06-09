@@ -30,8 +30,8 @@ restored learning: **never give the answer directly.**
 
 ## Session Start
 
-1. Read `.learning-profile/progress.json` to determine current position
-2. Read `.learning-profile/review-schedule.json` to check overdue reviews
+1. Read `.learning-profile/courses/*/meta.json` to determine current position per course
+2. Run `.learning-profile/scripts/check-reviews.py` to check overdue reviews
 3. Open with a brief review of 1-2 key points from last session (active recall)
 4. Present context:
 
@@ -153,30 +153,25 @@ If user's current project or codebase relates to the learning topic:
 
 ## Session End
 
-1. Update `.learning-profile/progress.json` — read the existing file, update the entry inside `active_courses`:
+Before writing state, generate the complete updated JSON in memory, then write it
+with `.learning-profile/scripts/write-state.py` when available. If that script is
+missing, follow `state-schema.md`'s temporary-file write rule.
 
-```json
-// Before: read progress.json
-// After: merge this update into active_courses.{course_slug}
-{
-  "current_module": "02-useEffect",
-  "completed_modules": ["01-useState", "02-useEffect"],
-  "last_session": "2026-06-08",
-  "total_sessions": 5,
-  "streak_days": 5
-}
-```
-Also update `skill_tree.nodes.{node}.progress` and `skill_tree.nodes.{node}.status`
-**if a skill tree exists for this course.** If the user started from a specific topic
-without going through the skill tree, skip node updates — only update `active_courses`.
+1. Update `{learning_root}/.learning-profile/courses/{course-slug}/concepts.json`:
+   - Add new concepts from this module to the concepts array
+   - Set `first_seen` = today, `status` = "learning", initial D/S/R
+   - Update existing concepts' `last_review` if reviewed this session
+   - Set `next_review` = today + S' (≥ tomorrow for new items)
 
-2. Schedule reviews via the simplified scheduling algorithm (see Phase 4)
+2. Update `{learning_root}/.learning-profile/courses/{course-slug}/meta.json`:
+   - Update `current_module`, `completed_modules`, `last_session`
+
 3. Present session summary:
 
 ```
 ✅ 今日完成：{module_name}
-📝 新闪卡：{n} 张
-⏰ 下次复习：{date}
+📝 新知识点：{n} 个
+⏰ 下次复习：{next_date}
 ➡️ 建议下一步：{next_action}
 💪 连续学习：{streak} 天
 ```
@@ -191,6 +186,13 @@ without going through the skill tree, skip node updates — only update `active_
 | User wants to skip module | "这块是后面 {later_module} 的基础。不过你想先跳也行，遇到需要的地方再回头看？" — warn but respect choice |
 | User goes off-topic | "这个问题也很有意思，我先记下来。咱们把这个模块学完，我再细讲这个好不？" |
 | User returns after long gap | "欢迎回来！上次是 {days} 天前，我们先快速回顾一下上次的核心内容？" |
+| User says "太快了/跟不上" | Adjust params.json: speed_factor *= 0.7, new_items -= 2 (min 1). Reply: "好的，放慢节奏。" |
+| User says "太慢了/太墨迹" | Adjust params.json: speed_factor *= 1.3, new_items += 2. Reply: "好的，加快节奏。" |
+| User says "太浅了" | Adjust params.json: depth_chars_per_module *= 1.5. Reply: "下面讲得更深入一些。" |
+| User says "太深了/听不懂" | Adjust params.json: depth_chars_per_module *= 0.7. Reply: "简化讲解。" |
+
+For all parameter changes, write the full `params.json` through `write-state.py`
+and append an `adaptive_history` entry with before/after values.
 
 ## Failure Modes to Prevent
 

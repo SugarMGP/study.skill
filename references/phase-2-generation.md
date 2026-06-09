@@ -79,16 +79,18 @@ Write to `{learning_root}/courses/{course-slug}/README.md`.
 Wait for user to review Module 00 before generating remaining modules.
 Ask: "课程大纲 OK 吗？我开始写具体内容？"
 
-### Step 2: Generate Module by Module — Sequentially
+### Step 2: Generate All Remaining Modules
 
-**DO NOT generate all modules at once.** Context overflow and unverified content risk.
+After Module 00 is confirmed, generate all remaining modules in one pass.
+The Module 00 outline is the contract — execute it. No per-module confirmation needed.
 
-1. Generate Module 00 (course overview / README.md)
-2. Present to user → **wait for confirmation**
-3. Generate Module 01 → present → confirm
-4. Repeat for each module
+**Size guard:** If the course has >15 modules or >30 讲 total, split into batches
+of 10-12 modules. Generate batch 1, save, then generate batch 2. No confirmation
+between batches — just avoid context overflow.
 
-For each module, follow the chapter template in `references/chinese-tutorial-guide.md`.
+For each module, follow the chapter template in `references/chinese-tutorial-guide.md`
+and check against the mode-specific depth rules from `references/phase-0-anchoring.md`
+(word count, exercise count, explanation depth vary by mode).
 
 ### Step 3: Quality Gate (Single Source of Truth)
 

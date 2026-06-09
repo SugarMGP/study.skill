@@ -51,8 +51,10 @@ npx skills add SugarMGP/study.skill
 
 如果目标很大，比如“我想学 AI”，它会先给你画领域地图，帮你选方向；如果目标很具体，比如“学 React useState”，它会走更轻量的快速教学。
 
+如果你有考纲、教材、课件、历年题，直接发给它。考试和课程类学习会优先按材料来，避免学一堆不考的内容。
+
 > [!TIP]
-> 如果你有考纲、教材、课件、历年题，直接发给它。考试和课程类学习会优先按材料来，避免学一堆不考的内容。
+> 建议在课程生成阶段使用 `High` 或 `Extra` 的思考等级，生成完毕进入学习后切换到 `Low` 或 `Medium` 思考等级，这样既能保证课程质量，又能节省学习过程中的 Token 消耗。
 
 ## 学习模式
 
@@ -92,18 +94,24 @@ npx skills add SugarMGP/study.skill
 ```text
 你的学习目录/
 ├── .learning-profile/
-│   ├── progress.json          # 学习进度、当前课程、连续学习记录
-│   └── review-schedule.json   # 复习排期
-└── courses/
-    └── {课程名}/
-        ├── README.md          # 课程概览
-        ├── syllabus.md        # 完整大纲
-        ├── 01-xxx/content.md  # 模块讲义
-        ├── flashcards.csv     # 闪卡，可导入 Anki 等工具
-        ├── interview-qa.md    # 面试模式下的题库
-        ├── exam-practice.md   # 考试模式下的练习题
-        ├── glossary.md        # 术语表
-        └── resources.md       # 资源索引
+│   ├── profile.json             # 全局偏好：母语、每日时长、反馈风格
+│   ├── scripts/                 # 运行期工具：复习检查、复习记录、安全写入
+│   └── courses/
+│       └── {课程名}/
+│           ├── meta.json        # 课程元数据：模式、当前模块、完成模块
+│           ├── params.json      # 自适应参数：深度、速度、复习频率
+│           ├── concepts.json    # 知识点状态：每个概念的 D/S/R 和复习历史
+│           └── domain-tree.json # 技能树结构（如有）
+├── courses/
+│   └── {课程名}/
+│       ├── README.md            # 课程概览
+│       ├── syllabus.md          # 完整大纲
+│       ├── 01-xxx/content.md    # 模块讲义
+│       ├── flashcards.csv       # 闪卡，可导入 Anki 等工具
+│       ├── interview-qa.md      # 面试模式下的题库
+│       ├── exam-practice.md     # 考试模式下的练习题
+│       ├── glossary.md          # 术语表
+│       └── resources.md         # 资源索引
 ```
 
 `Anki` 是常见的记忆卡片工具；`flashcards.csv` 就是可以导入这类工具的表格格式。
@@ -126,5 +134,9 @@ study.skill/
 │   └── skill-tree.md                # 技能树和领域地图
 └── scripts/
     ├── init-profile.sh              # macOS / Linux 初始化脚本
-    └── init-profile.ps1             # Windows 初始化脚本
+    ├── init-profile.ps1             # Windows 初始化脚本
+    ├── check-reviews.py             # 复习到期检查脚本
+    ├── record-review.py             # 复习评分记录脚本
+    ├── migrate-profile.py           # 旧数据迁移脚本
+    └── write-state.py               # 安全写入 JSON 状态文件
 ```

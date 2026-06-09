@@ -3,166 +3,136 @@
 > Source: inspired by FSRS (Ye et al., KDD 2022 / TKDE 2023)
 > This is a **simplified implementation** of the core concepts, not a full
 > FSRS engine. For production use, consider integrating the fsrs-rs library.
-> Label: "间隔复习排期" in user-facing messages — not "FSRS".
 
-## State Variables
+## Storage: Per-Course concepts.json
 
-Per knowledge item tracked in `.learning-profile/review-schedule.json`:
-
-| Variable | Meaning | Range | Initial |
-|----------|---------|-------|---------|
-| **D** (Difficulty) | How hard the item is | [1, 10] | 4.0 or estimated from metadata |
-| **S** (Stability) | How long memory lasts (days until R=0.9) | [0, ∞] | 1.0 (1 day) |
-| **R** (Retrievability) | Probability of recall at current time | [0, 1] | 1.0 (just reviewed) |
-| **last_review** | ISO date of last review | date | session date |
-| **next_review** | ISO date of next scheduled review | date | computed |
-| **reviews** | Total review count | int | 0 |
-| **lapses** | Times forgotten (rated 1 or 2) | int | 0 |
-
-## Core Formulas
-
-### Retrievability
-
-```
-R(t, S) = e^(ln(0.9) * t / S)
-```
-
-Where t = days elapsed since last_review. On session start, compute R for all items. Items with R < target_retention (default 0.9) are "due for review."
-
-### After Review: Update S and D
-
-Rating scale (user provides after each review):
-
-| Rating | Meaning | Score (G) |
-|--------|---------|-----------|
-| 完全忘了 | Complete blackout | 1 |
-| 记得一点 | Recalled correctly but with great difficulty | 2 |
-| 记得大部分 | Recalled with slight hesitation | 3 |
-| 轻松想起 | Perfect recall | 4 |
-
-**Difficulty update:**
-
-```
-D' = clamp(D - 0.5 * (G - 3), 1, 10)
-```
-
-- G=4 (easy): D decreases by 0.5 → item becomes slightly easier
-- G=3 (medium): D unchanged
-- G=2 (hard): D increases by 0.5 → item becomes harder
-- G=1 (forgot): D increases by 1.0 → item becomes significantly harder
-- D always clamped to [1, 10]
-
-**Stability update (successful recall, G >= 3):**
-
-```
-G=4 (轻松想起): S' = S * 1.3 * (1 + 0.5 * max(0, 1 - R))
-G=3 (记得大部分): S' = S * 1.1 * (1 + 0.5 * max(0, 1 - R))
-```
-
-Rule of thumb — D (Difficulty) is used mainly for review priority sorting, not as
-a core multiplier in the simplified formulas above. Apply these caps:
-- Higher D → cap S' ≤ S * 2 (for D≥8, hard items grow slower even when recalled well)
-- Higher S → cap S' ≤ S + 30 (already very stable items are hard to improve further)
-- Lower R → larger S increase (overdue but successfully recalled → big boost)
-
-**Post-lapse stability (forgotten, G < 3):**
-
-```
-S' = max(1, S * 0.2 * G)
-```
-- G=2: S' ≈ S * 0.4 (moderate drop)
-- G=1: S' ≈ S * 0.2 (severe drop, almost re-learning)
-
-### Next Interval
-
-```
-I(S, target_R=0.9) ≈ S
-```
-
-Simplified: schedule next review when elapsed time ≈ stability.
-
-## Simplified Scheduling Parameters
-
-```
-difficulty_step = 0.5           # How much D changes per rating level
-target_retention = 0.9          # Target recall probability
-initial_stability = 1.0         # S for new items (1 day)
-initial_difficulty = 4.0        # D for new items (moderate)
-max_review_batch = 7            # Cognitive load limit
-```
-
-## Review Schedule Storage Format
-
-`.learning-profile/review-schedule.json`:
+Each course has its own `{learning_root}/.learning-profile/courses/{course-slug}/concepts.json`.
+This enables independent review schedules and multi-course concurrent learning.
 
 ```json
 {
-  "target_retention": 0.9,
-  "items": [
+  "course_slug": "react-hooks",
+  "last_review_session": "2026-06-09",
+  "concepts": [
     {
-      "id": "concept-id",
-      "course_slug": "example-course",
-      "concept": "Concept name in Chinese",
-      "question": "Review prompt/question",
-      "answer": "Expected recall content",
+      "id": "useState-basics",
+      "name": "useState 基础用法",
+      "module": "01-useState",
+      "status": "learning",
       "D": 4.2,
       "S": 12.5,
-      "R": 0.85,
       "last_review": "2026-06-08",
       "next_review": "2026-06-20",
       "reviews": 3,
       "lapses": 0,
-      "module": "01-basics"
+      "first_seen": "2026-06-01",
+      "question": "useState 返回什么？",
+      "answer": "返回 [state, setState] 数组，setState 触发重新渲染"
     }
   ]
 }
 ```
 
+**Status values:**
+- `learning` — actively being learned or reviewed
+- `mastered` — consistently recalled, low review frequency
+- `needs_relearning` — lapsed (R < 0.7 and lapses >= 3), needs re-teaching
+- `retired` — no longer relevant (topic removed from course)
+
+**Note:** `target_retention` is not stored in concepts.json. It lives in `params.json`
+to avoid duplication. When computing R, read `target_retention` from `params.json`.
+
+## State Variables
+
+| Variable | Meaning | Range | Initial |
+|----------|---------|-------|---------|
+| **D** (Difficulty) | How hard the concept is | [1, 10] | 4.0 or estimated |
+| **S** (Stability) | Days until R drops to target_retention | [0, ∞] | 1.0 |
+| **R** (Retrievability) | Current probability of recall | [0, 1] | Computed |
+
+## Core Formulas
+
+### Retrievability
+
+This is a **simplified implementation** of the FSRS forgetting curve, not the
+full FSRS scheduler. For production use, consider integrating the fsrs-rs library.
+
+```
+R = (1 + FACTOR * t / S) ^ DECAY
+```
+
+Where:
+- `t` = days since last review
+- `S` = stability
+- `DECAY = -0.1542` (FSRS default)
+- `FACTOR = 0.9 ^ (1/DECAY) - 1 ≈ 0.98`
+
+When `t = 0`, `R = 1.0` (just reviewed). When `t = S`, `R ≈ 0.9`.
+
+### After Review: Update S and D
+
+Rating scale:
+
+| Rating | Meaning | Score (G) |
+|--------|---------|-----------|
+| 完全忘了 | Complete blackout | 1 |
+| 记得一点 | Recalled with difficulty | 2 |
+| 记得大部分 | Recalled with hesitation | 3 |
+| 轻松想起 | Perfect recall | 4 |
+
+**Difficulty update:**
+```
+D' = clamp(D - 0.5 * (G - 3), 1, 10)
+```
+
+**Stability update (G >= 3):**
+```
+G=4: S' = S * 1.3 * (1 + 0.5 * max(0, 1 - R))
+G=3: S' = S * 1.1 * (1 + 0.5 * max(0, 1 - R))
+```
+
+Caps: S' ≤ S * 2 (for D≥8), S' ≤ S + 30.
+
+**Post-lapse (G < 3):**
+```
+S' = max(1, S * 0.2 * G)
+```
+
+### Next Interval
+
+```
+next_review = today + S' days
+```
+
 ## Review Session Protocol
 
-1. On session start, read `review-schedule.json`
-2. For each item, compute `R = e^(ln(0.9) * days_since_review / S)`
-3. Items with `R < target_retention` (0.9) are due
-4. Present in batches of 5-7 (cognitive load limit)
-5. After each rating, recompute D, S, R, next_review
-6. Write back to `review-schedule.json`
-7. Items with R < 0.7 and lapses >= 3: set `status: "needs_relearning"`, preserve record
-
-**Same-session vs. review-schedule boundary:**
-In-session active recall, self-tests, and spaced callbacks (Phase 3) are **teaching checks** —
-they do NOT go into `review-schedule.json`. Only items that have been formally introduced in
-a completed module and had ≥1 day since first exposure are added to the schedule.
-New flashcards created today get `next_review` ≥ tomorrow, never today.
+1. On session start, prefer `check-reviews.py` to read all active/completed courses and compute overdue items
+2. If running manually: for each concept, compute R and flag if R < target_retention
+3. Present grouped by course: "React Hooks: 3 待复习 | Go并发: 2 待复习"
+4. User picks a course (or "都过一遍")
+5. Present in batches of 5-7
+6. After each rating: prefer `record-review.py`; otherwise update D, S, next_review and write back to concepts.json with `write-state.py`
+7. Items with lapses >= 3 and R < 0.7: set `status: "needs_relearning"`
 
 ## Interleaving Strategy
 
-Default session split: 60% new content, 40% review. Adapt when needed:
-- Overdue items >10 → 30% new, 70% review (clear backlog first)
-- Overdue items = 0 → 80% new, 20% review (maintain lightly)
-- Speedrun mode → 80% new, 20% review (prioritize progress)
-- Exam countdown < 1 week → 40% new, 60% review (more practice)
+Default: 60% new content, 40% review. Adapt:
+- Overdue >10 → 30% new, 70% review
+- Overdue = 0 → 80% new, 20% review
+- Speedrun mode → 80% new, 20% review
+- Exam < 1 week → 40% new, 60% review
 
-Within the review allocation, prioritize:
-1. Most overdue (lowest R)
-2. Highest difficulty (highest D) among equally overdue
-3. Lowest review count (least practiced) as tiebreaker
+Priority within review: lowest R first → highest D first → fewest reviews.
 
-## Flashcard Generation
+## Same-Session vs. Review Boundary
 
-During Phase 2 (course generation), for each module, extract 3-8 knowledge items as flashcards:
-- Question format: short prompt that requires active recall
-- Answer format: concise, one key idea
-- Each item tagged with `module` for interleaving
-- Output to `flashcards.csv`:
+In-session active recall and self-tests (Phase 3) are **teaching checks** — they
+do NOT go into concepts.json. Only concepts from completed modules with ≥1 day
+since first exposure are added. New items get `next_review` ≥ tomorrow.
 
-```csv
-id,module,question,answer,difficulty
-"useState-basics","01-react-hooks","useState 返回什么？","返回一个数组：[当前状态值, 更新函数]。更新函数触发重新渲染。",4
-```
+## What NOT to Do
 
-## What NOT to do
-
-- Do NOT schedule reviews during the same session as learning the concept (minimum 1 day gap)
+- Do NOT schedule reviews in the same session as first learning
 - Do NOT present more than 7 review items at once
-- Do NOT skip review because "the user seems busy" — present the option, let user decide
-- Do NOT delete review items without marking for re-learning
+- Do NOT skip review — present the option, let user decide
+- Do NOT delete concepts — set status to "needs_relearning" instead

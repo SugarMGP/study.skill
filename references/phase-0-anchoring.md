@@ -64,6 +64,43 @@ to the user — apply them silently when generating content.
 
 Code examples and diagrams are NOT constrained — include whenever they aid understanding.
 
+#### After Mode Selection: Prepare params.json
+
+Once the user chooses a mode, keep the mode defaults as pending course state.
+Do not write files yet unless `{learning_root}` and `{course-slug}` are already known.
+After Q4 and route confirmation, create `{learning_root}/.learning-profile/courses/{course-slug}/params.json`
+with these defaults. This persists across sessions and survives context compression.
+
+```json
+{
+  "schema_version": 1,
+  "mode": "speedrun",
+  "mode_label": "速成导览",
+  "depth_chars_per_module": 1200,
+  "exercises_per_module": 2,
+  "target_retention": 0.85,
+  "new_items_per_session": 5,
+  "spacing_factor": 1.0,
+  "auto_advance": true,
+  "require_mastery_before_advance": false,
+  "speed_factor": 1.0,
+  "last_speed_feedback": null,
+  "last_speed_feedback_at": null,
+  "adaptive_history": []
+}
+```
+
+Mode defaults:
+
+| Mode | depth_chars | exercises | target_retention | auto_advance | require_mastery |
+|------|------------|-----------|-----------------|-------------|----------------|
+| 速成导览 | 1200 | 2 | 0.85 | true | false |
+| 系统精讲 | 3500 | 4 | 0.90 | false | true |
+| 面试冲刺 | 1000 | 1组追问 | 0.90 | true | false |
+| 考试备考 | 1500 | 4 | 0.90 | false | true |
+
+When user gives speed/depth feedback during Phase 3, update params.json immediately.
+
 ### Q1.5: Materials — "手头有现成材料吗？"
 
 Especially important for 考试备考 mode, but useful for any mode.
@@ -152,6 +189,12 @@ After all questions answered, synthesize. Adapt format to mode:
 
 Ask: "这个路线 OK 吗？需要调整哪里？" — **Wait for user confirmation before Phase 1.**
 
+After confirmation:
+1. Initialize `{learning_root}/.learning-profile/` if missing.
+2. Create the course directory under `.learning-profile/courses/{course-slug}/`.
+3. Write `meta.json`, `params.json`, and an empty `concepts.json` using the schema in `state-schema.md`.
+4. Use `write-state.py` when available; never overwrite existing state without reading it first.
+
 ## Edge Cases
 
 | Scenario | Handling |
@@ -165,7 +208,7 @@ Ask: "这个路线 OK 吗？需要调整哪里？" — **Wait for user confirmat
 | Topic too broad (e.g., "学AI") | **Generate skill tree first**. "AI 太大了，先看看技能树，你想走哪个分支？" |
 | User picks a node but it's still broad | Zoom in one more level. "机器学习也很大——监督学习/深度学习/NLP/CV，你对哪个更感兴趣？" |
 | Topic too narrow (e.g., "学 React useState") | Offer: "这是个具体 API，我帮你做个快速教学（10分钟），还是扩展为 React Hooks 系统学习？" |
-| User is a returning learner | Read `.learning-profile/progress.json` first. Show skill tree with progress. "上次你学到 {node}，继续还是换方向？" |
-| User wants to switch path/mode | Show skill tree. "从这里切过去？" Allow change. Update profile. |
+| User is a returning learner | Read `.learning-profile/courses/*/meta.json` first. Show progress. "上次你学到 {module}，继续还是换方向？" |
+| User wants to switch path/mode | **正式流程**：展示当前模式→新模式的差异（字数/练习数/深度变化）→ 用户确认 → 更新 `params.json`（mode, depth_chars, exercises, target_retention）+ `meta.json`（mode, mode_label）→ 不改已生成内容，只影响后续模块。 |
 | User says "看看进度" / "技能树" | Load `references/skill-tree.md`. Render current skill tree with all progress. |
 | User completes a module | Update node progress. |
