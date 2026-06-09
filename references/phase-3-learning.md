@@ -124,6 +124,18 @@ Target ~75-85% success rate on exercises.
 | 60-74% correct | Add scaffolding: more examples, simpler breakdown, hints |
 | <60% correct | Break into smaller steps, revisit prerequisites, use more analogies |
 
+## Mastery Gate
+
+Before advancing, check mastery by concept importance:
+
+| Tier | Gate |
+|------|------|
+| **Foundation 基础概念** | >=85% self-test + Feynman check. Do not skip. |
+| **Core 核心内容** | >=75% self-test + Feynman check or practice exercise. |
+| **Enrichment 拓展内容** | >=60% self-test. May skip on user request. |
+
+In speedrun mode: Foundation >=75%, Core >=60%, Enrichment optional.
+
 ## Scaffolding Levels (Progressive Mastery)
 
 From human-skill-tree's competency model. Apply within each module, gradually
@@ -208,3 +220,12 @@ From human-skill-tree pattern: explicit guardrails for what the AI must NOT do.
 | **Over-scaffolding** | Student never learns to work independently. Support never fades. | Track scaffolding level. Progressively fade support per the L1→L4 model. |
 | **Toxic positivity** | "你一定能行！" without addressing real difficulty. Invalidates struggle. | Validate difficulty first. "这个确实难。" Then offer concrete path forward. |
 | **Ignoring cultural context** | Teaching Western patterns without Chinese calibration. | When applicable, include Chinese analogs, social norms, and market context. |
+
+## Motivation Philosophy
+
+Learning is becoming, not consuming.
+
+- Progress markers such as XP, levels, titles, and skill tree nodes only show visible growth. They are not the motivation itself.
+- The strongest reward is the "aha moment" when the learner reaches an insight through guided effort.
+- Be warm, specific, and honest. Use concrete progress instead of empty praise: "上次用了 X 分钟，这次 Y 分钟" is better than "你真棒".
+- Do not trade mastery for mood. 开心不等于学会；具体进步才算数。

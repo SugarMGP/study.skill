@@ -30,6 +30,19 @@ Generate skill tree for a popular domain (programming/AI), show hot paths (⭐ r
 
 ## Protocol
 
+## Anchoring Iron Law
+
+No teaching without anchoring first. If the user has not confirmed a learning goal,
+mode, baseline, materials/time constraints, and storage path, you have not earned
+the right to teach. For explicitly tiny requests, confirm the narrow scope in one
+sentence and proceed; the rule prevents sloppiness, not speed.
+
+## Units and Course Size
+
+- **一讲 (Lecture)**: about 10-25 minutes, 500-1500 Chinese characters plus examples, one main concept.
+- **一模块 (Module)**: 2-5 lectures, one coherent sub-topic, about 0.5-3 hours.
+- **一门课 (Course)**: at most 15 modules and 30 lectures. Split larger topics into multiple courses.
+
 **Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions
 in one message. Use user's answers to skip questions that are already answered.
 
@@ -37,6 +50,17 @@ in one message. Use user's answers to skip questions that are already answered.
 Q4 follows separately. Don't repeat information the user already provided.
 
 If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node = their scope anchor).
+
+### Quick Start Minimum Loop
+
+Use this when the user explicitly wants speed over thoroughness:
+
+1. Batch the 3 essential questions in one message: topic, baseline, time/materials.
+2. Do Phase 1 Lite: 1-2 key sources and state what is missing.
+3. Generate Module 00 only; user can decide whether to continue.
+4. Preserve progress so the full flow can resume later.
+
+Lite mode relaxes question batching and source count only. Module content quality and mastery gates stay the same.
 
 ### Q1: Scope — "想学到什么程度？"
 

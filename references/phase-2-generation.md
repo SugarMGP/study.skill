@@ -12,7 +12,23 @@ Before entering this phase:
 - Phase 1 completed: user confirmed research scope
 - Load `references/chinese-tutorial-guide.md` for writing standards
 
+## Completion Iron Law
+
+Do not claim a course, module, code example, or exercise is complete until the
+relevant quality gate has been checked. If runnable code was not executed, say so
+explicitly and describe the alternative verification method.
+
 ## Generation Pipeline
+
+## Output Standard
+
+Generate real, runnable Chinese-language courses in the style of 极客时间,
+rust-course, CS-Notes, JavaGuide, and ai-agents-from-zero:
+
+- Do not dump links or generic outlines.
+- Each module should teach with 大白话 -> 术语 -> example/code -> exercise -> summary.
+- Technical examples that claim to run must be runnable and verified.
+- Course files should leave clear next-step pointers so the learner can continue.
 
 ### Step 1: Generate Course Overview (Module 00)
 
@@ -122,6 +138,13 @@ Before outputting any module, check against this tiered checklist.
 **Bloom keywords:** Understand = 描述 解释 总结. Apply = 实现 解决 修改 操作. Analyze = 对比 分析 区分 归类. Evaluate = 评估 判断 论证.
 
 **Max course size:** 30 讲 total. Split into series if larger.
+
+### Verification Rules
+
+- Runnable code must actually run before claiming it works.
+- Non-runnable technical content must be checked against official docs/source and labeled as not executed.
+- General/academic claims need source cross-checks.
+- Exam-prep content must align with the syllabus or provided materials.
 
 ### Step 4: File Output (Incremental)
 

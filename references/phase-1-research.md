@@ -6,6 +6,12 @@
 
 ## Research Strategy
 
+## Research Iron Law
+
+No course generation without research first. Do not rely on memory alone for
+non-trivial courses. If the topic is tiny, niche, material-driven, or exam-scoped,
+use fewer sources only with a clear note about what is missing.
+
 ### Step 0: Material-Driven Mode Check
 
 If the user provided materials in Phase 0 (syllabus, textbook, exam outline, past
@@ -200,5 +206,5 @@ Ask: "这个范围和结构符合你的预期吗？需要增加/删除什么？"
 - MUST note version/year of sources used
 - **Source quality screening:** Prioritize official docs, textbooks, course syllabi, active
   repos with ≥1k stars (for popular topics; stars are a signal, not a threshold), peer-reviewed papers.
-  unsourced articles, outdated versions without warnings, AI-generated slop.
+  Avoid unsourced articles, outdated versions without warnings, and AI-generated slop.
 - For conflicting sources, flag both with attribution and let user decide if scope is affected
