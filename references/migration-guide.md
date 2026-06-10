@@ -1,7 +1,8 @@
 # 数据迁移指南：从旧版升级到新版
 
 > 适用于：已使用旧版 study.skill，并且已有 `.learning-profile/progress.json`
-> 或 `.learning-profile/review-schedule.json` 的用户。
+> 或 `.learning-profile/review-schedule.json` 的用户；也适用于已经有
+> schema_version 1 新目录结构、需要升级到 schema_version 2 的用户。
 
 ## 变更概览
 
@@ -20,9 +21,13 @@
 
 关键规则：
 
-- 每个 JSON 文件都写 `schema_version: 1`
+- 每个 JSON 文件都写 `schema_version: 2`
 - `target_retention` 只保存在 `params.json`
 - `concepts.json` 不保存 R；R 每次按 FSRS 公式实时计算
+- `profile.json.preferences` 增加 `automation_declined` 和
+  `automation_declined_at`
+- `profile.json.learner_profile` 保存学习者画像，例如已会语言、薄弱前置、
+  类比偏好、教学约束和材料摘要
 - 迁移后的课程默认 `skill_tree_enabled=true`、`rpg_enabled=true`、`rpg_preference_asked=false`
 - 旧文件一旦出现，迁移就是阻塞项：不要继续读取旧文件教学，也不要手写兼容状态
 - 迁移脚本写入新版结构并验证成功后，直接删除 `progress.json` 和 `review-schedule.json`
@@ -78,11 +83,31 @@ Windows：
 
 迁移验证通过后，旧文件必须不存在。若还存在，先不要继续教学；重新运行迁移脚本或手动完成删除。
 
+## 从 schema_version 1 升级到 2
+
+如果已经没有旧 `progress.json` / `review-schedule.json`，但状态文件还是
+`schema_version: 1`，仍然运行同一个脚本：
+
+```bash
+python scripts/migrate-profile.py /path/to/learning/.learning-profile
+```
+
+脚本会：
+
+1. 把 `profile.json` 升级到 `schema_version: 2`
+2. 保留已有 `preferences`，补上 `automation_declined=false` 和
+   `automation_declined_at=null`
+3. 补上空的 `learner_profile`
+4. 把已有课程状态文件的 `schema_version` 更新为 2
+5. 验证关键 JSON 文件能读取，且版本正确
+
+不确定的信息保持空值或空数组，不要从聊天外脑补。
+
 ## 手动迁移
 
 如果脚本不适用，手动步骤：
 
-1. 创建 `.learning-profile/profile.json`，写入 `schema_version: 1` 和全局偏好。
+1. 创建 `.learning-profile/profile.json`，写入 `schema_version: 2`、全局偏好和 `learner_profile`。
 2. 为每门课程创建 `.learning-profile/courses/{slug}/meta.json`，默认写入 `skill_tree_enabled=true`、`rpg_enabled=true`、`rpg_preference_asked=false`。
 3. 为每门课程创建 `.learning-profile/courses/{slug}/params.json`，把 `target_retention` 放在这里。
 4. 为每门课程创建 `.learning-profile/courses/{slug}/concepts.json`，不要写 `target_retention`。

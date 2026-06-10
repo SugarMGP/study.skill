@@ -116,11 +116,13 @@ next_review = today + S' days
 
 ## Interleaving Strategy
 
-Default: 60% new content, 40% review. Adapt:
-- Overdue >10 → 30% new, 70% review
-- Overdue = 0 → 80% new, 20% review
-- Speedrun mode → 80% new, 20% review
-- Exam < 1 week → 40% new, 60% review
+Session start must check due reviews, but review does not own the session by
+default. Present due items as a one-line option; continue the main lesson unless
+the user chooses review.
+
+When the user chooses quick review, default to 2-5 minutes or 1-3 items before
+returning to the main lesson. Expand only when the user explicitly asks for a
+review session.
 
 Priority within review: lowest R first → highest D first → fewest reviews.
 

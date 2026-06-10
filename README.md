@@ -94,7 +94,7 @@ npx skills add SugarMGP/study.skill
 ```text
 你的学习目录/
 ├── .learning-profile/
-│   ├── profile.json             # 全局偏好：母语、每日时长、反馈风格
+│   ├── profile.json             # 全局偏好和学习者画像：每日时长、提醒偏好、已会/薄弱前置
 │   ├── scripts/                 # 运行期工具：复习检查、复习记录、安全写入
 │   └── courses/
 │       └── {课程名}/

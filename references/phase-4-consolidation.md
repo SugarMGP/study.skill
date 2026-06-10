@@ -10,12 +10,20 @@ Load `references/fsrs-scheduler.md` for algorithm and storage format.
 
 ## Session-Start: Review Check (Multi-Course)
 
-Every session start, before doing anything else:
+Every session start, check due reviews before teaching new content, but keep the
+prompt short:
 
 1. Run `{learning_root}/.learning-profile/scripts/check-reviews.py {learning_root}/.learning-profile`.
 2. If automation needs structured data, run the same script with `--json`.
 3. If the script is missing, fall back to the manual algorithm in `fsrs-scheduler.md`.
-4. If overdue items exist, present grouped by course:
+4. If overdue items exist, present one compact line first:
+
+```text
+⏰ 待复习：{total} 个知识点，可先用 2-5 分钟过一遍。
+```
+
+Ask whether to review now or continue the main lesson. If the user chooses a
+full review, then present grouped by course:
 
 ```
 ⏰ 待复习：

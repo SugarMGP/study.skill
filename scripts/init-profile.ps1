@@ -19,7 +19,7 @@ $created = @()
 if (-not (Test-Path -LiteralPath $profileFile)) {
     $now = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
     $profileJson = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         learner_id = "default"
         created_at = $now
         updated_at = $now
@@ -28,9 +28,21 @@ if (-not (Test-Path -LiteralPath $profileFile)) {
             daily_time_budget_minutes = 30
             feedback_style = "normal"
             correction_mode = "inline"
+            automation_declined = $false
+            automation_declined_at = $null
+        }
+        learner_profile = [ordered]@{
+            baseline = $null
+            goals = @()
+            known_languages = @()
+            weak_prereqs = @()
+            analogy_preferences = @()
+            teaching_constraints = @()
+            materials_summary = $null
+            updated_at = $null
         }
     } | ConvertTo-Json -Depth 4
-    Set-Content -LiteralPath $profileFile -Encoding UTF8 -Value $profileJson
+    [System.IO.File]::WriteAllText($profileFile, $profileJson + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
     $created += "profile.json"
 } else {
     Write-Host "  profile.json already exists - skipped"

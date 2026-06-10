@@ -99,7 +99,7 @@ def main() -> int:
         raise ValueError("rating must be 1, 2, 3, or 4")
 
     concepts_path = course_dir / "concepts.json"
-    with concepts_path.open("r", encoding="utf-8") as f:
+    with concepts_path.open("r", encoding="utf-8-sig") as f:
         data = json.load(f)
 
     now = datetime.now(timezone.utc)

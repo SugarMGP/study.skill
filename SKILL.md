@@ -18,6 +18,7 @@ Most agents only read the first ~160 lines. Use this table before doing anything
 | Situation | Must load |
 | --- | --- |
 | Existing `.learning-profile/progress.json` or `review-schedule.json` | `references/migration-guide.md`; migration is blocking |
+| Existing state with `schema_version` lower than current `state-schema.md` | `references/migration-guide.md`; upgrade before writing state |
 | Existing `.learning-profile/` state, any state write, mode switch, progress update | `references/state-schema.md` |
 | User says "继续学习" and course files already exist | `references/phase-3-learning.md`; local course content is primary |
 | Any formal course, progress map, skill tree, XP, levels, achievements | `references/skill-tree.md`; skill tree and RPG are default on |
@@ -59,9 +60,11 @@ Escape hatch: for explicitly tiny requests such as "just teach useState in 5 min
 Before answering a learning request:
 
 1. If `.learning-profile/progress.json` or `review-schedule.json` exists, stop normal teaching. Load `migration-guide.md`, run migration when possible, verify it, and continue only after the old files are gone.
-2. If `.learning-profile/` exists, read `.learning-profile/courses/*/meta.json` for active/completed courses; run `.learning-profile/scripts/check-reviews.py` when present.
-3. Respect `meta.json.skill_tree_enabled` and `meta.json.rpg_enabled`; if missing, default both to `true`.
-4. If no confirmed learning goal exists, start Phase 0.
+2. If existing state files use a lower `schema_version` than `state-schema.md`, stop state writes, load `migration-guide.md`, upgrade and verify first.
+3. If `.learning-profile/` exists, read `.learning-profile/courses/*/meta.json` for active/completed courses; run `.learning-profile/scripts/check-reviews.py` when present.
+4. Read `profile.json` when present; respect `learner_profile` constraints and `preferences.automation_declined`.
+5. Respect `meta.json.skill_tree_enabled` and `meta.json.rpg_enabled`; if missing, default both to `true`.
+6. If no confirmed learning goal exists, start Phase 0.
 
 ## Phase 0: Anchor
 
@@ -101,6 +104,8 @@ Load `references/phase-3-learning.md`.
 
 For generated courses, read the local README/syllabus/current `content.md` first and teach from that. External docs are only supplemental for missing content, explicit latest/API/version questions, or verification. Teach with explanation -> practice -> feedback -> self-test. Use worked examples when helpful, but avoid answer-only responses. Target 75-85% exercise success; adjust scaffolding, speed, and depth from `params.json`.
 
+Every formal session must show course/module/lecture, current skill-tree node, a one-line RPG state when enabled, and a one-line due-review prompt. Review is optional and short by default; continue the main lesson unless the user chooses review.
+
 When the user says "太快/太慢/太浅/太深/跟不上", update `params.json` immediately through `write-state.py` and append `adaptive_history`.
 
 At session end, update `meta.json` and `concepts.json` using `state-schema.md`; write through `write-state.py` when available.
@@ -111,7 +116,7 @@ Load `references/phase-4-consolidation.md` and `references/fsrs-scheduler.md`.
 
 At session start, prefer `.learning-profile/scripts/check-reviews.py`. During review, present 5-7 items at a time. After each rating, prefer `.learning-profile/scripts/record-review.py`; R is computed, not stored.
 
-If the user wants reminders or automation, load `references/automation/README.md` and then the platform-specific file.
+After first course creation or first learning session, ask once whether to create a daily platform reminder unless `profile.json.preferences.automation_declined=true`. Local `concepts.json.next_review` is a review plan, not system automation. If the user wants reminders or automation, load `references/automation/README.md` and then the platform-specific file.
 
 ## Verification
 
@@ -131,6 +136,7 @@ If the user wants reminders or automation, load `references/automation/README.md
 | "Skill trees are only for programming." | Skill trees apply to any learnable domain. |
 | "RPG needs explicit opt-in." | RPG is on by default; turn it off only when the user asks or meta says false. |
 | "I can hand-write state quickly." | Use `state-schema.md` and `write-state.py`. |
+| "next_review exists, so reminders are automated." | `concepts.json` is local review state; platform automation must be created separately. |
 | "I can compute reviews in prose." | Prefer `check-reviews.py` and `record-review.py`. |
 | "One source is enough." | Target 3 quality sources; accept fewer only with a reason. |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate old study.skill learning state to schema_version 1.
+"""Migrate old study.skill learning state to schema_version 2.
 
 Usage:
   python scripts/migrate-profile.py [profile_dir]
@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+SCHEMA_VERSION = 2
+
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
@@ -23,7 +25,7 @@ def now_iso() -> str:
 def read_json(path: Path) -> dict:
     if not path.exists():
         return {}
-    with path.open("r", encoding="utf-8") as f:
+    with path.open("r", encoding="utf-8-sig") as f:
         return json.load(f)
 
 
@@ -32,6 +34,7 @@ def write_json(path: Path, data: dict) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write("\n")
     os.replace(tmp, path)
 
 
@@ -40,8 +43,69 @@ def verify_migration(courses_dir: Path, slugs: set[str]) -> None:
         course_dir = courses_dir / slug
         for filename in ("meta.json", "params.json", "concepts.json", "domain-tree.json"):
             data = read_json(course_dir / filename)
-            if data.get("schema_version") != 1:
+            if data.get("schema_version") != SCHEMA_VERSION:
                 raise ValueError(f"migration verification failed: {course_dir / filename}")
+
+
+def default_preferences(existing=None) -> dict:
+    existing = existing or {}
+    preferences = dict(existing)
+    preferences.setdefault("native_language", "zh")
+    preferences.setdefault("daily_time_budget_minutes", 30)
+    preferences.setdefault("feedback_style", "normal")
+    preferences.setdefault("correction_mode", "inline")
+    preferences.setdefault("automation_declined", False)
+    preferences.setdefault("automation_declined_at", None)
+    return preferences
+
+
+def default_learner_profile(existing=None) -> dict:
+    existing = existing or {}
+    learner_profile = dict(existing)
+    learner_profile.setdefault("baseline", None)
+    learner_profile.setdefault("goals", [])
+    learner_profile.setdefault("known_languages", [])
+    learner_profile.setdefault("weak_prereqs", [])
+    learner_profile.setdefault("analogy_preferences", [])
+    learner_profile.setdefault("teaching_constraints", [])
+    learner_profile.setdefault("materials_summary", None)
+    learner_profile.setdefault("updated_at", None)
+    return learner_profile
+
+
+def upgrade_profile_file(profile_file: Path, timestamp: str) -> None:
+    profile = read_json(profile_file)
+    if not profile:
+        profile = {
+            "learner_id": "default",
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "preferences": {},
+            "learner_profile": {},
+        }
+
+    profile["schema_version"] = SCHEMA_VERSION
+    profile.setdefault("learner_id", "default")
+    profile.setdefault("created_at", timestamp)
+    profile["updated_at"] = timestamp
+    profile["preferences"] = default_preferences(profile.get("preferences"))
+    profile["learner_profile"] = default_learner_profile(profile.get("learner_profile"))
+    write_json(profile_file, profile)
+
+
+def upgrade_course_files(courses_dir: Path) -> None:
+    if not courses_dir.exists():
+        return
+    for course_dir in courses_dir.iterdir():
+        if not course_dir.is_dir():
+            continue
+        for filename in ("meta.json", "params.json", "concepts.json", "domain-tree.json"):
+            path = course_dir / filename
+            data = read_json(path)
+            if not data:
+                continue
+            data["schema_version"] = SCHEMA_VERSION
+            write_json(path, data)
 
 
 def delete_old_files(*paths: Path) -> None:
@@ -129,7 +193,7 @@ def build_domain_tree(slug: str, name: str, old_course: dict, review_items: list
     skill_tree_enabled = old_course.get("skill_tree_enabled", True)
     rpg_enabled = old_course.get("rpg_enabled", True)
     return {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "course_slug": slug,
         "domain": name,
         "enabled": skill_tree_enabled,
@@ -156,19 +220,7 @@ def migrate(profile_dir: Path) -> int:
     courses_dir.mkdir(parents=True, exist_ok=True)
 
     profile_file = profile_dir / "profile.json"
-    if not profile_file.exists():
-        write_json(profile_file, {
-            "schema_version": 1,
-            "learner_id": "default",
-            "created_at": timestamp,
-            "updated_at": timestamp,
-            "preferences": {
-                "native_language": "zh",
-                "daily_time_budget_minutes": 30,
-                "feedback_style": "normal",
-                "correction_mode": "inline",
-            },
-        })
+    upgrade_profile_file(profile_file, timestamp)
 
     active_courses = progress.get("active_courses", {})
     review_items = review.get("items", [])
@@ -178,8 +230,11 @@ def migrate(profile_dir: Path) -> int:
     if not slugs:
         if progress or review:
             raise ValueError("old state files exist but no migratable course data was found")
+        upgrade_course_files(courses_dir)
+        existing_slugs = {p.name for p in courses_dir.iterdir() if p.is_dir()} if courses_dir.exists() else set()
+        verify_migration(courses_dir, existing_slugs)
         delete_old_files(progress_path, review_path)
-        print("No old course data found. Old files deleted.")
+        print("No old course data found. Existing profile upgraded.")
         return 0
 
     for slug in sorted(slugs):
@@ -192,7 +247,7 @@ def migrate(profile_dir: Path) -> int:
         course_name = old_course.get("name", slug)
 
         write_json(course_dir / "meta.json", {
-            "schema_version": 1,
+            "schema_version": SCHEMA_VERSION,
             "slug": slug,
             "name": course_name,
             "status": old_course.get("status", "active"),
@@ -211,7 +266,7 @@ def migrate(profile_dir: Path) -> int:
         })
 
         write_json(course_dir / "params.json", {
-            "schema_version": 1,
+            "schema_version": SCHEMA_VERSION,
             "mode": mode,
             "mode_label": scope,
             "depth_chars_per_module": defaults["depth_chars_per_module"],
@@ -245,7 +300,7 @@ def migrate(profile_dir: Path) -> int:
                 "answer": item.get("answer", ""),
             })
         write_json(course_dir / "concepts.json", {
-            "schema_version": 1,
+            "schema_version": SCHEMA_VERSION,
             "course_slug": slug,
             "last_review_session": None,
             "concepts": concepts,
@@ -253,7 +308,9 @@ def migrate(profile_dir: Path) -> int:
         write_json(course_dir / "domain-tree.json", build_domain_tree(slug, course_name, old_course, course_review_items))
         print(f"Migrated {slug}")
 
-    verify_migration(courses_dir, slugs)
+    upgrade_course_files(courses_dir)
+    existing_slugs = {p.name for p in courses_dir.iterdir() if p.is_dir()} if courses_dir.exists() else set()
+    verify_migration(courses_dir, existing_slugs)
     delete_old_files(progress_path, review_path)
     print("Migration complete. Old files deleted.")
     return 0

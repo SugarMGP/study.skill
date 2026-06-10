@@ -16,7 +16,7 @@ CREATED=()
 if [ ! -f "$PROFILE_FILE" ]; then
     cat > "$PROFILE_FILE" << EOF
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "learner_id": "default",
   "created_at": "$(date -Iseconds)",
   "updated_at": "$(date -Iseconds)",
@@ -24,7 +24,19 @@ if [ ! -f "$PROFILE_FILE" ]; then
     "native_language": "zh",
     "daily_time_budget_minutes": 30,
     "feedback_style": "normal",
-    "correction_mode": "inline"
+    "correction_mode": "inline",
+    "automation_declined": false,
+    "automation_declined_at": null
+  },
+  "learner_profile": {
+    "baseline": null,
+    "goals": [],
+    "known_languages": [],
+    "weak_prereqs": [],
+    "analogy_preferences": [],
+    "teaching_constraints": [],
+    "materials_summary": null,
+    "updated_at": null
   }
 }
 EOF

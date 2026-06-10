@@ -121,9 +121,22 @@ Use indented bullet-style with emoji status markers. No box-drawing characters
 |------|--------|---------|
 | `✅` | Mastered | 100% complete, quiz passed |
 | `🔄` | In Progress | Started but not finished |
+| `🟡` | Unlockable | Prerequisites met and mastery gate is ready to attempt |
 | `⬜` | Available | All prerequisites met, ready to start |
 | `🔒` | Locked | Missing prerequisites |
 | `⭐` | Recommended | AI suggests this as best next step |
+
+Course-local node status is part of teaching decisions:
+
+- Start from `in_progress`; if none exists, choose `available` / `unlockable`
+  based on prerequisites and the syllabus order.
+- Do not auto-enter `locked` nodes. If the learner insists, say which
+  prerequisite is missing and keep the new node `in_progress`.
+- A node becomes `mastered` only after the Phase 3 Mastery Gate passes.
+- A few short answers may increase `progress`, but cannot mark a module
+  complete.
+- If evidence is missing, keep `status="in_progress"` and record the missing
+  gate items in the node.
 
 ## Node Metadata
 
@@ -140,6 +153,16 @@ Each node carries:
 | `soft_gate` | % needed in prerequisite (default 100) | `40` |
 | `key_topics` | Keywords for what this covers | `["useState","useEffect","useRef"]` |
 | `interview_weight` | Relevance to interviews (1-5) | `4` |
+
+Course-local nodes should also carry the minimum teaching metadata needed for
+decisions:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `module` | Bound course module ID | `02-deep-learning-foundations` |
+| `concepts` | Concept IDs taught by this node | `["overfitting", "validation-set"]` |
+| `mastery_gate` | Required checks before `mastered` | `{"recall":2,"transfer":1,"feynman":1,"min_correct":0.85}` |
+| `missing_evidence` | Gate items still missing | `["transfer", "feynman"]` |
 
 ## Generating a Domain Tree from Broad Topics
 
@@ -276,10 +299,34 @@ When user picks a node (e.g., types `lowcode` or clicks on it):
 Keep RPG lightweight. It should make progress visible, not interrupt teaching.
 Do not turn every message into a game UI.
 
+When `meta.json.rpg_enabled=true`, use RPG in exactly three places:
+
+1. **Session opening**: one line with level, XP, title, and current quest.
+2. **Answer feedback**: one short XP note when evidence is real.
+3. **Module close**: unlocked node, XP, title/achievement if earned, next quest.
+
+Do not show RPG blocks on every message.
+
+### XP Reward Table
+
+Use one reward table across the skill:
+
+| Event | XP | Condition |
+|-------|----|-----------|
+| Ordinary correct answer | +5 | User answers a practice or recall question correctly |
+| Key concept answer | +10 | Answer proves a prerequisite or core distinction |
+| Feynman explanation passed | +20 | User explains in their own words with no major gap |
+| Mastery Gate passed | +50 | Module/node gate passes |
+| Streak milestone | title/achievement | Based on real `streak_days` |
+
+Wrong answers do not lose XP. Say the current node is still learning, then give
+targeted feedback. Do not grant mastery XP for skipped, guessed, or unverified
+work.
+
 ### 等级系统（Level System）
 
 - 1 Level = 1000 XP
-- XP from: completing modules (+100), passing quizzes (+50), review streaks (+20/day)
+- XP from the reward table above. Do not create separate per-message economies.
 - Level up on milestone: display ASCII celebration
 
 ```
@@ -291,9 +338,12 @@ Do not turn every message into a game UI.
 
 ### 任务系统（Quest System）
 
-- **每日任务**: "完成 2 节" / "复习 5 个知识点" (reward: +50 XP)
-- **节点任务**: "学完 llm-basics" (reward: +200 XP + 解锁下一层)
-- **成就任务**: "连续学习 7 天" / "完成第一个实战项目" (reward: +500 XP + 称号)
+- **Daily quest**: one realistic session task, e.g. "完成 1 节并做 1 道混合题".
+- **Node quest**: the current mastery gate, e.g. "完成 1 道迁移题 + 1 次费曼解释".
+- **Achievement quest**: streak or project milestone.
+
+Quests are display hints for the next useful action. They do not replace the
+course syllabus or mastery gate.
 
 ### 称号系统（Title System）
 
@@ -330,7 +380,7 @@ The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tr
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,

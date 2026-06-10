@@ -1,6 +1,6 @@
 # 数据模型 Schema
 
-> schema_version: 1
+> schema_version: 2
 
 ## 目录结构
 
@@ -24,7 +24,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "learner_id": "default",
   "created_at": "2026-06-09T10:00:00+08:00",
   "updated_at": "2026-06-09T10:00:00+08:00",
@@ -32,7 +32,19 @@
     "native_language": "zh",
     "daily_time_budget_minutes": 30,
     "feedback_style": "normal",
-    "correction_mode": "inline"
+    "correction_mode": "inline",
+    "automation_declined": false,
+    "automation_declined_at": null
+  },
+  "learner_profile": {
+    "baseline": null,
+    "goals": [],
+    "known_languages": [],
+    "weak_prereqs": [],
+    "analogy_preferences": [],
+    "teaching_constraints": [],
+    "materials_summary": null,
+    "updated_at": null
   }
 }
 ```
@@ -46,6 +58,19 @@
 | preferences.daily_time_budget_minutes | int | ✅ | 30 | 每日学习时长（分钟） |
 | preferences.feedback_style | enum | ✅ | "normal" | `minimal` / `normal` / `detailed` |
 | preferences.correction_mode | enum | ✅ | "inline" | `inline`（即时纠错）/ `batch`（会话末纠错） |
+| preferences.automation_declined | bool | ✅ | false | 用户是否拒绝系统提醒 / automation（自动化提醒） |
+| preferences.automation_declined_at | ISO 8601/null | — | null | 用户拒绝自动化提醒的时间 |
+| learner_profile.baseline | string/null | — | null | 学习基础画像，例如“有后端经验” |
+| learner_profile.goals | string[] | ✅ | [] | 长期学习目标 |
+| learner_profile.known_languages | string[] | ✅ | [] | 已掌握语言或工具，例如 `cpp`、`go`、`java` |
+| learner_profile.weak_prereqs | string[] | ✅ | [] | 薄弱前置知识，例如 `python` |
+| learner_profile.analogy_preferences | string[] | ✅ | [] | 类比偏好，例如 `backend`、`systems` |
+| learner_profile.teaching_constraints | string[] | ✅ | [] | 教学约束，例如“不把 Python 放进主线” |
+| learner_profile.materials_summary | string/null | — | null | 用户提供材料的摘要 |
+| learner_profile.updated_at | ISO 8601/null | — | null | 学习者画像最后更新时间 |
+
+`learner_profile` 只保存用户明确给出的事实或从材料中能直接确认的信息。
+不清楚就保持空值，不要脑补。
 
 ---
 
@@ -53,7 +78,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "slug": "react-hooks",
   "name": "React Hooks 从零到一",
   "status": "active",
@@ -102,7 +127,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "mode": "system",
   "mode_label": "系统精讲",
   "depth_chars_per_module": 3500,
@@ -169,7 +194,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09T14:30:00+08:00",
   "concepts": [
@@ -228,7 +253,7 @@
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,
@@ -276,6 +301,16 @@
 ```bash
 python scripts/write-state.py <state-file.json> < <new-content.json>
 ```
+
+Windows PowerShell 写包含中文的 JSON 时，优先写入 UTF-8 临时文件，再用
+`--input-file` 读取，避免管道编码问题：
+
+```powershell
+python .\scripts\write-state.py <state-file.json> --input-file <new-content.json>
+```
+
+不要把包含中文的 JSON 直接通过 PowerShell 管道传给 Python。写入失败时保留
+真实失败状态，不要伪造成功。
 
 复习评分更新优先使用专用脚本：
 

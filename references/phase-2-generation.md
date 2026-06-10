@@ -100,9 +100,11 @@ Ask: "课程大纲 OK 吗？我开始写具体内容？"
 After Module 00 is confirmed, generate all remaining modules in one pass.
 The Module 00 outline is the contract — execute it. No per-module confirmation needed.
 
-**Size guard:** If the course has >15 modules or >30 讲 total, split into batches
-of 10-12 modules. Generate batch 1, save, then generate batch 2. No confirmation
-between batches — just avoid context overflow.
+**Size guard:** One course must stay within <=15 modules and <=30 讲. If the
+outline exceeds either limit, split it into a series of separate courses before
+writing modules. Do not use "batch generation" to hide an oversized single
+course. Batches are only allowed for context management inside a course that is
+already within the size limit.
 
 For each module, follow the chapter template in `references/chinese-tutorial-guide.md`
 and check against the mode-specific depth rules from `references/phase-0-anchoring.md`

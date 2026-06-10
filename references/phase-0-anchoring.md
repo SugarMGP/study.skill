@@ -117,7 +117,7 @@ with these defaults. This persists across sessions and survives context compress
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "mode": "speedrun",
   "mode_label": "速成导览",
   "depth_chars_per_module": 1200,
@@ -236,8 +236,35 @@ Ask: "这个路线 OK 吗？需要调整哪里？" — **Wait for user confirmat
 After confirmation:
 1. Initialize `{learning_root}/.learning-profile/` if missing.
 2. Create the course directory under `.learning-profile/courses/{course-slug}/`.
-3. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`, and an empty `concepts.json` using the schema in `state-schema.md`.
-4. Use `write-state.py` when available; never overwrite existing state without reading it first.
+3. Update `profile.json.learner_profile` with durable facts from anchoring:
+   baseline, goals, known languages or skills, weak prerequisites, preferred
+   analogies, teaching constraints, and material summary. Do not keep these only
+   in chat context.
+4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`, and
+   an empty `concepts.json` using the schema in `state-schema.md`.
+5. Use `write-state.py` when available; never overwrite existing state without reading it first.
+
+Example durable profile fields:
+
+```json
+{
+  "learner_profile": {
+    "known_languages": ["cpp", "go", "java"],
+    "weak_prereqs": ["python"],
+    "analogy_preferences": ["backend", "systems"],
+    "teaching_constraints": [
+      "不把 Python 教学放进主线",
+      "遇到 Python 高级语法时用 C++/Go/Java 类比解释",
+      "系统精讲为主，项目驱动为辅助",
+      "每天默认学习 1 小时"
+    ]
+  }
+}
+```
+
+Later teaching must respect these fields. For example, if Python is a weak
+prerequisite but excluded from the main path, explain only the necessary syntax
+and return to the current topic.
 
 ## Edge Cases
 

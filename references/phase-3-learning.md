@@ -33,17 +33,27 @@ restored learning: **never give the answer directly.**
 0. If `.learning-profile/progress.json` or `review-schedule.json` exists, stop here.
    Load `migration-guide.md`; migrate and verify first. Do not continue teaching
    from old state files.
-1. Read `.learning-profile/courses/*/meta.json` to determine current position per course
-2. Run `.learning-profile/scripts/check-reviews.py` to check overdue reviews
-3. Open with a brief review of 1-2 key points from last session (active recall)
-4. Present context:
+1. Read `.learning-profile/profile.json`, the active course `meta.json`,
+   `params.json`, `concepts.json`, and `domain-tree.json` when present.
+2. Read local course content first: course `README.md`, `syllabus.md` if present,
+   and the current module's `content.md`.
+3. Run `.learning-profile/scripts/check-reviews.py` to check overdue reviews.
+4. Open with the current course/module/lecture, current skill-tree node, and a
+   brief review of 1-2 key points from last session (active recall).
+5. If `meta.json.rpg_enabled=true`, show one short RPG line with level, XP,
+   title, and current quest. Do not expand into a game dashboard.
+6. If overdue reviews exist, show only one line and ask whether to spend 2-5
+   minutes reviewing. If the user does not choose review, continue the main
+   lesson. Do not let review consume the session by default.
 
 ```
-📍 上次学到：{last_module}
-📝 复习提醒：{overdue_count} 个知识点到复习时间了
+📍 当前：{course_name} / {module_id} / {lecture_title}
+🌳 节点：{node_id} · {node_status} · 掌握度 {progress}%
+⏰ 待复习：{overdue_count} 个知识点，可先用 2-5 分钟过一遍
+🎮 Lv.{level} · {xp} XP · 称号「{title}」 · 当前任务：{quest}
 ```
 
-Ask: "继续学 {next_module}，还是先快速复习？（2 分钟）"
+Ask: "继续学新内容，还是先快速复习？"
 
 If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`,
 ask once either before teaching starts or after the first session summary:
@@ -54,18 +64,42 @@ yes or does not object after the prompt, set `rpg_preference_asked=true`. If
 `domain-tree.json` already exists, keep its `enabled` and `rpg.enabled` fields
 in sync with `meta.json`.
 
+If `profile.json.preferences.automation_declined` is not `true` and no platform
+automation is known to exist, ask once at the end of the first course creation
+or first learning session:
+
+```text
+我可以顺手把学习提醒设上。默认每天 21:30 提醒你继续学 1 小时，并检查到期复习项。这个时间可以吗？
+```
+
+Make the boundary explicit:
+
+```text
+本地复习计划：写在 concepts.json 里，用来记录哪些知识点哪天该复习。
+系统提醒：需要创建平台 automation（自动化提醒），到时间主动唤起你。
+```
+
+If the user refuses, set `profile.json.preferences.automation_declined=true`
+and `automation_declined_at=<now>` through `write-state.py`; do not ask again.
+If the user agrees, load `references/automation/README.md` and the current
+platform guide before creating or instructing automation setup.
+
 ## Existing Course Continuation
 
 When the user says "继续学习", "继续", "下一节", or similar, and course files
 already exist:
 
 1. Read course state: `meta.json`, `params.json`, and due reviews.
-2. Read local course content first: course `README.md`, `syllabus.md` if present,
+2. Read `domain-tree.json`; choose the next node from `available` or
+   `in_progress` nodes. Do not automatically enter `locked` nodes. If the user
+   explicitly wants to jump, warn which prerequisite is missing and record the
+   node as `in_progress`, not `mastered`.
+3. Read local course content first: course `README.md`, `syllabus.md` if present,
    and the current module's `content.md`.
-3. Announce the exact course/module/subsection being taught.
-4. Teach from the local course. Do not restart Phase 1 and do not fetch external
+4. Announce the exact course/module/subsection being taught.
+5. Teach from the local course. Do not restart Phase 1 and do not fetch external
    docs just because the topic is a library or framework.
-5. External docs/source lookup is allowed only as a supplement when:
+6. External docs/source lookup is allowed only as a supplement when:
    - local course content is missing or clearly incomplete
    - the user asks for latest/API/version-specific details
    - you need to verify a code/API claim before presenting it
@@ -120,6 +154,27 @@ Map Gagné's Nine Events to each module, overlaying the Socratic Cycle:
 | 8 | **Assess Performance** | 自测题（混合旧知识点实现 interleaving） |
 | 9 | **Enhance Retention** | 联系实际："你项目中 XXX 场景就可以用这个" |
 
+## Formal Learning Session Protocol
+
+Every formal learning session must follow this loop:
+
+1. Show current course/module/lecture.
+2. Show current skill-tree node and status.
+3. If `rpg_enabled=true`, show one short level/XP/title/quest line.
+4. Check due reviews, but default to a one-line prompt.
+5. If no automation exists and `automation_declined=false`, ask whether to set a
+   daily reminder at the first natural session end.
+6. Teach one main concept at a time.
+7. After every 2-3 new concepts, insert one mixed question that combines old and
+   new ideas. Do not ask only definitions from the last paragraph.
+8. Give XP only for real learning evidence: correct answers, valid explanations,
+   practice completion, or mastery checks.
+9. Without passing the Mastery Gate, do not mark a module `mastered` or add it to
+   `completed_modules`.
+10. At session end, update `meta.json`, `concepts.json`, and `domain-tree.json`
+    through `write-state.py` or the atomic write rule.
+11. Summarize: what changed, XP gained, next task, and next review date.
+
 ## Cognitive Apprenticeship
 
 Apply all six methods progressively:
@@ -161,11 +216,22 @@ Before advancing, check mastery by concept importance:
 
 | Tier | Gate |
 |------|------|
-| **Foundation 基础概念** | >=85% self-test + Feynman check. Do not skip. |
-| **Core 核心内容** | >=75% self-test + Feynman check or practice exercise. |
+| **Foundation 基础概念** | 2 recall questions + 1 transfer question + 1 Feynman explanation + >=85% correct. Do not skip. |
+| **Core 核心内容** | 1 recall question + 1 application question + 1 explanation or practice exercise + >=75% correct. |
 | **Enrichment 拓展内容** | >=60% self-test. May skip on user request. |
 
 In speedrun mode: Foundation >=75%, Core >=60%, Enrichment optional.
+
+`params.json.require_mastery_before_advance` controls advancement, not truth:
+
+- If `true`, failing the gate blocks module completion and the next module.
+- If `false`, the user may continue, but the current module stays
+  `in_progress` / `needs_practice`; do not mark it `mastered` and do not grant
+  mastery rewards.
+- Short warm-up questions can advance a lecture or subsection, but never complete
+  a module by themselves.
+- Evidence missing means `in_progress`. Do not fabricate completion to make the
+  tree look cleaner.
 
 ## Scaffolding Levels (Progressive Mastery)
 

@@ -3,6 +3,45 @@
 study.skill 为多种主流 agent 平台提供复习提醒配置参考。根据你使用的平台，
 选择对应的配置指南；实际可用能力以当前平台版本和账号权限为准。
 
+## 两种提醒不要混淆
+
+- **本地复习计划**：写在 `.learning-profile/courses/{course-slug}/concepts.json`
+  里，记录每个知识点的 `next_review`。这只是学习状态，不会自己推送消息。
+- **系统提醒 / automation（自动化提醒）**：由 Codex、Claude Code、Cursor、
+  GitHub Copilot、OpenClaw 等平台创建的定时任务或会话唤起。只有它才会在
+  到点时主动提醒用户。
+
+不得把 `concepts.json` 里的 `next_review` 说成“已经自动化”。
+
+## 主动询问规则
+
+首次课程创建后，或第一次正式学习结束时，如果
+`profile.json.preferences.automation_declined` 不是 `true`，主动询问一次：
+
+```text
+我可以顺手把学习提醒设上。默认每天 21:30 提醒你继续学 1 小时，并检查到期复习项。这个时间可以吗？
+```
+
+如果用户同意，按当前平台文档创建或引导创建 automation。提醒内容建议：
+
+```text
+检查今天是否有到期复习项；如果有，先用 5 分钟快速复习。
+然后继续当前课程的下一个小节，默认学习 1 小时。
+```
+
+如果用户拒绝，写入：
+
+```json
+{
+  "preferences": {
+    "automation_declined": true,
+    "automation_declined_at": "<now>"
+  }
+}
+```
+
+后续不要反复推荐自动化，除非用户主动提起。
+
 ## 平台能力总览
 
 | 平台 | 定时任务 | 会话启动检查 | 推送通知 | 云端运行 | 配置文件 |
