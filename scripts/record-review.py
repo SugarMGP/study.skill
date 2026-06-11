@@ -9,6 +9,7 @@ rating: 1=forgot, 2=hard, 3=ok, 4=easy
 
 import json
 import os
+import shutil
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -41,11 +42,13 @@ def compute_r(days_since_review: int, stability: float) -> float:
 def write_json(path: Path, data: dict) -> None:
     backup = path.with_suffix(path.suffix + ".bak")
     tmp = path.with_suffix(path.suffix + ".tmp")
-    if path.exists():
-        os.replace(path, backup)
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
+    with tmp.open("r", encoding="utf-8") as f:
+        json.load(f)
+    if path.exists():
+        shutil.copy2(path, backup)
     os.replace(tmp, path)
 
 

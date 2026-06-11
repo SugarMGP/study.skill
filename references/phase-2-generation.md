@@ -12,6 +12,10 @@ Before entering this phase:
 - Phase 1 completed: user confirmed research scope
 - Load `references/chinese-tutorial-guide.md` for writing standards
 
+Do not start writing `README.md`, `syllabus.md`, or module `content.md` until
+`references/chinese-tutorial-guide.md` has been read in this turn. That file is
+the writing standard for learner-facing Chinese course files.
+
 ## Completion Iron Law
 
 Do not claim a course, module, code example, or exercise is complete until the
@@ -29,6 +33,9 @@ rust-course, CS-Notes, JavaGuide, and ai-agents-from-zero:
 - Each module should teach with 大白话 -> 术语 -> example/code -> exercise -> summary.
 - Technical examples that claim to run must be runnable and verified.
 - Course files should leave clear next-step pointers so the learner can continue.
+- Course files are for learners. Do not include design notes, implementation
+  rationale, tool choices, or internal field names unless they are inside hidden
+  machine-readable exercise blocks.
 
 ### Step 1: Generate Course Overview (Module 00)
 
@@ -122,7 +129,7 @@ Before outputting any module, check against this tiered checklist.
 | **Learning objectives** | 2-3 at Understand/Apply | 3-5 at Apply/Analyze | 2-3 at Analyze/Evaluate |
 | **Diagram** | [SHOULD] if structure complex; else table/examples OK | [MUST] if content involves流程/架构/层级/对比/依赖; else table/examples OK | [SHOULD] |
 | **大白话→术语→例子/代码→小结** | [MUST] | [MUST] | [MUST] |
-| **思考题 + 参考思路** | [MUST] 1-2 questions | [MUST] 2-3 (1 apply + 1 analyze) | [SHOULD] 1-2 |
+| **思考题 + 可保存练习** | [MUST] 1-2 questions | [MUST] 2-3 (1 recall + 1 apply/analyze) | [SHOULD] 1-2 |
 | **建议下一步** | [MUST] | [MUST] | [MUST] |
 | **Source citations** | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
 | **踩坑指南** | [MUST] ≥2 pitfalls | [MUST] ≥2 pitfalls | [SHOULD] |
@@ -160,7 +167,6 @@ subsequent modules add their files incrementally.
 ├── syllabus.md             # Full syllabus with learning objectives per module
 ├── 01-{module-name}/
 │   ├── content.md          # Module body
-│   └── exercises/          # Placeholder — exercises created interactively in Phase 3
 ├── 02-{module-name}/
 │   └── content.md
 ├── ...
@@ -179,10 +185,93 @@ subsequent modules add their files incrementally.
 3. **Generate interview-qa.md** only if 面试冲刺 mode
 4. **Generate exam-practice.md** only if 考试备考 mode — practice problems aligned with exam format
 5. **Generate glossary.md** as terminology is introduced
-6. **Do NOT pre-generate exercises/solution.md** — exercises presented interactively in Phase 3
+6. **Do NOT create separate exercises/solution.md by default.** Put learner-facing
+   questions inside `content.md`. Use `study-*` blocks only for questions that
+   should be captured by the local player.
 7. **Generate or update `domain-tree.json`** when `meta.json.skill_tree_enabled=true`.
    Its nodes should mirror the confirmed syllabus. RPG fields are included by default
    when `meta.json.rpg_enabled=true`.
 8. **Depth per mode:** See `phase-0-anchoring.md` Q1 for per-mode word count and exercise count.
    Code examples and diagrams are NOT constrained by mode — include them whenever they
    aid understanding. Only word count and exercise density vary by mode.
+
+### Interactive Practice Blocks
+
+Use plain learner-facing headings and explanation first. Add a `study-*` fenced
+block immediately after a question only when the answer should be saved by the
+local player. These blocks should not contain design notes.
+
+Priority:
+
+1. `study-recall` — quick retrieval after one concept.
+2. `study-transfer` — applying the concept in a new scenario; prefer this for
+   core modules.
+3. `study-feynman` — user explains an important concept in their own words.
+4. `study-checkpoint` — module-level evidence bundle. Use once near the end of
+   a module, not after every small section.
+
+Minimum pattern:
+
+````markdown
+### 小练习：{用户能看懂的题目名}
+
+{一句话说明要做什么。}
+
+```study-recall
+id: 01-topic-recall-1
+question: {题目}
+answer: {参考答案或参考思路}
+```
+````
+
+Supported block shapes:
+
+````markdown
+```study-recall
+id: 01-loss-recall
+question: 损失函数在训练里负责什么？
+answer: 它把模型输出和目标答案之间的差距变成一个可优化的数值。
+```
+
+```study-transfer
+id: 01-loss-transfer
+question: 如果验证集损失上升、训练集损失下降，你会怀疑什么？
+hints:
+  - 对比训练集和验证集代表什么
+  - 想想模型是不是只记住了训练数据
+answer: 优先怀疑过拟合，需要检查正则化、数据量、训练轮数或模型容量。
+```
+
+```study-feynman
+id: 01-gradient-feynman
+concept: 梯度下降
+prompt: 用自己的话解释为什么梯度能告诉模型往哪里改参数
+key_points: 损失函数、斜率、更新方向、学习率
+```
+
+```study-checkpoint
+module: 01-training-basics
+items:
+  - type: recall
+    ref: 01-loss-recall
+  - type: transfer
+    ref: 01-loss-transfer
+  - type: feynman
+    ref: 01-gradient-feynman
+min_pass: 2
+```
+````
+
+Rules:
+
+- `id` must be stable and unique inside the course, using lowercase letters,
+  numbers, and hyphens.
+- Keep `question` and `answer` understandable to the learner.
+- For `study-transfer`, include 1-3 `hints`.
+- For `study-feynman`, use `concept`, optional `prompt`, and optional
+  `key_points`.
+- For `study-checkpoint`, list refs to earlier `study-*` block ids and set
+  `min_pass`.
+- Do not store correctness, pass/fail, XP, or mastery state in course files.
+- Blocks are optional. If a question is only for reading or discussion, write it
+  as normal Markdown instead of adding a block.

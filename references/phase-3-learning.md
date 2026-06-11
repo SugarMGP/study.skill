@@ -89,17 +89,21 @@ platform guide before creating or instructing automation setup.
 When the user says "继续学习", "继续", "下一节", or similar, and course files
 already exist:
 
-1. Read course state: `meta.json`, `params.json`, and due reviews.
-2. Read `domain-tree.json`; choose the next node from `available` or
+1. Read `references/learning-viewer.md` when the user asks to open the course,
+   view courseware, continue visually, or when the current module contains
+   diagrams / interactive exercise blocks. Prefer the local player for viewing
+   courseware; fall back to chat teaching only when the player cannot start.
+2. Read course state: `meta.json`, `params.json`, and due reviews.
+3. Read `domain-tree.json`; choose the next node from `available` or
    `in_progress` nodes. Do not automatically enter `locked` nodes. If the user
    explicitly wants to jump, warn which prerequisite is missing and record the
    node as `in_progress`, not `mastered`.
-3. Read local course content first: course `README.md`, `syllabus.md` if present,
+4. Read local course content first: course `README.md`, `syllabus.md` if present,
    and the current module's `content.md`.
-4. Announce the exact course/module/subsection being taught.
-5. Teach from the local course. Do not restart Phase 1 and do not fetch external
+5. Announce the exact course/module/subsection being taught.
+6. Teach from the local course. Do not restart Phase 1 and do not fetch external
    docs just because the topic is a library or framework.
-6. External docs/source lookup is allowed only as a supplement when:
+7. External docs/source lookup is allowed only as a supplement when:
    - local course content is missing or clearly incomplete
    - the user asks for latest/API/version-specific details
    - you need to verify a code/API claim before presenting it
@@ -162,18 +166,21 @@ Every formal learning session must follow this loop:
 2. Show current skill-tree node and status.
 3. If `rpg_enabled=true`, show one short level/XP/title/quest line.
 4. Check due reviews, but default to a one-line prompt.
-5. If no automation exists and `automation_declined=false`, ask whether to set a
+5. If the user asks to view courseware, the lesson contains Mermaid/images, or
+   the lesson uses `study-*` exercise blocks, load `learning-viewer.md` and use
+   the local player when possible.
+6. If no automation exists and `automation_declined=false`, ask whether to set a
    daily reminder at the first natural session end.
-6. Teach one main concept at a time.
-7. After every 2-3 new concepts, insert one mixed question that combines old and
+7. Teach one main concept at a time.
+8. After every 2-3 new concepts, insert one mixed question that combines old and
    new ideas. Do not ask only definitions from the last paragraph.
-8. Give XP only for real learning evidence: correct answers, valid explanations,
+9. Give XP only for real learning evidence: correct answers, valid explanations,
    practice completion, or mastery checks.
-9. Without passing the Mastery Gate, do not mark a module `mastered` or add it to
+10. Without passing the Mastery Gate, do not mark a module `mastered` or add it to
    `completed_modules`.
-10. At session end, update `meta.json`, `concepts.json`, and `domain-tree.json`
+11. At session end, update `meta.json`, `concepts.json`, and `domain-tree.json`
     through `write-state.py` or the atomic write rule.
-11. Summarize: what changed, XP gained, next task, and next review date.
+12. Summarize: what changed, XP gained, next task, and next review date.
 
 ## Cognitive Apprenticeship
 

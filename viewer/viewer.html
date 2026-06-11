@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>课程播放器</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css" id="hljs-theme">
+<style>
+:root {
+  --bg: #ffffff; --bg-secondary: #f8f9fa; --bg-sidebar: #f1f3f5;
+  --text: #1a1a2e; --text-secondary: #6c757d; --border: #dee2e6;
+  --accent: #4361ee; --accent-light: #e8ecff; --success: #2d6a4f;
+  --warning: #e9c46a; --danger: #e63946; --code-bg: #f6f8fa;
+  --link: #4361ee; --shadow: rgba(0,0,0,0.08);
+}
+.dark {
+  --bg: #1a1a2e; --bg-secondary: #16213e; --bg-sidebar: #0f3460;
+  --text: #e0e0e0; --text-secondary: #adb5bd; --border: #2d3748;
+  --accent: #7b8cde; --accent-light: #2a2d4a; --success: #52b788;
+  --warning: #f4d35e; --danger: #ef476f; --code-bg: #2d3748;
+  --link: #7b8cde; --shadow: rgba(0,0,0,0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+.topbar { height: 48px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0; }
+.topbar .breadcrumb { flex: 1; font-size: 14px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar .breadcrumb span { color: var(--text); font-weight: 600; }
+.topbar .rpg { font-size: 13px; color: var(--accent); white-space: nowrap; }
+.topbar .review-badge { font-size: 13px; color: var(--warning); white-space: nowrap; }
+.topbar .theme-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px; color: var(--text-secondary); }
+.main { display: flex; height: calc(100vh - 48px); }
+.sidebar { width: 260px; min-width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0; flex-shrink: 0; }
+.sidebar h3 { font-size: 12px; text-transform: uppercase; color: var(--text-secondary); padding: 8px 16px 4px; letter-spacing: 0.5px; }
+.sidebar .nav-item { display: block; padding: 6px 16px; font-size: 14px; color: var(--text); text-decoration: none; cursor: pointer; border-left: 3px solid transparent; }
+.sidebar .nav-item:hover { background: var(--accent-light); }
+.sidebar .nav-item.active { border-left-color: var(--accent); background: var(--accent-light); font-weight: 600; }
+.sidebar .nav-item .status { margin-right: 6px; }
+.sidebar .tree-node { display: block; padding: 4px 16px 4px 24px; font-size: 13px; color: var(--text-secondary); cursor: default; }
+.sidebar .tree-node.available { cursor: pointer; color: var(--text); }
+.sidebar .tree-node.available:hover { background: var(--accent-light); }
+.content { flex: 1; overflow-y: auto; padding: 24px 32px; }
+.content .markdown-body { max-width: 800px; margin: 0 auto; line-height: 1.7; }
+.content .markdown-body h1 { font-size: 28px; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+.content .markdown-body h2 { font-size: 22px; margin: 28px 0 12px; }
+.content .markdown-body h3 { font-size: 18px; margin: 24px 0 10px; }
+.content .markdown-body p { margin: 10px 0; }
+.content .markdown-body a { color: var(--link); text-decoration: none; }
+.content .markdown-body a:hover { text-decoration: underline; }
+.content .markdown-body blockquote { border-left: 4px solid var(--accent); padding: 8px 16px; margin: 12px 0; background: var(--accent-light); border-radius: 0 6px 6px 0; }
+.content .markdown-body code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: "Fira Code", "JetBrains Mono", monospace; }
+.content .markdown-body pre { background: var(--code-bg); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 16px 0; position: relative; }
+.content .markdown-body pre code { background: none; padding: 0; font-size: 14px; }
+.content .markdown-body table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+.content .markdown-body th, .content .markdown-body td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+.content .markdown-body th { background: var(--bg-secondary); font-weight: 600; }
+.content .markdown-body img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+.content .markdown-body ul, .content .markdown-body ol { padding-left: 24px; margin: 8px 0; }
+.content .markdown-body li { margin: 4px 0; }
+.content .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.mermaid-container { margin: 16px 0; text-align: center; }
+.mermaid-container svg { max-width: 100%; }
+.copy-btn { position: absolute; top: 8px; right: 8px; background: var(--border); border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-secondary); opacity: 0; transition: opacity 0.2s; }
+pre:hover .copy-btn { opacity: 1; }
+.right-panel { width: 300px; min-width: 300px; background: var(--bg-sidebar); border-left: 1px solid var(--border); overflow-y: auto; padding: 12px; flex-shrink: 0; }
+.right-panel .panel-section { margin-bottom: 16px; }
+.right-panel .panel-title { font-size: 12px; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.right-panel .task-item { font-size: 13px; padding: 4px 0; }
+.right-panel .task-item.done { color: var(--success); }
+.right-panel .task-item.pending { color: var(--text); }
+.right-panel .divider { border-top: 1px solid var(--border); margin: 12px 0; }
+.right-panel .summary-item { font-size: 13px; padding: 3px 0; color: var(--text-secondary); }
+.right-panel .summary-item .label { display: inline-block; width: 80px; }
+.error-box { background: #fef2f2; border: 1px solid var(--danger); border-radius: 8px; padding: 12px 16px; margin: 8px 0; color: var(--danger); font-size: 14px; }
+.dark .error-box { background: #2d1b1b; }
+.nav-buttons { display: flex; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.nav-btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text); cursor: pointer; font-size: 14px; }
+.nav-btn:hover { background: var(--accent-light); }
+.nav-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.loading { text-align: center; padding: 40px; color: var(--text-secondary); }
+.study-block { position: relative; }
+.study-actions button:disabled { opacity: 0.5; cursor: default; }
+.checkpoint-assess button:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="breadcrumb" id="breadcrumb">loading...</div>
+  <div class="rpg" id="rpg-status" style="display:none"></div>
+  <div class="review-badge" id="review-badge" style="display:none"></div>
+  <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
+</div>
+<div class="main">
+  <div class="sidebar" id="sidebar">
+    <h3>课程目录</h3>
+    <div id="nav-list"><div class="loading">加载中...</div></div>
+    <div id="skill-tree-section" style="display:none">
+      <h3 style="margin-top:16px">技能树</h3>
+      <div id="skill-tree"></div>
+    </div>
+  </div>
+  <div class="content" id="content">
+    <div class="loading">加载课程内容...</div>
+  </div>
+  <div class="right-panel">
+    <div class="panel-section">
+      <div class="panel-title">📋 当前任务</div>
+      <div id="current-task"><div class="loading">加载中...</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="panel-section">
+      <div class="panel-title">📊 学习状态</div>
+      <div id="state-summary"><div class="loading">加载中...</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="panel-section">
+      <div class="panel-title">📝 待问清单</div>
+      <div id="question-list"></div>
+      <div style="margin-top:8px">
+        <input type="text" id="question-input" placeholder="输入问题..." style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px">
+        <button onclick="addQuestion()" style="margin-top:4px;padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-secondary);color:var(--text);cursor:pointer;font-size:12px">添加</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="panel-section">
+      <div class="panel-title">⏰ 待复习</div>
+      <div id="review-panel"><div class="loading">加载中...</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="panel-section">
+      <button id="complete-btn" onclick="completeSession()" style="width:100%;padding:10px;border:2px solid var(--accent);border-radius:8px;background:var(--accent);color:white;cursor:pointer;font-size:14px;font-weight:600">✅ 完成本次学习</button>
+      <div id="complete-status" style="margin-top:8px;font-size:12px;color:var(--text-secondary)"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  let STATE = null;
+  let QUESTIONS = [];
+  let REVIEW_RATED = [];
+  let EXERCISES = [];
+  let FEYNMAN_EXPLANATIONS = [];
+  let CHECKPOINTS = [];
+  let TOKEN = "";
+  let SESSION_STARTED_AT = new Date().toISOString();
+  let isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  function init() {
+    const hash = window.location.hash;
+    const tokenMatch = hash.match(/token=([^&]+)/);
+    if (!tokenMatch) {
+      showError("打开方式不正确，请从课程入口重新打开。");
+      return;
+    }
+    const token = tokenMatch[1];
+    TOKEN = token;
+
+    if (isDark) document.documentElement.classList.add("dark");
+    updateThemeBtn();
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark ? "dark" : "default",
+      securityLevel: "strict"
+    });
+
+    marked.setOptions({
+      gfm: true,
+      breaks: false,
+      pedantic: false,
+      highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          try { return hljs.highlight(code, { language: lang }).value; } catch(e) {}
+        }
+        try { return hljs.highlightAuto(code).value; } catch(e) {}
+        return code;
+      }
+    });
+
+    fetchInitialState(token);
+  }
+
+  async function fetchInitialState(token) {
+    try {
+      const resp = await fetch("/api/initial-state?token=" + encodeURIComponent(token));
+      if (!resp.ok) throw new Error("HTTP " + resp.status + ": " + resp.statusText);
+      STATE = await resp.json();
+      renderAll();
+    } catch(e) {
+      showError("加载初始状态失败: " + e.message);
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById("content").innerHTML = '<div class="error-box">' + escapeHtml(msg) + "</div>";
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function escapeAttrJsString(s) {
+    return escapeHtml(JSON.stringify(String(s)));
+  }
+
+  function renderAll() {
+    renderBreadcrumb();
+    renderRPG();
+    renderNav();
+    renderSkillTree();
+    renderContent(STATE.current_content || STATE.readme || "");
+    renderCurrentTask();
+    renderStateSummary();
+    renderReviewPanel();
+    renderSessionControls();
+  }
+
+  function renderBreadcrumb() {
+    const meta = STATE.meta || {};
+    const name = meta.name || STATE.course_slug;
+    const mod = STATE.current_module || "";
+    const el = document.getElementById("breadcrumb");
+    el.innerHTML = "<span>" + escapeHtml(name) + "</span>" + (mod ? " / " + escapeHtml(mod) : "");
+    document.title = name + (mod ? " / " + mod : "") + " - 课程播放器";
+  }
+
+  function renderRPG() {
+    const tree = STATE.domain_tree || {};
+    const rpg = tree.rpg;
+    const meta = STATE.meta || {};
+    if (!meta.rpg_enabled || !rpg) return;
+    const el = document.getElementById("rpg-status");
+    el.style.display = "";
+    let text = "Lv." + (rpg.level || 1) + " · " + (rpg.xp || 0) + " XP";
+    if (rpg.title) text += " · 「" + rpg.title + "」";
+    el.textContent = "🎮 " + text;
+  }
+
+  function renderNav() {
+    const modules = STATE.modules || [];
+    const current = STATE.current_module;
+    const completed = (STATE.meta || {}).completed_modules || [];
+    const el = document.getElementById("nav-list");
+    if (modules.length === 0) {
+      el.innerHTML = '<div style="padding:8px 16px;color:var(--text-secondary);font-size:13px">未找到模块</div>';
+      return;
+    }
+    let html = "";
+    for (const mod of modules) {
+      const isActive = mod.id === current;
+      const isDone = completed.includes(mod.id);
+      const status = isDone ? "✅" : (isActive ? "▸" : " ");
+      const cls = isActive ? "nav-item active" : "nav-item";
+      const label = mod.name.replace(/^\d{2}-/, "").replace(/-/g, " ");
+      html += '<div class="' + cls + '" onclick="switchModule(\'' + mod.id + '\')">' +
+        '<span class="status">' + status + "</span> " + escapeHtml(label) + "</div>";
+    }
+    el.innerHTML = html;
+  }
+
+  function renderSkillTree() {
+    const tree = STATE.domain_tree || {};
+    if (!tree.enabled || !tree.nodes || Object.keys(tree.nodes).length === 0) return;
+    const section = document.getElementById("skill-tree-section");
+    section.style.display = "";
+    const el = document.getElementById("skill-tree");
+    let html = "";
+    const icons = { mastered: "✅", in_progress: "🔄", available: "⬜", locked: "🔒", recommended: "⭐" };
+    for (const [id, node] of Object.entries(tree.nodes)) {
+      const status = node.status || "available";
+      const icon = icons[status] || "⬜";
+      const cls = status === "available" ? "tree-node available" : "tree-node";
+      const progress = node.progress != null ? " (" + node.progress + "%)" : "";
+      const name = (node.name || id).replace(/^\d{2}-/, "").replace(/-/g, " ");
+      html += '<div class="' + cls + '" title="' + escapeHtml(id) + '">' +
+        icon + " " + escapeHtml(name) + progress + "</div>";
+    }
+    el.innerHTML = html;
+  }
+
+  async function renderContent(md) {
+    const el = document.getElementById("content");
+    if (!md) {
+      el.innerHTML = '<div class="markdown-body"><p style="color:var(--text-secondary)">暂无内容</p></div>';
+      return;
+    }
+    const parts = splitStudyBlocks(md);
+    let html = "";
+    for (const part of parts) {
+      if (part.type === "markdown") {
+        html += renderMarkdown(part.content);
+      } else if (part.type === "mermaid") {
+        html += renderMermaidBlock(part.content);
+      } else if (part.type === "study") {
+        html += renderStudyBlock(part.lang, part.content);
+      }
+    }
+    el.innerHTML = '<div class="markdown-body">' + html + "</div>";
+    postProcessContent(el);
+  }
+
+  function splitStudyBlocks(md) {
+    const parts = [];
+    const regex = /```(mermaid|study-\w+)\s*\n([\s\S]*?)```/g;
+    let last = 0;
+    let match;
+    while ((match = regex.exec(md)) !== null) {
+      if (match.index > last) {
+        parts.push({ type: "markdown", content: md.slice(last, match.index) });
+      }
+      const lang = match[1];
+      const content = match[2];
+      if (lang === "mermaid") {
+        parts.push({ type: "mermaid", content: content.trim() });
+      } else {
+        parts.push({ type: "study", lang: lang, content: content.trim() });
+      }
+      last = match.index + match[0].length;
+    }
+    if (last < md.length) {
+      parts.push({ type: "markdown", content: md.slice(last) });
+    }
+    return parts;
+  }
+
+  function renderMarkdown(md) {
+    const raw = marked.parse(md);
+    return DOMPurify.sanitize(raw, { ADD_TAGS: ["svg", "path", "g", "circle", "line", "polyline", "polygon", "rect", "text", "tspan"], ADD_ATTR: ["viewBox", "d", "fill", "stroke", "transform"] });
+  }
+
+  function renderMermaidBlock(code) {
+    const id = "mermaid-" + Math.random().toString(36).slice(2, 10);
+    return '<div class="mermaid-container" data-mermaid-id="' + id + '" data-mermaid-code="' + escapeHtml(code) + '"><div class="loading">渲染图表...</div></div>';
+  }
+
+  function renderStudyBlock(lang, yamlContent) {
+    let data;
+    try {
+      data = jsyaml.load(yamlContent);
+    } catch(e) {
+      return '<div class="error-box">这道练习暂时无法显示: ' + escapeHtml(e.message) + "<pre>" + escapeHtml(yamlContent) + "</pre></div>";
+    }
+    const type = lang.replace("study-", "");
+    if (type === "recall") return renderRecall(data);
+    if (type === "transfer") return renderTransfer(data);
+    if (type === "feynman") return renderFeynman(data);
+    if (type === "checkpoint") return renderCheckpoint(data);
+    return '<div class="error-box">这类练习暂时不支持显示: ' + escapeHtml(type) + "</div>";
+  }
+
+  function renderRecall(data) {
+    if (!data.question) return '<div class="error-box">这道回忆题缺少题目</div>';
+    const id = data.id || ("recall-" + Math.random().toString(36).slice(2, 8));
+    const escapedId = escapeHtml(id);
+    return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="recall" ' +
+      'data-study-question="' + escapeHtml(data.question) + '" data-study-answer="' + escapeHtml(data.answer || "") + '" ' +
+      'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border-left:4px solid var(--accent)">' +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">📝 回忆题</div>' +
+      '<div style="font-weight:600;margin-bottom:12px">' + escapeHtml(data.question) + "</div>" +
+      '<div class="study-actions">' +
+      '<textarea class="exercise-answer" placeholder="先写下你的答案..." style="width:100%;min-height:72px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px;resize:vertical;margin-bottom:8px"></textarea>' +
+      '<button onclick="saveExerciseAnswer(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent);margin-right:8px">保存作答</button>' +
+      '<button onclick="toggleAnswer(this)" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text)">显示答案</button>' +
+      '<div class="answer" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border-radius:6px">' +
+      (data.answer ? escapeHtml(data.answer) : "无参考答案") + "</div>" +
+      '<div class="assess-result" style="display:none;margin-top:8px;font-size:13px"></div>' +
+      '</div></div>';
+  }
+
+  function renderTransfer(data) {
+    if (!data.question) return '<div class="error-box">这道迁移题缺少题目</div>';
+    const id = data.id || ("transfer-" + Math.random().toString(36).slice(2, 8));
+    const escapedId = escapeHtml(id);
+    let hintsHtml = "";
+    if (data.hints && data.hints.length) {
+      hintsHtml = '<div style="margin-top:8px">';
+      for (let i = 0; i < data.hints.length; i++) {
+        hintsHtml += '<button onclick="toggleHint(this, ' + i + ')" style="margin:2px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--text)">提示 ' + (i+1) + "</button>";
+      }
+      hintsHtml += '<div class="hints-container" style="display:none;margin-top:8px">';
+      for (let i = 0; i < data.hints.length; i++) {
+        hintsHtml += '<div class="hint" data-hint="' + i + '" style="display:none;padding:8px;background:var(--bg);border-radius:4px;margin:4px 0;font-size:13px">💡 ' + escapeHtml(data.hints[i]) + "</div>";
+      }
+      hintsHtml += "</div></div>";
+    }
+    return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="transfer" ' +
+      'data-study-question="' + escapeHtml(data.question) + '" data-study-answer="' + escapeHtml(data.answer || "") + '" ' +
+      'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border-left:4px solid var(--warning)">' +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">🔄 迁移题</div>' +
+      '<div style="font-weight:600;margin-bottom:12px">' + escapeHtml(data.question) + "</div>" +
+      hintsHtml +
+      '<div class="study-actions">' +
+      '<textarea class="exercise-answer" placeholder="先写下你的答案..." style="width:100%;min-height:88px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px;resize:vertical;margin-top:8px;margin-bottom:8px"></textarea>' +
+      '<button onclick="saveExerciseAnswer(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent);margin-right:8px">保存作答</button>' +
+      '<button onclick="toggleAnswer(this)" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text);margin-top:8px">显示答案</button>' +
+      '<div class="answer" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border-radius:6px">' +
+      (data.answer ? escapeHtml(data.answer) : "无参考答案") + "</div>" +
+      '<div class="assess-result" style="display:none;margin-top:8px;font-size:13px"></div>' +
+      '</div></div>';
+  }
+
+  function renderFeynman(data) {
+    if (!data.concept) return '<div class="error-box">这道解释题缺少概念</div>';
+    const id = data.id || ("feynman-" + Math.random().toString(36).slice(2, 8));
+    const escapedId = escapeHtml(id);
+    let kpHtml = "";
+    if (data.key_points) {
+      kpHtml = '<div style="margin-top:8px"><button onclick="toggleNext(this)" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--text)">参考要点</button>' +
+        '<div style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:4px;font-size:13px">📌 ' + escapeHtml(data.key_points) + "</div></div>";
+    }
+    return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="feynman" ' +
+      'data-study-concept="' + escapeHtml(data.concept) + '" ' +
+      'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border-left:4px solid var(--success)">' +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">🧠 费曼解释</div>' +
+      '<div style="font-weight:600;margin-bottom:4px">' + escapeHtml(data.concept) + "</div>" +
+      '<div style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">' + escapeHtml(data.prompt || "用自己的话解释这个概念") + "</div>" +
+      '<textarea class="feynman-input" placeholder="写下你的解释..." style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px;resize:vertical"></textarea>' +
+      kpHtml +
+      '<div class="study-actions" style="margin-top:8px">' +
+      '<button onclick="saveFeynmanExplanation(this.closest(\'.study-block\'))" style="padding:6px 10px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--accent)">保存解释</button>' +
+      '</div>' +
+      '<div class="assess-result" style="display:none;margin-top:8px;font-size:13px"></div>' +
+      '</div>';
+  }
+
+  function renderCheckpoint(data) {
+    if (!data.items || !data.items.length) return '<div class="error-box">这组检查题还没有配置检查项</div>';
+    const id = data.module || ("checkpoint-" + Math.random().toString(36).slice(2, 8));
+    const escapedId = escapeHtml(id);
+    let itemsHtml = "";
+    for (const item of data.items) {
+      const icon = item.type === "recall" ? "📝" : item.type === "transfer" ? "🔄" : item.type === "feynman" ? "🧠" : "📋";
+      itemsHtml += '<div style="padding:4px 0;font-size:13px">' + icon + " " + escapeHtml(item.type) + (item.ref ? " (" + escapeHtml(item.ref) + ")" : "") + "</div>";
+    }
+    const gate = data.gate ? ' · 门控: ' + escapeHtml(data.gate) : "";
+    const minPass = data.min_pass || data.items.length;
+    return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="checkpoint" ' +
+      'data-study-min-pass="' + minPass + '" data-study-total="' + data.items.length + '" ' +
+      'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border:2px solid var(--accent)">' +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">✅ 模块检查</div>' +
+      '<div style="font-weight:600;margin-bottom:8px">通过条件: ' + minPass + "/" + data.items.length + gate + "</div>" +
+      itemsHtml +
+      '<div class="checkpoint-assess" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">' +
+      '<button onclick="submitCheckpoint(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent)">保存检查记录</button>' +
+      '</div>' +
+      '<div class="assess-result" style="display:none;margin-top:8px;font-size:13px"></div>' +
+      '</div>';
+  }
+
+  async function postProcessContent(el) {
+    const mermaidContainers = el.querySelectorAll(".mermaid-container");
+    for (const container of mermaidContainers) {
+      const code = container.getAttribute("data-mermaid-code");
+      try {
+        const id = container.getAttribute("data-mermaid-id");
+        const { svg } = await mermaid.render(id, code);
+        container.innerHTML = svg;
+      } catch(e) {
+        container.innerHTML = '<div class="error-box">Mermaid 渲染失败: ' + escapeHtml(e.message) + "</div>";
+      }
+    }
+    el.querySelectorAll("pre code").forEach(block => {
+      if (!block.classList.contains("hljs")) {
+        try { hljs.highlightElement(block); } catch(e) {}
+      }
+    });
+    el.querySelectorAll("pre").forEach(pre => {
+      if (!pre.querySelector(".copy-btn")) {
+        const btn = document.createElement("button");
+        btn.className = "copy-btn";
+        btn.textContent = "复制";
+        btn.onclick = function() {
+          navigator.clipboard.writeText(pre.querySelector("code").textContent);
+          btn.textContent = "已复制";
+          setTimeout(() => btn.textContent = "复制", 2000);
+        };
+        pre.style.position = "relative";
+        pre.appendChild(btn);
+      }
+    });
+    try {
+      renderMathInElement(el);
+    } catch(e) {}
+    el.querySelectorAll("img").forEach(img => {
+      const src = img.getAttribute("src") || "";
+      if (src.startsWith("http://") || src.startsWith("https://")) {
+        img.onerror = function() {
+          const link = document.createElement("a");
+          link.href = src;
+          link.textContent = "[图片加载失败: " + src + "]";
+          link.target = "_blank";
+          link.style.color = "var(--text-secondary)";
+          img.replaceWith(link);
+        };
+      }
+    });
+  }
+
+  function renderMathInElement(el) {
+    el.querySelectorAll("code").forEach(code => {
+      const text = code.textContent;
+      if (text.startsWith("$$") && text.endsWith("$$")) {
+        try {
+          const html = katex.renderToString(text.slice(2, -2), { displayMode: true, throwOnError: false });
+          const div = document.createElement("div");
+          div.innerHTML = html;
+          div.style.textAlign = "center";
+          div.style.margin = "16px 0";
+          code.parentElement.replaceWith(div);
+        } catch(e) {}
+      }
+    });
+  }
+
+  function renderCurrentTask() {
+    const meta = STATE.meta || {};
+    const current = STATE.current_module;
+    const completed = meta.completed_modules || [];
+    const modules = STATE.modules || [];
+    const el = document.getElementById("current-task");
+    if (!current) {
+      el.innerHTML = '<div class="task-item" style="color:var(--text-secondary)">无当前模块</div>';
+      return;
+    }
+    let html = '<div class="task-item pending">▸ ' + escapeHtml(current.replace(/^\d{2}-/, "").replace(/-/g, " ")) + "</div>";
+    const idx = modules.findIndex(m => m.id === current);
+    if (idx >= 0 && idx < modules.length - 1) {
+      const next = modules[idx + 1];
+      html += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">下一步: ' + escapeHtml(next.name.replace(/^\d{2}-/, "").replace(/-/g, " ")) + "</div>";
+    }
+    el.innerHTML = html;
+  }
+
+  function renderStateSummary() {
+    const meta = STATE.meta || {};
+    const concepts = (STATE.concepts || {}).concepts || [];
+    const modules = STATE.modules || [];
+    const completed = meta.completed_modules || [];
+    const el = document.getElementById("state-summary");
+    const totalConcepts = concepts.length;
+    const masteredConcepts = concepts.filter(c => c.status === "mastered").length;
+    let html = "";
+    html += '<div class="summary-item"><span class="label">模块进度</span> ' + completed.length + "/" + modules.length + "</div>";
+    html += '<div class="summary-item"><span class="label">知识点</span> ' + totalConcepts + " 个</div>";
+    html += '<div class="summary-item"><span class="label">已掌握</span> ' + masteredConcepts + " 个</div>";
+    if (meta.streak_days) {
+      html += '<div class="summary-item"><span class="label">连续学习</span> ' + meta.streak_days + " 天</div>";
+    }
+    if (meta.total_sessions) {
+      html += '<div class="summary-item"><span class="label">总会话</span> ' + meta.total_sessions + " 次</div>";
+    }
+    const params = STATE.params || {};
+    if (params.mode_label) {
+      html += '<div class="summary-item"><span class="label">学习模式</span> ' + escapeHtml(params.mode_label) + "</div>";
+    }
+    el.innerHTML = html;
+  }
+
+  function renderReviewPanel() {
+    const due = (STATE || {}).due_reviews || { total: 0, courses: [] };
+    const el = document.getElementById("review-panel");
+    if ((STATE || {}).review_check_error) {
+      el.innerHTML = '<div class="error-box">复习检查失败: ' + escapeHtml(STATE.review_check_error) + "</div>";
+      return;
+    }
+    if (due.total === 0) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary)">暂无待复习项</div>';
+      return;
+    }
+    let html = '<div style="font-size:13px;color:var(--warning);margin-bottom:8px">' + due.total + ' 个知识点需要复习</div>';
+    for (const course of due.courses) {
+      for (const item of course.items || []) {
+        const rated = REVIEW_RATED.find(r => r.concept_id === item.id);
+        if (rated) {
+          const labels = { 1: "完全忘了", 2: "记得一点", 3: "记得大部分", 4: "轻松想起" };
+          html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">' +
+            '<div style="font-weight:600">' + escapeHtml(item.name) + '</div>' +
+            '<div style="color:var(--success);font-size:12px">✅ 已评: ' + labels[rated.rating] + '</div></div>';
+        } else {
+          html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px" id="review-' + escapeHtml(item.id) + '">' +
+            '<div style="font-weight:600;margin-bottom:6px">' + escapeHtml(item.name) + '</div>' +
+            '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
+            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">1⃣ 忘了</button>' +
+            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',2)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">2⃣ 一点</button>' +
+            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',3)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">3⃣ 大部分</button>' +
+            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',4)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">4⃣ 轻松</button>' +
+            '</div>' +
+            '<div class="review-feedback" style="display:none;margin-top:4px;font-size:12px"></div></div>';
+        }
+      }
+    }
+    el.innerHTML = html;
+  }
+
+  function renderSessionControls() {
+    const btn = document.getElementById("complete-btn");
+    const status = document.getElementById("complete-status");
+    if (!btn || !status) return;
+    if ((STATE || {}).server_mode === "interactive") {
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      status.textContent = "";
+      return;
+    }
+    btn.disabled = true;
+    btn.style.opacity = "0.55";
+    status.textContent = "当前是浏览模式，不会写入本次学习记录";
+  }
+
+  window.rateReview = async function(conceptId, rating) {
+    const container = document.getElementById("review-" + conceptId);
+    if (!container) return;
+    const feedback = container.querySelector(".review-feedback");
+    feedback.style.display = "block";
+    feedback.style.color = "var(--text-secondary)";
+    feedback.textContent = "记录中...";
+    try {
+      const resp = await fetch("/api/review-rating", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Token": TOKEN },
+        body: JSON.stringify({ concept_id: conceptId, rating: rating })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        REVIEW_RATED.push({ concept_id: conceptId, rating: rating });
+        feedback.style.color = "var(--success)";
+        feedback.textContent = "✅ 已记录";
+        setTimeout(() => renderReviewPanel(), 500);
+      } else {
+        feedback.style.color = "var(--danger)";
+        feedback.textContent = "❌ " + (data.error || "记录失败");
+      }
+    } catch(e) {
+      feedback.style.color = "var(--danger)";
+      feedback.textContent = "❌ 网络错误: " + e.message;
+    }
+  };
+
+  window.completeSession = async function() {
+    const btn = document.getElementById("complete-btn");
+    const status = document.getElementById("complete-status");
+    btn.disabled = true;
+    btn.textContent = "保存中...";
+    const sessionData = {
+      source: "study.skill.viewer",
+      session_id: STATE.session_id,
+      course_slug: STATE.course_slug,
+      started_at: SESSION_STARTED_AT,
+      ended_at: new Date().toISOString(),
+      questions_for_llm: QUESTIONS,
+      review_summary: {
+        rated_count: REVIEW_RATED.length,
+        items: REVIEW_RATED.slice()
+      },
+      exercises: EXERCISES.slice(),
+      feynman_explanations: FEYNMAN_EXPLANATIONS.slice(),
+      checkpoints: CHECKPOINTS.slice()
+    };
+    try {
+      const resp = await fetch("/api/session-result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Session-Token": TOKEN },
+        body: JSON.stringify(sessionData)
+      });
+      const data = await resp.json();
+      if (resp.ok && data.ok) {
+        btn.textContent = "✅ 学习记录已保存";
+        btn.style.background = "var(--success)";
+        btn.style.borderColor = "var(--success)";
+        status.textContent = "本次学习记录已保存，稍后会根据你的作答更新进度";
+      } else {
+        btn.textContent = "❌ 保存失败";
+        btn.style.background = "var(--danger)";
+        status.textContent = data.error || "未知错误";
+        btn.disabled = false;
+      }
+    } catch(e) {
+      btn.textContent = "❌ 保存失败";
+      btn.style.background = "var(--danger)";
+      status.textContent = "网络错误: " + e.message;
+      btn.disabled = false;
+    }
+  };
+
+  function upsertById(list, id, record) {
+    const index = list.findIndex(item => item.id === id);
+    if (index >= 0) {
+      list[index] = record;
+    } else {
+      list.push(record);
+    }
+  }
+
+  window.toggleAnswer = function(btn) {
+    const actions = btn.closest(".study-actions") || btn.parentElement;
+    const answer = actions.querySelector(".answer");
+    if (answer.style.display === "none") {
+      answer.style.display = "block";
+      btn.textContent = "隐藏答案";
+    } else {
+      answer.style.display = "none";
+      btn.textContent = "显示答案";
+    }
+  };
+
+  window.saveExerciseAnswer = function(block) {
+    const id = block.getAttribute("data-study-id");
+    const type = block.getAttribute("data-study-type");
+    const question = block.getAttribute("data-study-question");
+    const answer = block.getAttribute("data-study-answer");
+    const textarea = block.querySelector(".exercise-answer");
+    const userAnswer = textarea ? textarea.value.trim() : "";
+    const result = block.querySelector(".assess-result");
+    if (!userAnswer) {
+      result.style.display = "block";
+      result.style.color = "var(--warning)";
+      result.textContent = "先写下答案，再保存";
+      return;
+    }
+    upsertById(EXERCISES, id, {
+      id: id,
+      type: type,
+      module: STATE.current_module,
+      question: question,
+      user_answer: userAnswer,
+      reference_answer: answer,
+      time_spent_seconds: 0
+    });
+    result.style.display = "block";
+    result.style.color = "var(--success)";
+    result.textContent = "已保存，稍后统一反馈";
+  };
+
+  window.saveFeynmanExplanation = function(block) {
+    const id = block.getAttribute("data-study-id");
+    const concept = block.getAttribute("data-study-concept");
+    const textarea = block.querySelector(".feynman-input");
+    const explanation = textarea ? textarea.value.trim() : "";
+    const result = block.querySelector(".assess-result");
+    if (!explanation) {
+      result.style.display = "block";
+      result.style.color = "var(--warning)";
+      result.textContent = "先写下解释，再保存";
+      return;
+    }
+    upsertById(FEYNMAN_EXPLANATIONS, id, {
+      id: id,
+      concept: concept,
+      module: STATE.current_module,
+      user_explanation: explanation
+    });
+    result.style.display = "block";
+    result.style.color = "var(--success)";
+    result.textContent = "解释已保存，稍后统一反馈";
+  };
+
+  window.submitCheckpoint = function(block) {
+    const id = block.getAttribute("data-study-id");
+    const total = parseInt(block.getAttribute("data-study-total") || "0");
+    const minPass = parseInt(block.getAttribute("data-study-min-pass") || "0");
+    const result = block.querySelector(".assess-result");
+    upsertById(CHECKPOINTS, id, {
+      id: id,
+      module: id,
+      items_total: total,
+      min_pass: minPass
+    });
+    result.style.display = "block";
+    result.style.color = "var(--success)";
+    result.textContent = "检查记录已保存；完成进度稍后统一更新";
+    block.querySelectorAll(".checkpoint-assess button").forEach(b => b.disabled = true);
+  };
+
+  window.toggleHint = function(btn, index) {
+    const container = btn.parentElement.querySelector(".hints-container");
+    container.style.display = "block";
+    const hint = container.querySelector('[data-hint="' + index + '"]');
+    hint.style.display = hint.style.display === "none" ? "block" : "none";
+  };
+
+  window.toggleNext = function(btn) {
+    const next = btn.nextElementSibling;
+    next.style.display = next.style.display === "none" ? "block" : "none";
+  };
+
+  window.switchModule = function(moduleId) {
+    fetch("/api/initial-state?token=" + encodeURIComponent(TOKEN) + "&module=" + encodeURIComponent(moduleId))
+      .then(r => r.json())
+      .then(state => {
+        STATE = state;
+        renderAll();
+        document.getElementById("content").scrollTop = 0;
+      })
+      .catch(e => showError("切换模块失败: " + e.message));
+  };
+
+  window.toggleTheme = function() {
+    isDark = !isDark;
+    document.documentElement.classList.toggle("dark", isDark);
+    updateThemeBtn();
+    const link = document.getElementById("hljs-theme");
+    link.href = isDark
+      ? "https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css"
+      : "https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css";
+    mermaid.initialize({ startOnLoad: false, theme: isDark ? "dark" : "default", securityLevel: "strict" });
+    if (STATE) renderContent(STATE.current_content || STATE.readme || "");
+  };
+
+  function updateThemeBtn() {
+    document.getElementById("theme-btn").textContent = isDark ? "☀️" : "🌙";
+  }
+
+  window.addQuestion = function() {
+    const input = document.getElementById("question-input");
+    const q = input.value.trim();
+    if (!q) return;
+    QUESTIONS.push(q);
+    input.value = "";
+    renderQuestions();
+  };
+
+  function setupTextSelection() {
+    const content = document.getElementById("content");
+    let floatBtn = null;
+    content.addEventListener("mouseup", function(e) {
+      if (floatBtn) { floatBtn.remove(); floatBtn = null; }
+      const sel = window.getSelection();
+      const text = sel ? sel.toString().trim() : "";
+      if (text.length < 2) return;
+      floatBtn = document.createElement("button");
+      floatBtn.textContent = "📝 问这个";
+      floatBtn.style.cssText = "position:fixed;z-index:1000;padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:white;cursor:pointer;font-size:12px;box-shadow:0 2px 8px var(--shadow)";
+      floatBtn.style.left = (e.clientX - 40) + "px";
+      floatBtn.style.top = (e.clientY - 36) + "px";
+      floatBtn.onclick = function() {
+        const snippet = text.length > 100 ? text.slice(0, 100) + "..." : text;
+        const input = document.getElementById("question-input");
+        input.value = "关于「" + snippet + "」：";
+        input.focus();
+        floatBtn.remove();
+        floatBtn = null;
+        window.getSelection().removeAllRanges();
+      };
+      document.body.appendChild(floatBtn);
+      setTimeout(() => { if (floatBtn) { floatBtn.remove(); floatBtn = null; } }, 5000);
+    });
+    document.addEventListener("mousedown", function(e) {
+      if (floatBtn && !floatBtn.contains(e.target)) {
+        floatBtn.remove();
+        floatBtn = null;
+      }
+    });
+  }
+
+  function renderQuestions() {
+    const el = document.getElementById("question-list");
+    if (QUESTIONS.length === 0) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary)">暂无问题</div>';
+      return;
+    }
+    let html = "";
+    QUESTIONS.forEach((q, i) => {
+      html += '<div style="font-size:13px;padding:4px 0;display:flex;gap:4px"><span style="flex:1">' +
+        escapeHtml(q) + '</span><button onclick="removeQuestion(' + i + ')" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:11px">✕</button></div>';
+    });
+    el.innerHTML = html;
+  }
+
+  window.removeQuestion = function(index) {
+    QUESTIONS.splice(index, 1);
+    renderQuestions();
+  };
+
+  document.addEventListener("DOMContentLoaded", function() {
+    init();
+    renderQuestions();
+    setupTextSelection();
+  });
+
+})();
+</script>
+</body>
+</html>
