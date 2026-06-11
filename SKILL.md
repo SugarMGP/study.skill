@@ -21,7 +21,7 @@ Most agents only read the first ~160 lines. Use this table before doing anything
 | Existing state with `schema_version` lower than current `state-schema.md` | `references/migration-guide.md`; upgrade before writing state |
 | Existing `.learning-profile/` state, any state write, mode switch, progress update | `references/state-schema.md` |
 | User says "继续学习" and course files already exist | `references/phase-3-learning.md`; local course content is primary |
-| User says "继续学/打开课程/可视化学习/看课件" and course exists | `references/learning-viewer.md`; start local viewer. Fall back to chat if unavailable |
+| User says "继续学/打开课程/可视化学习/看课件" and course exists | `references/learning-viewer.md`; start local viewer in `interactive` mode. Fall back to chat only if unavailable |
 | Any formal course, progress map, skill tree, XP, levels, achievements | `references/skill-tree.md`; skill tree and RPG are default on |
 | Goal anchoring, mode choice, materials, baseline, time, storage path | `references/phase-0-anchoring.md` |
 | Research before course generation | `references/phase-1-research.md` |

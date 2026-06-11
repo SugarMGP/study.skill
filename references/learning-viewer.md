@@ -1,6 +1,8 @@
 # 本地课程播放器
 
-已生成课程后，用户说“继续学 / 打开课程 / 可视化学习 / 看课件”时，优先启动本地课程播放器。播放器不可用时，退回聊天教学并说明原因。
+已生成课程后，本地课程播放器是默认阅读入口，先启动播放器，再在聊天里讲解和答疑。
+
+只有播放器无法启动、必需文件缺失，或用户明确拒绝打开播放器时，才退回聊天教学。退回时必须说明具体原因，并继续读取当前 `content.md`，不能重新调研或凭记忆复述课程。
 
 ## 启动命令
 
@@ -8,19 +10,19 @@
 python {skill_dir}/viewer/server.py \
   --course {course_slug} \
   --learning-root {learning_root} \
-  --mode {read-only|interactive} \
+  --mode {interactive|read-only} \
   [--module {module_id}] \
   [--port {port}]
 ```
 
-不要猜 `{learning_root}`。路径不明确时先询问用户或读取已知状态。
+默认使用 `--mode interactive`（完整学习模式）。不要省略 `--mode`，也不要默认用`read-only`。不要猜 `{learning_root}`；路径不明确时先询问用户或读取已知状态。
 
 ## 模式
 
 | 模式 | 适用场景 | 状态写入 |
 |------|----------|----------|
-| read-only | 只看课件、看图、切换章节 | 不写入学习记录 |
-| interactive | 学习、复习、保存作答和问题 | 只写学习过程记录；正式进度由你判断后写入 |
+| interactive | 默认；正式学习、复习、保存作答和问题 | 只写学习过程记录；正式进度由你判断后写入 |
+| read-only | 仅当用户明确说“只浏览/只看课件，不记录”，或 interactive 依赖缺失时的降级 | 不写入学习记录 |
 
 interactive 模式要求 `.learning-profile/scripts/check-reviews.py` 和 `record-review.py` 存在。缺失时保留真实失败，不要伪造复习结果。
 

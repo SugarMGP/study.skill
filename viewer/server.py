@@ -2,13 +2,13 @@
 """study.skill viewer server.
 
 Usage:
-  python viewer/server.py --course <slug> --learning-root <path> [--mode read-only|interactive] [--module <module>] [--port <port>]
+  python viewer/server.py --course <slug> --learning-root <path> [--mode interactive|read-only] [--module <module>] [--port <port>]
 
 Modes:
-  read-only   - Only serves course content. Does not require record-review.py.
-                Does not expose /api/review-rating or /api/session-result.
   interactive - Allows review ratings and session file writing.
                 Requires check-reviews.py and record-review.py in scripts/.
+  read-only   - Only serves course content. Does not require record-review.py.
+                Does not expose /api/review-rating or /api/session-result.
 """
 
 import argparse
@@ -36,7 +36,7 @@ COURSE_DIR = None
 PROFILE_DIR = None
 VIEWER_HTML_PATH = None
 INITIAL_STATE = None
-SERVER_MODE = "read-only"
+SERVER_MODE = "interactive"
 SESSIONS_DIR = None
 
 
@@ -390,7 +390,7 @@ def main():
     parser = argparse.ArgumentParser(description="study.skill viewer server")
     parser.add_argument("--course", required=True, help="Course slug")
     parser.add_argument("--learning-root", required=True, help="Learning data root directory")
-    parser.add_argument("--mode", default="read-only", choices=["read-only", "interactive"], help="Server mode")
+    parser.add_argument("--mode", default="interactive", choices=["read-only", "interactive"], help="Server mode")
     parser.add_argument("--module", default=None, help="Module to display initially")
     parser.add_argument("--port", type=int, default=0, help="Port (0 = random)")
     args = parser.parse_args()

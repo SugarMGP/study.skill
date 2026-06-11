@@ -89,10 +89,15 @@ platform guide before creating or instructing automation setup.
 When the user says "继续学习", "继续", "下一节", or similar, and course files
 already exist:
 
-1. Read `references/learning-viewer.md` when the user asks to open the course,
-   view courseware, continue visually, or when the current module contains
-   diagrams / interactive exercise blocks. Prefer the local player for viewing
-   courseware; fall back to chat teaching only when the player cannot start.
+1. Default to the local visual course player in `interactive` mode. Read
+   `references/learning-viewer.md` and start the player with
+   `--mode interactive` before teaching in chat.
+   Do not use `read-only` as the default. Use `read-only` only when the user
+   explicitly asks to browse without recording, or when interactive dependencies
+   are missing and you have explained the downgrade. Fall back to chat teaching
+   only if the player cannot start, required files are missing, or the user
+   explicitly asks not to open the player. When falling back, state the concrete
+   reason and continue from the local `content.md`.
 2. Read course state: `meta.json`, `params.json`, and due reviews.
 3. Read `domain-tree.json`; choose the next node from `available` or
    `in_progress` nodes. Do not automatically enter `locked` nodes. If the user
@@ -166,9 +171,14 @@ Every formal learning session must follow this loop:
 2. Show current skill-tree node and status.
 3. If `rpg_enabled=true`, show one short level/XP/title/quest line.
 4. Check due reviews, but default to a one-line prompt.
-5. If the user asks to view courseware, the lesson contains Mermaid/images, or
-   the lesson uses `study-*` exercise blocks, load `learning-viewer.md` and use
-   the local player when possible.
+5. Use the local visual course player in `interactive` mode by default for
+   generated course content. Load `learning-viewer.md` and start the player with
+   `--mode interactive` before chat teaching when the module has
+   Mermaid/images/formulas/code examples/`study-*` blocks, or when the user asks
+   to continue/open/view courseware. Do not use `read-only` unless the user asks
+   to browse without recording, or interactive mode cannot start and you explain
+   the downgrade. Fall back to chat only when the player is unavailable or the
+   user explicitly declines; explain the fallback reason.
 6. If no automation exists and `automation_declined=false`, ask whether to set a
    daily reminder at the first natural session end.
 7. Teach one main concept at a time.
