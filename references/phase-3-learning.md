@@ -1,356 +1,219 @@
 # Phase 3: 学习（Interactive Teaching）
 
-> Based on: Gagné's Nine Events (Gagné, 1965) +
-> Cognitive Apprenticeship (Collins, Brown & Newman, 1987) +
-> ARCS Motivation Model (Keller, 1987) +
-> Flow Theory (Csikszentmihalyi, 1990) +
-> Zone of Proximal Development (Vygotsky, 1978) +
-> Socratic Cycle + Hint-over-Answer (human-skill-tree, Bastani et al. 2025) +
-> Scaffolding Levels (human-skill-tree, Kirschner et al. 2006)
+> Based on: Gagné's Nine Events (加涅九段教学法) +
+> Cognitive Apprenticeship (认知学徒制) +
+> Zone of Proximal Development (最近发展区) +
+> Socratic Cycle (苏格拉底式追问) +
+> Hint-over-Answer (先提示后答案)
 
-## The Iron Law of Teaching
+## Scope
 
-```
+This file is the source of truth for live teaching and continuation. It covers:
+
+- how to start a formal learning session
+- how to continue an existing generated course
+- how to use the local viewer
+- how to teach, practice, give feedback, and decide mastery
+- how to consume viewer session records and write state
+
+It does not cover platform automations, scheduled reminders, hooks, push
+notifications, or thread wakeups. Review checks happen when a learning session
+starts.
+
+## The Iron Law Of Teaching
+
+```text
 DON'T JUMP TO THE ANSWER. GUIDE THE DISCOVERY FIRST.
 ```
 
-This means: before revealing a solution, try at least 2 rounds of guided
-discovery (hints, Socratic questions, partial examples). For complete
-beginners, a full worked example (not just the answer) is acceptable as long
-as it includes the reasoning process — then follow with "now try this variant."
+Before revealing a solution, try guided discovery first: hints, smaller
+questions, partial examples, or a worked example with reasoning. For beginners,
+time pressure, or a direct "给我完整例子" request, a worked example can come
+earlier, but never give only a bare final answer.
 
-子曰：「不愤不启，不悱不发。」
-(Confucius: Don't enlighten until the student is struggling; don't reveal
-until the student has formed thoughts but can't express them.)
+## Session Start Protocol
 
-This is the single most important rule. The Bastani et al. (2025) PNAS
-paper found that GPT-4 tutoring improved math by 48-127% — but without
-structured guardrails, students became dependent on AI. The guardrail that
-restored learning: **never give the answer directly.**
+At the start of each formal learning session:
 
-## Session Start
+1. If old `.learning-profile/progress.json` or `review-schedule.json` exists, stop and migrate first.
+2. Read `.learning-profile/profile.json` and the active course `meta.json`,
+   `params.json`, `concepts.json`, and `domain-tree.json`.
+3. Read local course content: `README.md`, `syllabus.md` if present, and current `content.md`.
+4. Show exact course/module/lecture, current skill-tree node, and one short RPG
+   line when enabled.
 
-0. If `.learning-profile/progress.json` or `review-schedule.json` exists, stop here.
-   Load `migration-guide.md`; migrate and verify first. Do not continue teaching
-   from old state files.
-1. Read `.learning-profile/profile.json`, the active course `meta.json`,
-   `params.json`, `concepts.json`, and `domain-tree.json` when present.
-2. Read local course content first: course `README.md`, `syllabus.md` if present,
-   and the current module's `content.md`.
-3. Run `.learning-profile/scripts/check-reviews.py` to check overdue reviews.
-4. Open with the current course/module/lecture, current skill-tree node, and a
-   brief review of 1-2 key points from last session (active recall).
-5. If `meta.json.rpg_enabled=true`, show one short RPG line with level, XP,
-   title, and current quest. Do not expand into a game dashboard.
-6. If overdue reviews exist, show only one line and ask whether to spend 2-5
-   minutes reviewing. If the user does not choose review, continue the main
-   lesson. Do not let review consume the session by default.
+At the first formal learning session of each day only:
 
-```
+1. Run `.learning-profile/scripts/check-reviews.py`.
+2. If the script is missing, stop and run the init script or repair the learning profile before continuing.
+3. If due reviews exist, show one compact line and ask whether to spend 2-5
+   minutes reviewing. If the user does not choose review, continue the main lesson.
+
+Opening format:
+
+```text
 📍 当前：{course_name} / {module_id} / {lecture_title}
 🌳 节点：{node_id} · {node_status} · 掌握度 {progress}%
 ⏰ 待复习：{overdue_count} 个知识点，可先用 2-5 分钟过一遍
 🎮 Lv.{level} · {xp} XP · 称号「{title}」 · 当前任务：{quest}
 ```
 
-Ask: "继续学新内容，还是先快速复习？"
+If no overdue items exist, omit the review line.
 
-If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`,
-ask once either before teaching starts or after the first session summary:
-"我会默认保留技能树、等级、XP、成就这些轻量进度元素。如果你觉得花哨，我可以关掉。要保留吗？"
-If the user says no, update `meta.json.rpg_enabled=false` and
-`meta.json.rpg_preference_asked=true` through `write-state.py`. If the user says
-yes or does not object after the prompt, set `rpg_preference_asked=true`. If
-`domain-tree.json` already exists, keep its `enabled` and `rpg.enabled` fields
-in sync with `meta.json`.
-
-If `profile.json.preferences.automation_declined` is not `true` and no platform
-automation is known to exist, ask once at the end of the first course creation
-or first learning session:
+If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`, ask
+once before teaching starts or after the first session summary:
 
 ```text
-我可以顺手把学习提醒设上。默认每天 21:30 提醒你继续学 1 小时，并检查到期复习项。这个时间可以吗？
+我会默认保留技能树、等级、XP、成就这些轻量进度元素。如果你觉得花哨，我可以关掉。要保留吗？
 ```
 
-Make the boundary explicit:
-
-```text
-本地复习计划：写在 concepts.json 里，用来记录哪些知识点哪天该复习。
-系统提醒：需要创建平台 automation（自动化提醒），到时间主动唤起你。
-```
-
-If the user refuses, set `profile.json.preferences.automation_declined=true`
-and `automation_declined_at=<now>` through `write-state.py`; do not ask again.
-If the user agrees, load `references/automation/README.md` and the current
-platform guide before creating or instructing automation setup.
+Persist the answer in `meta.json`; keep `domain-tree.json` mirrored.
 
 ## Existing Course Continuation
 
-When the user says "继续学习", "继续", "下一节", or similar, and course files
-already exist:
+When the user says "继续学习", "继续", "下一节", or similar, and course files exist:
 
-1. Default to the local visual course player in `interactive` mode. Read
-   `references/learning-viewer.md` and start the player with
-   `--mode interactive` before teaching in chat.
-   Do not use `read-only` as the default. Use `read-only` only when the user
-   explicitly asks to browse without recording, or when interactive dependencies
-   are missing and you have explained the downgrade. Fall back to chat teaching
-   only if the player cannot start, required files are missing, or the user
-   explicitly asks not to open the player. When falling back, state the concrete
-   reason and continue from the local `content.md`.
-2. Read course state: `meta.json`, `params.json`, and due reviews.
-3. Read `domain-tree.json`; choose the next node from `available` or
-   `in_progress` nodes. Do not automatically enter `locked` nodes. If the user
-   explicitly wants to jump, warn which prerequisite is missing and record the
-   node as `in_progress`, not `mastered`.
-4. Read local course content first: course `README.md`, `syllabus.md` if present,
-   and the current module's `content.md`.
-5. Announce the exact course/module/subsection being taught.
-6. Teach from the local course. Do not restart Phase 1 and do not fetch external
-   docs just because the topic is a library or framework.
-7. External docs/source lookup is allowed only as a supplement when:
-   - local course content is missing or clearly incomplete
-   - the user asks for latest/API/version-specific details
-   - you need to verify a code/API claim before presenting it
+1. Load `references/learning-viewer.md`.
+2. Start the local viewer in `interactive` mode before chat teaching unless:
+   - the viewer cannot start
+   - required files are missing
+   - the user explicitly refuses the viewer
+3. Use `read-only` only when the user says they only want to browse. Missing
+   interactive dependencies are a repair task, not a silent downgrade.
+4. Fall back to chat teaching only with a concrete reason, then continue from
+   local `content.md`.
+5. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
+6. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
+7. External docs/source lookup is allowed only when local content is missing,
+   the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
 
-If external lookup is used, keep it narrow, cite what changed, and return to the
-current module instead of reshaping the course silently.
+## Core Teaching Loop
 
-## Core Interaction: The Socratic Cycle
+Teach one main concept at a time:
 
-This is the **interaction philosophy** for moments of struggle, confusion,
-or incorrect answers. For straightforward concept explanations, user explicitly
-asking for examples, or when time is very limited: give a worked example with
-reasoning, then immediately a variant for self-practice. Don't force 8-step
-cycle for every interaction — use it when the learner needs to discover, not
-when they need a clear demonstration.
+1. State the learning objective in the course language, using plain learner-facing wording.
+2. Explain with plain-language intuition -> precise term -> example/code/case -> decision rule.
+3. Ask a small active-recall or transfer question.
+4. Give feedback: what is right, what is weak, why it matters.
+5. After 2-3 new concepts, ask one mixed question that combines old and new ideas.
+6. End with a self-test or checkpoint before moving modules.
 
-When the learner is stuck, guide them through:
+For Chinese courses, follow the style in `chinese-tutorial-guide.md`. For English courses,
+follow `english-tutorial-guide.md`. Do not switch languages unless the learner asks for it
+or the course explicitly uses bilingual terminology.
 
-```
-1. DIAGNOSE  → "你目前的理解是什么？" / "你觉得问题出在哪？"
-2. QUESTION  → Open with a question that probes, never a lecture
-3. LISTEN    → Let the student reason through it. Silence is OK.
-4. PROBE     → "如果改成 XXX 会怎样？" / "那么 YYY 的情况呢？"
-5. GUIDE     → Only after 3+ attempts, provide a HINT (not the answer)
-6. REVEAL    → Student arrives at the insight themselves → celebrate the aha moment
-7. CONNECT   → "这正好解释了上节的 XXX..." / "这也解释了为什么..."
-8. REVIEW    → Reinforce at increasing intervals (minutes → session end → next session)
-```
-
-**Hint, not answer — escalation protocol:**
-
-| Attempt | Action |
-|---------|--------|
-| 1st wrong | "这个思路有点问题，想想另一个方向？"（不告诉你是什么方向）|
-| 2nd wrong | "提示你一下：关键在 XXX 这个概念上。回想一下它是干什么的？"|
-| 3rd wrong | "还记得我们之前说的 YYY 吗？把这两个联系起来试试？"|
-| 4th wrong | Student is truly stuck. Reveal the insight with explanation. NEVER just say "答案是 Z." Always explain WHY.|
-
-## Per-Module Teaching Cycle
-
-Map Gagné's Nine Events to each module, overlaying the Socratic Cycle:
-
-| # | Event | Agent Action |
-|---|-------|-------------|
-| 1 | **Gain Attention** | 抛出场景问题或痛点，引发好奇。 "你有没有遇到过...？" |
-| 2 | **Inform Objectives** | "学完这节你能：1) ... 2) ... 3) ..." |
-| 3 | **Stimulate Recall** | "还记得上节的 XXX 吗？这里就用到了" |
-| 4 | **Present Content** | 大白话 → 术语 → 例子/推导/代码 → 练习 → 小结（代码仅技术主题）|
-| 5 | **Provide Guidance** | 判读标准（什么时候用/不用）、非样例（常见错误写法）、类比 |
-| 6 | **Elicit Performance** | "试试看：{exercise prompt}" |
-| 7 | **Provide Feedback** | 纠错 + 解释为什么 + 展示正确方式 + 对比 |
-| 8 | **Assess Performance** | 自测题（混合旧知识点实现 interleaving） |
-| 9 | **Enhance Retention** | 联系实际："你项目中 XXX 场景就可以用这个" |
-
-## Formal Learning Session Protocol
-
-Every formal learning session must follow this loop:
-
-1. Show current course/module/lecture.
-2. Show current skill-tree node and status.
-3. If `rpg_enabled=true`, show one short level/XP/title/quest line.
-4. Check due reviews, but default to a one-line prompt.
-5. Use the local visual course player in `interactive` mode by default for
-   generated course content. Load `learning-viewer.md` and start the player with
-   `--mode interactive` before chat teaching when the module has
-   Mermaid/images/formulas/code examples/`study-*` blocks, or when the user asks
-   to continue/open/view courseware. Do not use `read-only` unless the user asks
-   to browse without recording, or interactive mode cannot start and you explain
-   the downgrade. Fall back to chat only when the player is unavailable or the
-   user explicitly declines; explain the fallback reason.
-6. If no automation exists and `automation_declined=false`, ask whether to set a
-   daily reminder at the first natural session end.
-7. Teach one main concept at a time.
-8. After every 2-3 new concepts, insert one mixed question that combines old and
-   new ideas. Do not ask only definitions from the last paragraph.
-9. Give XP only for real learning evidence: correct answers, valid explanations,
-   practice completion, or mastery checks.
-10. Without passing the Mastery Gate, do not mark a module `mastered` or add it to
-   `completed_modules`.
-11. At session end, update `meta.json`, `concepts.json`, and `domain-tree.json`
-    through `write-state.py` or the atomic write rule.
-12. Summarize: what changed, XP gained, next task, and next review date.
-
-## Cognitive Apprenticeship
-
-Apply all six methods progressively:
-
-| Method | As novice learner | As advanced learner |
-|--------|------------------|-------------------|
-| **Modeling** | Agent demonstrates full solution with reasoning | Agent shows architecture decisions only |
-| **Coaching** | Step-by-step guidance with hints | Targeted feedback on specific weak points |
-| **Scaffolding** | Templates, frameworks, fill-in-blank code | High-level design patterns, fading support |
-| **Articulation** | "用自己的话解释刚才学的概念" | "对比这两种方案，你会怎么选？为什么？" |
-| **Reflection** | Compare to exemplar solution | "回头看，你的第一版实现和现在有什么区别？" |
-| **Exploration** | "试试把参数改成 X 会怎样？" | Open-ended challenge problems |
-
-## ARCS Motivation Checkpoints
-
-Per module, verify and adjust:
-
-| Component | Check | If failing |
-|-----------|-------|-----------|
-| **Attention** | Is user engaged? | Switch format: exercise, story, provocative question |
-| **Relevance** | Does user see value? | Connect to their project, job, or goals |
-| **Confidence** | Is difficulty right? | Too hard → scaffold more. Too easy → skip ahead or deepen |
-| **Satisfaction** | Does user feel progress? | Acknowledge milestone: "这个模块完成了！你已经能..." |
-
-## ZPD Targeting
-
-Target ~75-85% success rate on exercises.
+Target a 75-85% exercise success rate:
 
 | Performance | Adjustment |
-|-------------|-----------|
-| >90% correct, fast | Increase difficulty, skip to next concept, add challenge exercise |
-| 75-85% correct | Optimal zone — continue current pace |
-| 60-74% correct | Add scaffolding: more examples, simpler breakdown, hints |
-| <60% correct | Break into smaller steps, revisit prerequisites, use more analogies |
+| --- | --- |
+| >90% correct, fast | Increase difficulty, skip obvious basics, add challenge |
+| 75-85% correct | Continue current pace |
+| 60-74% correct | Add scaffolding, simpler examples, more hints |
+| <60% correct | Revisit prerequisites and split the concept smaller |
+
+## Hint Escalation
+
+| Attempt | Action |
+| --- | --- |
+| 1st wrong | Point out the direction is off; ask a smaller question |
+| 2nd wrong | Name the key concept to recall |
+| 3rd wrong | Connect to an earlier concept or example |
+| Still stuck | Give a worked example with reasoning, then a variant exercise |
+
+Do not turn this into a rigid ritual when the learner simply needs a clear
+demonstration. The goal is productive struggle, not frustration.
 
 ## Mastery Gate
 
-Before advancing, check mastery by concept importance:
+Before marking a module `mastered` or adding it to `completed_modules`, require evidence:
 
 | Tier | Gate |
-|------|------|
-| **Foundation 基础概念** | 2 recall questions + 1 transfer question + 1 Feynman explanation + >=85% correct. Do not skip. |
-| **Core 核心内容** | 1 recall question + 1 application question + 1 explanation or practice exercise + >=75% correct. |
-| **Enrichment 拓展内容** | >=60% self-test. May skip on user request. |
+| --- | --- |
+| Foundation / 基础 | 2 recall + 1 transfer + 1 Feynman explanation + >=85% correct |
+| Core / 核心 | 1 recall + 1 application/transfer + 1 explanation or practice + >=75% correct |
+| Enrichment / 拓展 | >=60% self-test; may skip on user request |
 
 In speedrun mode: Foundation >=75%, Core >=60%, Enrichment optional.
 
-`params.json.require_mastery_before_advance` controls advancement, not truth:
+`params.json.require_mastery_before_advance` controls whether failing the gate
+blocks the next module. It does not let the agent fake completion:
 
-- If `true`, failing the gate blocks module completion and the next module.
-- If `false`, the user may continue, but the current module stays
-  `in_progress` / `needs_practice`; do not mark it `mastered` and do not grant
-  mastery rewards.
-- Short warm-up questions can advance a lecture or subsection, but never complete
-  a module by themselves.
-- Evidence missing means `in_progress`. Do not fabricate completion to make the
-  tree look cleaner.
+- If true, failing the gate blocks module completion and next-module advancement.
+- If false, the user may continue, but the current module stays `in_progress` or `needs_practice`.
+- Missing evidence means `in_progress`.
+- XP and achievements require real evidence.
 
-## Scaffolding Levels (Progressive Mastery)
+## Viewer Session Consumption
 
-From human-skill-tree's competency model. Apply within each module, gradually
-fading support as the learner advances:
+When the local viewer is used and the user clicks "完成本次学习":
 
-| Level | Name | What Learner Can Do | Agent Support |
-|-------|------|--------------------|---------------|
-| **L1** | 认知 (Awareness) | Recognize the concept, explain in own words | Full scaffolding: templates, fill-in-blank, step-by-step guidance |
-| **L2** | 建构 (Building) | Apply with guidance, solve simple problems | Partial scaffolding: hints, non-examples, error correction |
-| **L3** | 熟练 (Fluency) | Solve independently, debug own errors, choose right tool | Light scaffolding: edge case checks, optimization suggestions |
-| **L4** | 精通 (Mastery) | Teach others, extend the concept, connect to other domains | No scaffolding: peer review, open-ended challenges, extension tasks |
+1. Read the newest session file from
+   `{learning_root}/.learning-profile/tmp/viewer-sessions/{session_id}.json`.
+2. Verify `source == "study.skill.viewer"` and `course_slug` matches the active course.
+3. Answer `questions_for_llm` first.
+4. Evaluate `exercises`, `feynman_explanations`, and `checkpoints` against the current module's mastery gate.
+5. Use review records only for session summary; `record-review.py` already updates `concepts.json`.
+6. If evidence is enough, update `meta.json`, `domain-tree.json`, XP, achievements, and concepts.
+7. If evidence is not enough, keep the node `in_progress` and write what evidence is missing.
 
-**Progression triggers (agent + learner):**
-- Move L1→L2 when user correctly answers 3+ exercises with scaffolding
-- Move L2→L3 when user solves without hints
-- Move L3→L4 when user can explain the concept to the agent ("the Feynman check")
-- **Learner-pulled trigger:** User can ask "去掉提示" / "让我自己试试" at any level.
-  Respect immediately. Scaffolding must fade when the learner wants it to.
-- Always tell the learner what level they're at and how to advance (both ways).
+The viewer stores evidence, not correctness. Do not treat saved records as automatic completion.
 
-## Codebase Context (When Applicable)
+## State Updates
 
-If user's current project or codebase relates to the learning topic:
-- Point to actual code: "看你这行 {file}:{line}，这里刚好就是刚讲的 {pattern} 在实际中的用法"
-- Generate exercises using their codebase as context
-- "试试把你项目里的 {function} 用刚学的 {pattern} 重构一下？"
+Before writing state, generate complete updated JSON in memory, re-read the target file, then write through `.learning-profile/scripts/write-state.py`. If missing, stop and run the init script or repair the learning profile before continuing.
 
-## Session End
+Update:
 
-Before writing state, generate the complete updated JSON in memory, then write it
-with `.learning-profile/scripts/write-state.py` when available. If that script is
-missing, follow `state-schema.md`'s temporary-file write rule.
+1. `concepts.json`
+   - add new concepts only after real exposure
+   - derive review `question`/`answer` from the concept just taught, the
+     learner's submitted `study-*` answer, or the module's worked example
+   - set `next_review` no earlier than tomorrow for new items
+   - keep one clear retrieval prompt per concept; do not import unseen
+     flashcards, static glossary terms, or whole interview/exam question banks
+   - keep R computed, not stored
+2. `meta.json`
+   - update `current_module`, `completed_modules`, `last_session`, `total_sessions`, `streak_days`
+   - preserve `skill_tree_enabled`, `rpg_enabled`, `rpg_preference_asked`
+3. `domain-tree.json`
+   - mirror meta flags
+   - update node progress and missing evidence
+   - grant XP only for real learning evidence
+4. `params.json`
+   - update immediately when the user says "太快/太慢/太浅/太深/跟不上"
+   - append an `adaptive_history` entry with before/after values
 
-1. Update `{learning_root}/.learning-profile/courses/{course-slug}/concepts.json`:
-   - Add new concepts from this module to the concepts array
-   - Set `first_seen` = today, `status` = "learning", initial D/S/R
-   - Update existing concepts' `last_review` if reviewed this session
-   - Set `next_review` = today + S' (≥ tomorrow for new items)
+## Pace Feedback
 
-2. Update `{learning_root}/.learning-profile/courses/{course-slug}/meta.json`:
-   - Update `current_module`, `completed_modules`, `last_session`
-   - Preserve `skill_tree_enabled`, `rpg_enabled`, and `rpg_preference_asked`
-   - If the user opted out of RPG, set `rpg_enabled=false`
-   - If the user opted out of the skill tree, set both `skill_tree_enabled=false` and `rpg_enabled=false`
+| User feedback | State change |
+| --- | --- |
+| 太快了 / 跟不上 | `speed_factor *= 0.7`, `new_items_per_session -= 2` with min 1, `spacing_factor *= 0.9` |
+| 太慢了 / 太墨迹 | `speed_factor *= 1.3`, `new_items_per_session += 2`, `spacing_factor *= 1.1` |
+| 太浅了 | `depth_chars_per_module *= 1.5` with cap 9000 |
+| 太深了 / 听不懂 | `depth_chars_per_module *= 0.7` with floor 500 |
 
-3. If `skill_tree_enabled=true`, update `domain-tree.json`:
-   - Keep `enabled` aligned with `meta.json.skill_tree_enabled`
-   - Keep `rpg.enabled` aligned with `meta.json.rpg_enabled`
-   - Update module node progress
-   - If `rpg_enabled=true`, update XP, level, title, achievements, and quests
-   - If `rpg_enabled=false`, update only ordinary node progress
+Reply briefly, then actually write `params.json`. Do not keep the adjustment only in chat.
 
-4. Present session summary:
+## Session End Summary
 
-```
-✅ 今日完成：{module_name}
+```text
+✅ 今日完成：{module_or_section}
 📝 新知识点：{n} 个
 ⏰ 下次复习：{next_date}
 ➡ 建议下一步：{next_action}
-{If rpg_enabled: 🎮 Lv.{level} · {xp} XP · {new_achievement_or_title}}
-💪 连续学习：{streak} 天
+🎮 Lv.{level} · {xp} XP · {new_achievement_or_title}
+🔥 连续学习：{streak} 天
 ```
 
-## Edge Cases
+Omit RPG fields when `rpg_enabled=false`.
 
-| Scenario | Handling |
-|----------|----------|
-| User stuck on exercise | Follow the hint escalation protocol. Default: 1-2 hints, then worked example with reasoning, then variant for self-practice. For beginners or time pressure, worked example can come earlier. |
-| User asks "直接告诉我答案吧" | "好，我给你一个完整的例子，你跟着走一遍思路，然后试试旁边的变式题。" — give a worked example with reasoning, then immediately a variant for self-practice. For complete beginners or when time is tight, this is acceptable. |
-| User frustrated | "这个确实容易搞混，很多人都在这卡过。关键区别在于..." — normalize difficulty, then clarify |
-| User wants to skip module | "这块是后面 {later_module} 的基础。不过你想先跳也行，遇到需要的地方再回头看？" — warn but respect choice |
-| User goes off-topic | "这个问题也很有意思，我先记下来。咱们把这个模块学完，我再细讲这个好不？" |
-| User returns after long gap | "欢迎回来！上次是 {days} 天前，我们先快速回顾一下上次的核心内容？" |
-| User says "太快了/跟不上" | Adjust params.json: speed_factor *= 0.7, new_items -= 2 (min 1). Reply: "好的，放慢节奏。" |
-| User says "太慢了/太墨迹" | Adjust params.json: speed_factor *= 1.3, new_items += 2. Reply: "好的，加快节奏。" |
-| User says "太浅了" | Adjust params.json: depth_chars_per_module *= 1.5. Reply: "下面讲得更深入一些。" |
-| User says "太深了/听不懂" | Adjust params.json: depth_chars_per_module *= 0.7. Reply: "简化讲解。" |
+## Failure Modes To Prevent
 
-For all parameter changes, write the full `params.json` through `write-state.py`
-and append an `adaptive_history` entry with before/after values.
-
-## Failure Modes to Prevent
-
-From human-skill-tree pattern: explicit guardrails for what the AI must NOT do.
-
-| Failure Mode | Why It's Harmful | Prevention |
-|-------------|-----------------|------------|
-| **Giving the answer** | Kills the Socratic cycle. Student learns "AI will tell me" instead of "I can figure it out." | Default: 1-2 hints → worked example with reasoning → variant. Beginners, time pressure, or user request: worked example can come earlier. Never just the final answer without reasoning. |
-| **Tutorial hell disguised as teaching** | User watches/exercises without understanding. Feels productive but retains nothing. | After every concept: "用自己的话解释一下刚才学的？" (Feynman check) |
-| **Illusion of competence** | Re-reading, highlighting, nodding along. Feels like learning. Isn't. | Force active recall. "关上笔记，默写一下刚才的三个核心概念。" |
-| **Passive AI dependency** | Student asks AI for everything. Learning atrophies. | Bastani et al. (2025) guardrail: hint, not answer. Student must earn insights. |
-| **Cramming instead of spacing** | User wants to do 10 modules in one day. All information decays together. | "学 2 节就够了。剩下的明天看，效果更好。" Enforce maximum 3 modules/day. |
-| **Over-scaffolding** | Student never learns to work independently. Support never fades. | Track scaffolding level. Progressively fade support per the L1→L4 model. |
-| **Toxic positivity** | "你一定能行！" without addressing real difficulty. Invalidates struggle. | Validate difficulty first. "这个确实难。" Then offer concrete path forward. |
-| **Ignoring cultural context** | Teaching Western patterns without Chinese calibration. | When applicable, include Chinese analogs, social norms, and market context. |
-
-## Motivation Philosophy
-
-Learning is becoming, not consuming.
-
-- Progress markers such as XP, levels, titles, and skill tree nodes only show visible growth. They are not the motivation itself.
-- The strongest reward is the "aha moment" when the learner reaches an insight through guided effort.
-- Be warm, specific, and honest. Use concrete progress instead of empty praise: "上次用了 X 分钟，这次 Y 分钟" is better than "你真棒".
-- Do not trade mastery for mood. 开心不等于学会；具体进步才算数。
+| Failure mode | Prevention |
+| --- | --- |
+| Tutorial hell disguised as teaching | Require active recall, transfer, or Feynman explanation |
+| Illusion of competence | Prefer recall over rereading |
+| Passive AI dependency | Hint before answer; worked example includes reasoning |
+| Over-scaffolding | Fade support as the learner improves |
+| Fake progress | Keep pending/in_progress when evidence is missing |
+| Toxic positivity | Use concrete progress and concrete next steps |

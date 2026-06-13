@@ -45,8 +45,8 @@ sentence and proceed; the rule prevents sloppiness, not speed.
 
 ## Units and Course Size
 
-- **一讲 (Lecture)**: about 10-25 minutes, 500-1500 Chinese characters plus examples, one main concept.
-- **一模块 (Module)**: 2-5 lectures, one coherent sub-topic, about 0.5-3 hours.
+- **一讲 (Lecture)**: one main concept. Use the selected mode's character/word target as the concrete sizing rule; time is only a rough planning hint.
+- **一模块 (Module)**: 2-5 lectures, one coherent sub-topic. Use `depth_chars_per_module` as the generation target.
 - **一门课 (Course)**: at most 15 modules and 30 lectures. Split larger topics into multiple courses.
 
 **Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions
@@ -99,14 +99,33 @@ If user's intent is unclear: "是工作需要快速上手，还是系统学？�
 These are internal quality constraints. Do NOT mention word counts or exercise counts
 to the user — apply them silently when generating content.
 
-| Mode | 字数/模块 | 思考题/模块 | 解释深度 |
-|------|----------|------------|---------|
-| 速成导览 | 800-2000 | 1-2 | 精简解释，跳过原理深挖和版本对比 |
-| 系统精讲 | 2000-5000 | 3-5 | 3-5 个"为什么这样设计"，3-8 个对比表，常见误区+本章小结(5-7条) |
-| 面试冲刺 | 500-1500 | 1 组追问 | 聚焦 1 个高频考点，含代码骨架+参考解法+追问+评分标准+面试陷阱 |
-| 考试备考 | 800-2000 | 3-5 | 1-2 核心概念+推导，含练习题答案，标注考频和分值权重 |
+`depth_chars_per_module` is the executable size guard, not the whole quality
+definition. A module is acceptable only when it also satisfies the selected
+mode's structural coverage. Time is only a rough planning aid because reading
+speed, coding speed, and prior knowledge vary widely.
 
-Code examples and diagrams are NOT constrained — include whenever they aid understanding.
+Counting rules:
+
+- Chinese target counts learner-facing prose roughly. Code blocks, Mermaid,
+  tables, images, and machine-readable `study-*` metadata do not count as prose,
+  though their explanation does.
+- English target counts learner-facing prose words. For mixed technical text,
+  treat 1 English word as roughly 1.5-2 Chinese characters when choosing a
+  comparable depth.
+- Do not pad a module just to hit the target. If the structural coverage is
+  complete and the learner's goal is narrow, shorter is acceptable.
+- If the content would exceed the upper band by more than about 25%, split it
+  into another lecture or module before writing.
+
+| Mode | 目标正文规模/模块 | 结构覆盖/模块 | 粗略学习负荷 | 解释深度 |
+|------|------------------|----------------|--------------|---------|
+| 速成导览 | 中文 1800-3200 字；英文 900-1900 words | 2-3 个小节；1 条主路径；1 个可运行/可检查例子；1-2 个互动题 | 短到中；通常一坐能完成 | 精简解释，先跑通主路径，只讲会阻塞上手的原理 |
+| 系统精讲 | 中文 4500-7500 字；英文 2800-4700 words | 3-5 个小节；2-4 个概念块；2 个以上例子/案例/代码；3-5 个互动题；必要时配图或对比表 | 中到长；适合分段学习 | 深挖为什么、怎么选、边界和底层机制；讲清概念关系和迁移条件 |
+| 面试冲刺 | 中文 1800-3600 字；英文 900-2200 words | 1 个高频考点簇；2-4 个追问；1 套回答评分标准；2-3 个 `study-transfer` | 中等；以输出答案为目标 | 用场景题组织回答要点、追问方向、反例和判断标准 |
+| 考试备考 | 中文 2800-5200 字；英文 1500-3200 words | 对齐考纲/材料；1-2 个完整例题；3-5 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲清定义、推导、题型、分值权重和易混点；不考的不展开 |
+
+Code examples and diagrams are not constrained by prose length. Include them
+whenever they reduce cognitive load or make the learner's answer checkable.
 
 #### After Mode Selection: Prepare params.json
 
@@ -117,10 +136,10 @@ with these defaults. This persists across sessions and survives context compress
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "mode": "speedrun",
   "mode_label": "速成导览",
-  "depth_chars_per_module": 1200,
+  "depth_chars_per_module": 2400,
   "exercises_per_module": 2,
   "target_retention": 0.85,
   "new_items_per_session": 5,
@@ -138,10 +157,10 @@ Mode defaults:
 
 | Mode | depth_chars | exercises | target_retention | auto_advance | require_mastery |
 |------|------------|-----------|-----------------|-------------|----------------|
-| 速成导览 | 1200 | 2 | 0.85 | true | false |
-| 系统精讲 | 3500 | 4 | 0.90 | false | true |
-| 面试冲刺 | 1000 | 1组追问 | 0.90 | true | false |
-| 考试备考 | 1500 | 4 | 0.90 | false | true |
+| 速成导览 | 2400 | 2 | 0.85 | true | false |
+| 系统精讲 | 6000 | 5 | 0.90 | false | true |
+| 面试冲刺 | 2600 | 3 | 0.90 | true | false |
+| 考试备考 | 4000 | 5 | 0.90 | false | true |
 
 When user gives speed/depth feedback during Phase 3, update params.json immediately.
 
@@ -185,7 +204,7 @@ If user selects 🟡 or 🔴, offer a pretest:
 - If user declines: proceed with self-reported level.
 
 Implications:
-- 零基础 → 更密集的类比，"先记住一句话"口诀，慢节奏
+- 零基础 → 更密集的类比、单句直觉锚点、慢节奏
 - 有基础 → 快速过基础，聚焦进阶和原理
 - 熟练 → 跳过基础模块，直接进入原理、最佳实践、面试题
 
@@ -195,7 +214,8 @@ Daily: 15 分钟 / 30 分钟 / 1 小时 / 2 小时+
 Total: 3 天 / 1 周 / 2 周 / 1 个月 / 不限
 
 Implications:
-- 15min/day → micro-learning chunks (2-10 min per module), compact explanations
+- 15min/day → smaller modules and compact explanations; keep `depth_chars_per_module`
+  near the lower end of the selected mode and split long modules early
 - 2h/day → full Gagné Nine Events cycle per session, deeper dives
 - Short total → fewer modules, focus on essentials (80/20 principle)
 
@@ -278,7 +298,7 @@ and return to the current topic.
 | User has no time estimate | "先按一周每天30分钟规划，后面可以调整？" |
 | Topic too broad (e.g., "学AI"/"学心理学") | **Generate skill tree first**. "这个领域太大了，先看看技能树，你想走哪个分支？" |
 | User picks a node but it's still broad | Zoom in one more level. "这个分支也很大，我们再拆一层，你对哪个方向更感兴趣？" |
-| Topic too narrow (e.g., "学 React useState") | Offer: "这是个具体 API，我帮你做个快速教学（10分钟），还是扩展为 React Hooks 系统学习？" |
+| Topic too narrow (e.g., "学 React useState") | Offer: "这是个具体 API，我可以做一小讲快速教学（约 1200-2200 字，时间只作粗参考），还是扩展为 React Hooks 系统学习？" |
 | User is a returning learner | Read `.learning-profile/courses/*/meta.json` first. Show progress. "上次你学到 {module}，继续还是换方向？" |
 | User wants to switch path/mode | **正式流程**：展示当前模式→新模式的差异（字数/练习数/深度变化）→ 用户确认 → 更新 `params.json`（mode, depth_chars, exercises, target_retention）+ `meta.json`（mode, mode_label）→ 不改已生成内容，只影响后续模块。 |
 | User says "看看进度" / "技能树" | Load `references/skill-tree.md`. Render current skill tree with all progress. |

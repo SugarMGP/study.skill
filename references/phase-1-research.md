@@ -31,7 +31,7 @@ the syllabus. The goal is "只学要考的" — only what's tested.
 **Research tasks (material-driven):**
 1. Analyze the material for topic list, ordering, depth, and exam format
 2. For each topic in the material, find 1-2 supplementary sources:
-   - Chinese-language explanations/analogies for difficult concepts
+   - explanations or analogies in the course language for difficult concepts
    - Similar practice problems with solutions
    - Past exam papers from the same course/school if available
    - Official exercise answers if the material has exercises
@@ -51,20 +51,21 @@ fewer — flag what's missing.
 **For tech/programming topics**（默认）:
 1. **官方文档** — Always first. Use available documentation or web fetch tools. Note version, changelog, API.
 2. **优质源码** — Read core modules on GitHub. Extract architecture patterns, key designs.
-3. **中文社区高星教程** — GitHub repos 1k+ stars, 掘金/CSDN/知乎 high bookmarks.
-4. **补充**: 极客时间目录, arXiv, 面试题库
+3. **优质教程/课程** — Choose by course language and source quality. Chinese output can use GitHub high-star Chinese repos, 掘金/CSDN/知乎 high bookmarks, 极客时间目录; English output can use official tutorials, MDN, Microsoft Learn, freeCodeCamp, The Odin Project, university course notes, and reputable engineering blogs.
+4. **补充**: arXiv, interview banks, standards documents, issue discussions
 
 **For general/academic topics**（如学历史、学经济学、学心理学）:
 1. **权威教材/课程大纲** — Top university syllabus, standard textbooks, MOOC structure
-2. **中文高星学习资料** — GitHub repos, 知乎专栏, B站高播放课程, 豆瓣高分书单
+2. **优质学习资料** — Choose by output language: Chinese courses, 知乎专栏, B站高播放课程, 豆瓣高分书单; or English university notes, OpenStax, MIT OCW, Stanford/Harvard/Yale course pages, reputable learning platforms.
 3. **学术综述/入门论文** — arXiv or CNKI survey papers for the field
-4. **补充**: 得到/极客时间相关专栏目录, 维基百科知识结构
+4. **补充**: 得到/极客时间相关专栏目录, Wikipedia knowledge structure, professional association resources
 
 **Source count:** Default target: 3 quality sources. Accept fewer when justified:
 material-driven, niche topics, or exam prep where the syllabus IS the scope — but explicitly
-note what's missing. Chinese source: include when quality permits; if none exists, declare
-it and use English sources translated to Chinese explanations. Never pad with low-quality
-sources to hit a quota.
+note what's missing. For Chinese courses, include quality Chinese sources when available;
+if none exists, say so and use English sources explained in natural Chinese. For English
+courses, do not force Chinese sources unless they are primary for the topic. Never pad with
+low-quality sources to hit a quota.
 
 ### Parallel Research Dispatch
 
@@ -77,16 +78,17 @@ Adapt dispatches to topic type: select sources by **quality**, not by tool name.
 |-----------|---------------------------|-------------|
 | Tech API / library | Official docs (latest version) | Source code (architecture only), community tutorials |
 | Tech architecture / principle | Source code of reference implementation | Official docs, architecture blog posts |
-| Academic subject | Standard textbook / top university syllabus | Survey papers (arXiv/CNKI), Chinese learning resources |
+| Academic subject | Standard textbook / top university syllabus | Survey papers (arXiv/CNKI), quality learning resources in the course language |
 | Exam prep | User's syllabus/past papers | Textbook, exam prep guides |
 
 **Source count:** Target 3 quality sources. If user provides materials, they count as
 the primary source — then 1-2 supplements suffice.
 
-**Chinese source requirement:** Include at least 1 quality Chinese source when available.
-If no quality Chinese source exists for this topic, say so explicitly and use English
-sources translated to Chinese in your explanations. Never force low-quality Chinese
-sources just to meet a quota.
+**Language-source rule:** Match supporting sources to the course language when quality permits.
+For Chinese courses, include at least 1 quality Chinese source when available; if none exists,
+say so and explain English sources in natural Chinese. For English courses, prioritize strong
+English sources and use non-English sources only when they are authoritative for the topic.
+Never force low-quality sources just to meet a language quota.
 
 ### What to Extract
 
@@ -97,18 +99,19 @@ For each source, extract:
 | Core concepts and their relationships | → Knowledge Graph DAG nodes |
 | Prerequisites (what must be learned first) | → DAG edges (requires relation) |
 | Difficulty estimate (1-10 scale per concept) | → initial D value for spaced repetition |
-| Common pitfalls and misconceptions | → 踩坑指南 content |
+| Real pitfalls and misconceptions | → Inline warnings or learner-facing misconception notes, only when source-backed or practice-backed |
 | "Golden example" per concept | → Best teaching example |
 | Version-specific notes | → Version comparison tables |
-| Interview / exam question patterns | → Q&A bank |
+| Interview / exam question patterns | → Module-local `study-transfer` or `study-checkpoint` practice with scoring points |
 | Learning time estimates | → Module scheduling |
+| Diagrams, screenshots, visual examples | → course images or text diagram choices |
 
 **Added for material-driven mode:**
 
 | Extraction | Purpose |
 |-------------|---------|
 | Material chapter/section mapping | → module outline aligned with textbook |
-| Exam format and question types | → practice problem generation |
+| Exam format and question types | → module-local exam-style `study-*` practice |
 | Grading criteria / 评分标准 | → what to emphasize in answers |
 | Topic weight in exam | → module priority (high-weight topics first) |
 | **Diagrams & visuals** | **→ collect quality existing images for reuse. Note URL + description. Prioritize: architecture diagrams, flowcharts, comparison tables, data visualizations.** |
@@ -125,7 +128,8 @@ Present findings. Adapt the format to topic type.
 📊 信息来源：
 - 官方文档：{url} (v{version})
 - 源码分析：{repo} (key files: {file_list})
-- 中文教程参考：{repo_list}
+- 优质教程/课程参考：{repo_or_course_list}
+- 可复用图表/截图：{url_or_path + what it explains}
 
 🧩 核心概念关系图：
 {concept_A} ──requires──→ {concept_B}
@@ -150,8 +154,9 @@ Present findings. Adapt the format to topic type.
 
 📊 信息来源：
 - 权威教材/课程：{textbook_or_course_list}
-- 中文学习资料：{zhihu_columns, bilibili_courses, douban_books}
+- 优质学习资料：{course_notes, columns, video_courses, book_lists}
 - 学术综述：{arxiv_or_cnki_papers}
+- 可复用图表/案例素材：{url_or_path + what it explains}
 
 🧩 核心知识结构：
 {concept_A} → {concept_B} → {concept_C}

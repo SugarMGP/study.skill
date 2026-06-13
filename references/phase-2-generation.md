@@ -3,275 +3,308 @@
 > Based on: Backward Design Stage 3 (Wiggins & McTighe, 2005) +
 > Gagné's Nine Events (Gagné, 1965) +
 > Bloom's Taxonomy Revised (Anderson & Krathwohl, 2001) +
+> Diataxis tutorials, Microsoft Learn, freeCodeCamp, The Odin Project +
 > Chinese tutorial conventions (ai-agents-from-zero, rust-course, 极客时间)
 
 ## Prerequisites
 
 Before entering this phase:
-- Phase 0 completed: user confirmed 学习路线图
-- Phase 1 completed: user confirmed research scope
-- Load `references/chinese-tutorial-guide.md` for writing standards
 
-Do not start writing `README.md`, `syllabus.md`, or module `content.md` until
-`references/chinese-tutorial-guide.md` has been read in this turn. That file is
-the writing standard for learner-facing Chinese course files.
+- Phase 0 completed: user confirmed the learning route.
+- Phase 1 completed: user confirmed the research scope.
+- Read `profile.json.learner_profile` when available; use it to adapt examples,
+  analogies, prerequisites, and explanations.
+- Load `references/courseware-format.md` for shared courseware rules.
+- Load one language guide for learner-facing prose:
+  - Chinese output: `references/chinese-tutorial-guide.md`
+  - English output: `references/english-tutorial-guide.md`
+
+Default course language follows the user's request and profile. If unclear, use Chinese. If the user explicitly asks for English or bilingual output, route to the English guide or ask once for the learner-facing language.
+
+Do not start writing `README.md`, `syllabus.md`, or module `content.md` until `courseware-format.md` and the selected language guide have been read in this turn.
+
+## Responsibility Boundary
+
+This file is the source of truth for course generation: file layout, Module 00, module generation order, quality gate, course-size guard, verification rules, and generation sequence.
+
+It does not define diagram syntax, image rules, or `study-*` block schemas. Those live in `courseware-format.md`. It does not define live teaching or mastery decisions. Those live in `phase-3-learning.md`.
+
+Load `learning-viewer.md` only when exact player-supported syntax, viewer startup, or session records are needed.
 
 ## Completion Iron Law
 
-Do not claim a course, module, code example, or exercise is complete until the
-relevant quality gate has been checked. If runnable code was not executed, say so
-explicitly and describe the alternative verification method.
+Do not claim a course, module, code example, or exercise is complete until the relevant quality gate has been checked. If runnable code was not executed, say so explicitly and describe the alternative verification method.
 
-## Generation Pipeline
+## Template Compliance Rule
+
+The templates in this file, `courseware-format.md`, and the selected language guide are mandatory structure, not inspiration. Keep wording natural, but do not omit learner-facing sections, required practice, required visuals, source notes, or course-size guards.
+
+Generate from the required template first, then fill in content. Do not write a free-form module and "check it later." Before telling the user the course is ready, compare the generated files with this reference and fix missing required sections directly in the files.
 
 ## Output Standard
 
-Generate real, runnable Chinese-language courses in the style of 极客时间,
-rust-course, CS-Notes, JavaGuide, and ai-agents-from-zero:
+Generate real, runnable courses. Do not dump links or generic outlines.
 
-- Do not dump links or generic outlines.
-- Each module should teach with 大白话 -> 术语 -> example/code -> exercise -> summary.
-- Technical examples that claim to run must be runnable and verified.
-- Course files should leave clear next-step pointers so the learner can continue.
-- Course files are for learners. Do not include design notes, implementation
-  rationale, tool choices, or internal field names unless they are inside hidden
-  machine-readable exercise blocks.
+Every module should contain:
 
-### Step 1: Generate Course Overview (Module 00)
+- clear learning objectives
+- plain-language intuition followed by precise terms
+- examples, code, cases, or worked reasoning
+- active recall or transfer practice
+- decision criteria
+- real pitfalls or misconceptions when the topic has source-backed or practice-backed ones
+- concise recap and a concrete continuation action when useful
+- source notes for non-trivial claims, code, images, diagrams, and data
+- inline official or authoritative links near the concept they explain when they
+  help the learner go deeper
 
-Generate the course README.md. This is the first thing the user sees.
-Write to `{learning_root}/courses/{course-slug}/README.md`.
+Course files are for learners. Do not include design notes, generation rationale, tool choices, internal field names, or agent self-evaluation unless they are part of the hidden machine-readable exercise block format defined in `courseware-format.md`.
+
+## Learner Profile Adaptation
+
+Use `profile.json.learner_profile` as a teaching aid, not as a place to invent
+facts. Apply only explicit profile data:
+
+- `known_languages`: use brief transfer analogies when they reduce cognitive
+  load. Example: if the learner knows Java and is learning Python decorators,
+  compare decorator syntax to wrapping a method with an annotation-like idea,
+  then explain where the analogy breaks.
+- `weak_prereqs`: insert compact prerequisite refreshers before the concept that
+  depends on them; do not turn the module into a different course.
+- `analogy_preferences`: choose examples from the learner's familiar domain,
+  such as backend, systems, math, design, or writing.
+- `teaching_constraints`: obey exclusions and preferences explicitly. If the
+  user said "不要把 Python 放进主线", use only the minimum Python syntax needed.
+
+Every analogy must include its boundary when the boundary matters. Do not force
+cross-language comparisons into every section; use them only where they shorten
+the path to understanding.
+
+## Source Link Placement
+
+Do not create a default `resources.md` just to store links. When a specific
+source helps at the exact point of learning, place a short inline link beside
+that concept. Course-level sources belong in `README.md` or `syllabus.md` as a
+short, curated list; optional appendix files are allowed only when the user asks
+for them or a runtime flow will link to and consume them.
+
+Use this pattern sparingly:
 
 ```markdown
-# {课程名} 从零到一学习指南
-
-> **开篇词：** {why learn this? what will you be able to do after? —— 极客时间模式}
-
-## 📖 课程地图
-
-{complete module index with links — CS-Notes/JavaGuide 模式}
-
-## 🔰 适合人群
-
-- ✅ {who should take this}
-- ⚠ 前置知识：{prerequisites}
-
-## 🗺 学习路线图
-
+> 深入看：React 官方文档的 [`useState`](https://react.dev/reference/react/useState)
+> 页面适合查参数、返回值和常见用法；先学完本节再看，不要一开始就陷进 API 细节。
 ```
-模块一：{name}（基础入门，30%）
-  ├── 第1讲：{title}
-  ├── 第2讲：{title}
-  └── ...
 
-模块二：{name}（核心能力，40%）
-  └── ...
+Rules:
 
-模块三：{name}（进阶深入，30%）
-  └── ...
-```
+- Prefer official docs, standards, textbooks, papers, or source repositories for
+  concept-level links.
+- Place links next to the concept they explain, not only at the end of the
+  course.
+- Explain why the link is useful in one sentence: API reference, conceptual
+  guide, source implementation, exercise set, or deeper background.
+- Do not dump a broad link list inside the lesson body. Keep broad reading paths
+  short and place them in Module 00 or `syllabus.md`; generate a separate
+  appendix only when it will be linked from the learning path.
+- For library/API topics, use the current official docs discovered in Phase 1.
+  Example React official docs use `https://react.dev/reference/react/useState`
+  for `useState` API reference and `https://react.dev/learn/state-a-components-memory`
+  for the learner-facing state concept guide.
+
+## Step 1: Generate Course Overview (Module 00)
+
+Generate `{learning_root}/courses/{course-slug}/README.md`. This is the first learner-facing file.
+
+Use the language selected for the course. For Chinese, use the wording pattern in `chinese-tutorial-guide.md`. For English, use the wording pattern in `english-tutorial-guide.md`.
+
+Minimum content:
+
+```markdown
+# {Course title}
+
+> {Short opening: why this course matters and what the learner will be able to do}
+
+## Course Map
+
+{Complete module index with links}
+
+## Who This Is For
+
+- {Learner profile}
+- Prerequisites: {prerequisites}
+
+## Learning Path
+
+{Module tree with lectures/chapters and the rough role of each module}
 
 {For tech topics:}
-## 🛠 环境准备
+## Environment Setup
 
-{install instructions, versions, IDE setup}
+{Install instructions, versions, IDE/editor setup, expected first check}
 
 {For general topics:}
-## 📖 推荐阅读/资源
+## Core Materials
 
-{textbooks, courses, papers, reading paths}
+{Textbooks, courses, papers, reading path}
 
-## 📊 学习进度
+## Progress
 
-{progress tracking will be auto-generated during Phase 3}
+{Progress tracking will be updated during Phase 3}
 
-## 📚 资源索引
+## Main Sources
 
-{For tech topics:}
-- [官方文档]({url})
-
-{For any topic:}
-- [术语表](./glossary.md)
-
-{For interview-oriented tech topics:}
-- [面试题库](./interview-qa.md)
-
-- [扩展资源](./resources.md)
+- {Primary source and why it is useful}
+- {Supplement source and why it is useful}
 ```
 
-Wait for user to review Module 00 before generating remaining modules.
-Ask: "课程大纲 OK 吗？我开始写具体内容？"
+Wait for user review of Module 00 before generating remaining modules unless the user has already explicitly asked to skip further confirmations after route approval.
 
-### Step 2: Generate All Remaining Modules
+Chinese prompt: `课程大纲 OK 吗？我开始写具体内容？`
 
-After Module 00 is confirmed, generate all remaining modules in one pass.
-The Module 00 outline is the contract — execute it. No per-module confirmation needed.
+English prompt: `Does this outline look right? I can start writing the modules next.`
 
-**Size guard:** One course must stay within <=15 modules and <=30 讲. If the
-outline exceeds either limit, split it into a series of separate courses before
-writing modules. Do not use "batch generation" to hide an oversized single
-course. Batches are only allowed for context management inside a course that is
-already within the size limit.
+## Step 2: Generate Remaining Modules
 
-For each module, follow the chapter template in `references/chinese-tutorial-guide.md`
-and check against the mode-specific depth rules from `references/phase-0-anchoring.md`
-(word count, exercise count, explanation depth vary by mode).
+After Module 00 is confirmed, generate `syllabus.md` and all remaining modules in
+one pass. The Module 00 outline is the contract. No per-module confirmation is
+needed unless the user pauses or asks to revise the outline.
 
-### Step 3: Quality Gate (Single Source of Truth)
+`syllabus.md` minimum content:
+
+- module order, lecture/chapter titles, and learning objectives
+- prerequisites and unlock order when relevant
+- mode-specific emphasis, such as interview follow-ups or exam question forms
+- short course-level source list, limited to sources that actually shaped the
+  syllabus
+- links to optional appendices only when those appendices were explicitly
+  requested or have a runtime consumer
+
+**Size guard:** one course must stay within <=15 modules and <=30 lectures. If the outline exceeds either limit, split it into a series of separate courses before writing modules. Do not use "batch generation" to hide an oversized single course. Batches are only for context management inside a course that already passes the size guard.
+
+For each module:
+
+- Follow the selected language guide's chapter template.
+- Follow `courseware-format.md` for diagrams, media, code examples, and saveable practice.
+- Check mode-specific depth rules from `phase-0-anchoring.md`.
+- Aim for `params.json.depth_chars_per_module` after mode selection. Treat it as
+  a prose-size guard, not a substitute for examples, diagrams, worked solutions,
+  and interactive questions. Do not use time estimates as the concrete sizing
+  target.
+- Apply `learner_profile` adaptations from this file before writing examples and
+  explanations.
+
+The four modes must produce visibly different files:
+
+- 速成导览 / Speedrun: short path, fewer branches, practical first example, no long theory detour.
+- 系统精讲 / Systematic: deeper why/how, concept contrasts, failure cases, diagrams, recall + transfer + Feynman + checkpoint evidence.
+- 面试冲刺 / Interview: one high-frequency topic at a time, scoring criteria, follow-up questions, source-backed misconceptions, runnable/code-outline practice when applicable.
+- 考试备考 / Exam: align to syllabus/materials, mark likely question forms, include worked solution steps and scoring points.
+
+Do not let every mode collapse into the same shallow tutorial with different labels.
+
+### Depth And Split Rule
+
+Depth is measured by both prose size and learning activity coverage:
+
+- prose size: learner-facing explanation should land near `depth_chars_per_module`
+  and within the selected mode's band in Phase 0.
+- concept coverage: each section should carry one main concept, not a bundle of
+  unrelated facts.
+- activity coverage: every module must include answerable practice through
+  `study-*` blocks when answers should be saved or revealed after submission.
+- evidence coverage: interview and exam modes must include scoring criteria,
+  answer rubrics, or worked solution steps; system mode must include why/how,
+  boundaries, and transfer checks.
+
+If a draft needs more than 5 substantial sections, more than 5 interactive
+questions, or more than about 125% of the selected mode's upper prose band, split
+it before writing. Do not compress an oversized chapter by deleting examples or
+practice; split the content instead.
+
+## Step 3: Quality Gate
 
 Before outputting any module, check against this tiered checklist.
-**Foundation 模块** (intro/basics, Tier 1): use Foundation column.
-**Core 模块** (main content, Tier 2): use Core column.
-**Enrichment 模块** (advanced/optional, Tier 3): use Enrichment column.
+
+**Foundation 模块 / Tier 1**: intro/basics.
+**Core 模块 / Tier 2**: main content.
+**Enrichment 模块 / Tier 3**: advanced/optional.
 
 | Requirement | Foundation | Core | Enrichment |
 |-------------|-----------|------|------------|
-| **Learning objectives** | 2-3 at Understand/Apply | 3-5 at Apply/Analyze | 2-3 at Analyze/Evaluate |
-| **Diagram** | [SHOULD] if structure complex; else table/examples OK | [MUST] if content involves流程/架构/层级/对比/依赖; else table/examples OK | [SHOULD] |
-| **大白话→术语→例子/代码→小结** | [MUST] | [MUST] | [MUST] |
-| **思考题 + 可保存练习** | [MUST] 1-2 questions | [MUST] 2-3 (1 recall + 1 apply/analyze) | [SHOULD] 1-2 |
-| **建议下一步** | [MUST] | [MUST] | [MUST] |
-| **Source citations** | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
-| **踩坑指南** | [MUST] ≥2 pitfalls | [MUST] ≥2 pitfalls | [SHOULD] |
-| **面试题/考试题** | [SHOULD] in 面试/考试 mode | [MUST] in 面试 mode | [SHOULD] |
-| **Analogy + decision criteria** | [MUST] | [MUST] | [SHOULD] |
-| **No AI writing traces** | [MUST] | [MUST] | [MUST] |
+| Learning objectives | 2-3 at Understand/Apply | 3-5 at Apply/Analyze | 2-3 at Analyze/Evaluate |
+| Language-specific chapter template | [MUST] | [MUST] | [MUST] |
+| Plain explanation -> precise term -> example/case/code -> recap | [MUST] | [MUST] | [MUST] |
+| Diagram or equivalent visual structure | [SHOULD] if structure is complex; else table/examples OK | [MUST] when content involves flow/architecture/hierarchy/contrast/dependency; else table/examples OK | [SHOULD] |
+| Interactive recall/transfer practice | [MUST] 1-2 learner-answerable questions; use `study-*` when answer should be saved or unlocked after submit | [MUST] 2-3 learner-answerable questions, including recall + transfer/analyze; use `study-*` for saved practice | [SHOULD] 1-2 learner-answerable questions |
+| Concrete continuation action | [SHOULD] only if it names a real action, variant, checkpoint, or next module bridge | [SHOULD] only if it names a real action, variant, checkpoint, or next module bridge | [OPTIONAL] |
+| Source citations | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
+| Inline authoritative links | [SHOULD] for APIs/core concepts | [MUST] for official API/library concepts and important primary sources | [SHOULD] |
+| Real pitfalls or misconceptions | [SHOULD] when source-backed or practice-backed; integrate near the relevant concept | [SHOULD] when source-backed or practice-backed; integrate near the relevant concept | [OPTIONAL] |
+| Interview/exam practice | [SHOULD] in interview/exam mode | [MUST] in interview mode | [SHOULD] |
+| Analogy or concrete mental model + decision criteria | [MUST] | [MUST] | [SHOULD] |
+| Learner-profile adaptation | [SHOULD] when profile has relevant facts | [MUST] when profile has relevant known languages, weak prereqs, or constraints | [SHOULD] |
+| Mode-specific depth coverage | [MUST] prose-size guard + structural coverage from Phase 0 | [MUST] prose-size guard + structural coverage from Phase 0 | [MUST] prose-size guard + structural coverage from Phase 0 |
+| No AI writing traces | [MUST] | [MUST] | [MUST] |
 
-**Diagram rules** (3-tier priority):
-1. Reuse existing quality images from research sources → `![](path)` + cite source
-2. Platform image gen for complex diagrams (>15 nodes, UI mockups, visual explanations) → `![](path)` + Mermaid source in `<details>`
-3. Mermaid code block (universal fallback)
+**Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
-**Quality gate protocol:** If any [MUST] item fails → fix and re-check. Max 2 retries. On 3rd failure, present with flagged warning.
+**Bloom keywords:** Understand = describe/explain/summarize. Apply = implement/solve/modify/use. Analyze = compare/analyze/distinguish/classify. Evaluate = assess/judge/justify.
 
-**Bloom keywords:** Understand = 描述 解释 总结. Apply = 实现 解决 修改 操作. Analyze = 对比 分析 区分 归类. Evaluate = 评估 判断 论证.
+**Max course size:** 30 lectures total. Split into a series if larger.
 
-**Max course size:** 30 讲 total. Split into series if larger.
-
-### Verification Rules
+## Verification Rules
 
 - Runnable code must actually run before claiming it works.
 - Non-runnable technical content must be checked against official docs/source and labeled as not executed.
-- General/academic claims need source cross-checks.
+- General or academic claims need source cross-checks.
 - Exam-prep content must align with the syllabus or provided materials.
+- Courseware structure must be checked against this file, `courseware-format.md`, and the selected language guide. Do not rely on a separate validation script as the primary quality mechanism.
 
-### Step 4: File Output (Incremental)
+## Step 4: File Output
 
-Course directory grows module by module. After each confirmed module, append
-its content to the course directory. Module 00 creates the root structure;
-subsequent modules add their files incrementally.
+Module 00 creates the root structure and course contract. After the user confirms Module 00, write all remaining module files in the same generation pass.
 
-```
+```text
 {learning_root}/courses/{course-slug}/
 ├── README.md              # Course overview (Module 00)
 ├── syllabus.md             # Full syllabus with learning objectives per module
 ├── 01-{module-name}/
-│   ├── content.md          # Module body
+│   └── content.md          # Module body
 ├── 02-{module-name}/
 │   └── content.md
-├── ...
-├── flashcards.csv          # Knowledge items for spaced repetition (appended incrementally)
-├── interview-qa.md         # Interview Q&A (面试冲刺 mode, appended incrementally)
-├── exam-practice.md        # Exam practice problems (考试备考 mode, appended incrementally)
-├── glossary.md             # 术语表 (appended incrementally)
-└── resources.md            # Further reading / reference links (appended incrementally)
+└── ...
 ```
 
-### Generation Rules
+Default course content must stay on the path that Phase 3 and the local viewer
+actually read. Do not create orphan side files such as `flashcards.csv`,
+`practice.md`, `interview-qa.md`, `exam-practice.md`, `glossary.md`, or
+`resources.md` by default. If an appendix/export is useful, create it only when:
 
-1. **Module 00 first, get confirmation, then generate all remaining modules in one pass.**
-   The outline IS the contract. No per-module confirmation.
-2. **Generate flashcards.csv** — 3-8 items per module as the course is generated
-3. **Generate interview-qa.md** only if 面试冲刺 mode
-4. **Generate exam-practice.md** only if 考试备考 mode — practice problems aligned with exam format
-5. **Generate glossary.md** as terminology is introduced
-6. **Do NOT create separate exercises/solution.md by default.** Put learner-facing
-   questions inside `content.md`. Use `study-*` blocks only for questions that
-   should be captured by the local player.
-7. **Generate or update `domain-tree.json`** when `meta.json.skill_tree_enabled=true`.
-   Its nodes should mirror the confirmed syllabus. RPG fields are included by default
-   when `meta.json.rpg_enabled=true`.
-8. **Depth per mode:** See `phase-0-anchoring.md` Q1 for per-mode word count and exercise count.
-   Code examples and diagrams are NOT constrained by mode — include them whenever they
-   aid understanding. Only word count and exercise density vary by mode.
+- the user explicitly asks for that export, such as an Anki deck or a printable
+  formula sheet; or
+- the file has a concrete runtime consumer and is linked from `README.md`,
+  `syllabus.md`, or a module `content.md`.
 
-### Interactive Practice Blocks
+## Generation Rules
 
-Use plain learner-facing headings and explanation first. Add a `study-*` fenced
-block immediately after a question only when the answer should be saved by the
-local player. These blocks should not contain design notes.
+1. **Module 00 first, confirmation second, remaining modules third.** If the user has explicitly waived later confirmations, use the confirmed route as the contract and continue.
+2. Put learner-facing questions inside `content.md`; use `study-*` blocks for questions that should be saved or should reveal reference content only after the learner submits.
+3. Do not generate `flashcards.csv` by default. Spaced review items live in `concepts.json` and are added during Phase 3 only after the learner has actually encountered the concept.
+4. Do not generate `glossary.md` by default. Explain terms when first introduced; if a module has many terms, add a short module-local "术语速查" / "Term check" section inside that module's `content.md`.
+5. Do not generate `interview-qa.md` or `exam-practice.md` by default. In interview/exam modes, put questions, prompts, scoring points, follow-ups, and worked solutions into the relevant module as `study-transfer` or `study-checkpoint`.
+6. Do not generate `resources.md` by default. Put concept-level links beside the relevant explanation and course-level source lists in Module 00 or `syllabus.md`. Create a separate resource appendix only on explicit request or when it is linked and consumed.
+7. Generate or update `domain-tree.json` when `meta.json.skill_tree_enabled=true`. Nodes must mirror the confirmed syllabus. RPG fields are included by default when `meta.json.rpg_enabled=true`.
+8. Depth per mode comes from `phase-0-anchoring.md` Q1 and persists in `params.json.depth_chars_per_module`. Use it together with the selected mode's structural coverage and split rules. Code examples and diagrams are not constrained by prose length; include them whenever they help understanding.
+9. Before offering to start Module 01, self-check every generated file against the mandatory template, quality gate, and `courseware-format.md`.
 
-Priority:
+## Ownership Map
 
-1. `study-recall` — quick retrieval after one concept.
-2. `study-transfer` — applying the concept in a new scenario; prefer this for
-   core modules.
-3. `study-feynman` — user explains an important concept in their own words.
-4. `study-checkpoint` — module-level evidence bundle. Use once near the end of
-   a module, not after every small section.
-
-Minimum pattern:
-
-````markdown
-### 小练习：{用户能看懂的题目名}
-
-{一句话说明要做什么。}
-
-```study-recall
-id: 01-topic-recall-1
-question: {题目}
-answer: {参考答案或参考思路}
-```
-````
-
-Supported block shapes:
-
-````markdown
-```study-recall
-id: 01-loss-recall
-question: 损失函数在训练里负责什么？
-answer: 它把模型输出和目标答案之间的差距变成一个可优化的数值。
-```
-
-```study-transfer
-id: 01-loss-transfer
-question: 如果验证集损失上升、训练集损失下降，你会怀疑什么？
-hints:
-  - 对比训练集和验证集代表什么
-  - 想想模型是不是只记住了训练数据
-answer: 优先怀疑过拟合，需要检查正则化、数据量、训练轮数或模型容量。
-```
-
-```study-feynman
-id: 01-gradient-feynman
-concept: 梯度下降
-prompt: 用自己的话解释为什么梯度能告诉模型往哪里改参数
-key_points: 损失函数、斜率、更新方向、学习率
-```
-
-```study-checkpoint
-module: 01-training-basics
-items:
-  - type: recall
-    ref: 01-loss-recall
-  - type: transfer
-    ref: 01-loss-transfer
-  - type: feynman
-    ref: 01-gradient-feynman
-min_pass: 2
-```
-````
-
-Rules:
-
-- `id` must be stable and unique inside the course, using lowercase letters,
-  numbers, and hyphens.
-- Keep `question` and `answer` understandable to the learner.
-- For `study-transfer`, include 1-3 `hints`.
-- For `study-feynman`, use `concept`, optional `prompt`, and optional
-  `key_points`.
-- For `study-checkpoint`, list refs to earlier `study-*` block ids and set
-  `min_pass`.
-- Do not store correctness, pass/fail, XP, or mastery state in course files.
-- Blocks are optional. If a question is only for reading or discussion, write it
-  as normal Markdown instead of adding a block.
+| Concern | Source of truth |
+| --- | --- |
+| Module 00, syllabus, course files, quality gate, course-size guard | this file |
+| Shared Markdown, diagram, image, code, and `study-*` courseware rules | `courseware-format.md` |
+| Chinese explanation style and Chinese chapter template | `chinese-tutorial-guide.md` |
+| English explanation style and English chapter template | `english-tutorial-guide.md` |
+| Exact viewer startup, supported runtime syntax, session file behavior | `learning-viewer.md` |
+| Live teaching and mastery decision | `phase-3-learning.md` |
+| Review scheduling and due-item checks | `phase-4-consolidation.md` + `fsrs-scheduler.md` |

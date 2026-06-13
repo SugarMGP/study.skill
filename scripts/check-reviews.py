@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SessionStart hook: compute overdue reviews using FSRS.
+"""Compute overdue reviews using the simplified FSRS formula.
 
 Usage:
   python3 check-reviews.py [profile_dir]
@@ -25,6 +25,7 @@ sys.stderr.reconfigure(encoding="utf-8")
 # FSRS v4 default parameters
 DECAY = -0.1542
 FACTOR = 0.9 ** (1 / DECAY) - 1  # ≈ 0.98
+VALID_MODES = {"speedrun", "system", "interview", "exam"}
 
 
 def compute_r(days_since_review: float, stability: float) -> float:
@@ -45,6 +46,29 @@ def parse_date(date_str: str) -> datetime:
 def load_json(path: str) -> dict:
     with open(path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
+
+
+def review_params(params: dict) -> tuple[float, float]:
+    """Return review parameters, defaulting only absent legacy fields."""
+    mode = params.get("mode", "system")
+    if not isinstance(mode, str) or mode not in VALID_MODES:
+        allowed = ", ".join(sorted(VALID_MODES))
+        raise ValueError(f"params.json field mode must be one of: {allowed}")
+    default_retention = 0.85 if mode == "speedrun" else 0.90
+
+    target_retention = params.get("target_retention", default_retention)
+    spacing_factor = params.get("spacing_factor", 1.0)
+
+    if isinstance(target_retention, bool) or not isinstance(target_retention, (int, float)):
+        raise ValueError("params.json field target_retention must be a number")
+    if isinstance(spacing_factor, bool) or not isinstance(spacing_factor, (int, float)):
+        raise ValueError("params.json field spacing_factor must be a number")
+    if not 0.70 <= target_retention <= 0.98:
+        raise ValueError("params.json field target_retention must be between 0.70 and 0.98")
+    if not 0.3 <= spacing_factor <= 3.0:
+        raise ValueError("params.json field spacing_factor must be between 0.3 and 3.0")
+
+    return float(target_retention), float(spacing_factor)
 
 
 def main():
@@ -80,8 +104,7 @@ def main():
         # Load params.json for target_retention and spacing_factor
         params_path = os.path.join(course_dir, "params.json")
         params = load_json(params_path)
-        target_retention = params["target_retention"]
-        spacing_factor = params["spacing_factor"]
+        target_retention, spacing_factor = review_params(params)
 
         # Load concepts.json
         concepts_path = os.path.join(course_dir, "concepts.json")

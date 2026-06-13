@@ -11,6 +11,7 @@ This enables independent review schedules and multi-course concurrent learning.
 
 ```json
 {
+  "schema_version": 3,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09",
   "concepts": [
@@ -106,19 +107,19 @@ next_review = today + S' days
 
 ## Review Session Protocol
 
-1. On session start, prefer `check-reviews.py` to read all active/completed courses and compute overdue items
-2. If running manually: for each concept, compute R and flag if R < target_retention
+1. At the first formal learning session of each day, run `check-reviews.py` to read all active/completed courses and compute overdue items.
+2. If `check-reviews.py` is missing, stop and repair the learning profile before continuing. Do not hand-compute due reviews as a normal fallback.
 3. Present grouped by course: "React Hooks: 3 待复习 | Go并发: 2 待复习"
 4. User picks a course (or "都过一遍")
 5. Present in batches of 5-7
-6. After each rating: prefer `record-review.py`; otherwise update D, S, next_review and write back to concepts.json with `write-state.py`
+6. After each rating: run `record-review.py`; if it is missing, stop and repair the learning profile. Do not hand-write review updates.
 7. Items with lapses >= 3 and R < 0.7: set `status: "needs_relearning"`
 
 ## Interleaving Strategy
 
-Session start must check due reviews, but review does not own the session by
-default. Present due items as a one-line option; continue the main lesson unless
-the user chooses review.
+The first formal learning session of the day must check due reviews, but review
+does not own the session by default. Present due items as a one-line option;
+continue the main lesson unless the user chooses review.
 
 When the user chooses quick review, default to 2-5 minutes or 1-3 items before
 returning to the main lesson. Expand only when the user explicitly asks for a
@@ -136,5 +137,5 @@ since first exposure are added. New items get `next_review` ≥ tomorrow.
 
 - Do NOT schedule reviews in the same session as first learning
 - Do NOT present more than 7 review items at once
-- Do NOT skip review — present the option, let user decide
+- Do NOT skip the daily session-start review check — present the option, let user decide
 - Do NOT delete concepts — set status to "needs_relearning" instead

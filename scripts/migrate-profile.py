@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate old study.skill learning state to schema_version 2.
+"""Migrate old study.skill learning state to schema_version 3.
 
 Usage:
   python scripts/migrate-profile.py [profile_dir]
@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
@@ -49,13 +49,14 @@ def verify_migration(courses_dir: Path, slugs: set[str]) -> None:
 
 def default_preferences(existing=None) -> dict:
     existing = existing or {}
-    preferences = dict(existing)
+    preferences = {
+        k: v for k, v in existing.items()
+        if k not in {"automation_declined", "automation_declined_at"}
+    }
     preferences.setdefault("native_language", "zh")
     preferences.setdefault("daily_time_budget_minutes", 30)
     preferences.setdefault("feedback_style", "normal")
     preferences.setdefault("correction_mode", "inline")
-    preferences.setdefault("automation_declined", False)
-    preferences.setdefault("automation_declined_at", None)
     return preferences
 
 
@@ -115,6 +116,22 @@ def delete_old_files(*paths: Path) -> None:
             print(f"Deleted old file: {path.name}")
 
 
+def validate_review_items(review_items: list[dict]) -> None:
+    required = ("course_slug", "id", "concept")
+    missing = []
+    for item in review_items:
+        item_name = item.get("id") or item.get("concept") or "<unknown>"
+        for field in required:
+            if field not in item:
+                missing.append(f"{item_name}.{field}")
+    if missing:
+        names = ", ".join(missing[:8])
+        raise ValueError(
+            "old review items are missing required fields; cannot safely migrate: "
+            f"{names}"
+        )
+
+
 def mode_from_scope(scope: str) -> str:
     if "速成" in scope:
         return "speedrun"
@@ -128,29 +145,29 @@ def mode_from_scope(scope: str) -> str:
 def mode_defaults(mode: str) -> dict:
     return {
         "speedrun": {
-            "depth_chars_per_module": 1200,
+            "depth_chars_per_module": 2400,
             "exercises_per_module": 2,
             "target_retention": 0.85,
             "auto_advance": True,
             "require_mastery_before_advance": False,
         },
         "interview": {
-            "depth_chars_per_module": 1000,
-            "exercises_per_module": 1,
+            "depth_chars_per_module": 2600,
+            "exercises_per_module": 3,
             "target_retention": 0.90,
             "auto_advance": True,
             "require_mastery_before_advance": False,
         },
         "exam": {
-            "depth_chars_per_module": 1500,
-            "exercises_per_module": 4,
+            "depth_chars_per_module": 4000,
+            "exercises_per_module": 5,
             "target_retention": 0.90,
             "auto_advance": False,
             "require_mastery_before_advance": True,
         },
         "system": {
-            "depth_chars_per_module": 3500,
-            "exercises_per_module": 4,
+            "depth_chars_per_module": 6000,
+            "exercises_per_module": 5,
             "target_retention": 0.90,
             "auto_advance": False,
             "require_mastery_before_advance": True,
@@ -224,6 +241,7 @@ def migrate(profile_dir: Path) -> int:
 
     active_courses = progress.get("active_courses", {})
     review_items = review.get("items", [])
+    validate_review_items(review_items)
     slugs = set(active_courses)
     slugs.update(item["course_slug"] for item in review_items)
 

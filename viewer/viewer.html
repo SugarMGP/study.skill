@@ -59,8 +59,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .content .markdown-body ul, .content .markdown-body ol { padding-left: 24px; margin: 8px 0; }
 .content .markdown-body li { margin: 4px 0; }
 .content .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
-.mermaid-container { margin: 16px 0; text-align: center; }
-.mermaid-container svg { max-width: 100%; }
+.diagram-container { margin: 16px 0; text-align: center; overflow-x: auto; }
+.diagram-container svg { max-width: 100%; height: auto; }
 .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--border); border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; color: var(--text-secondary); opacity: 0; transition: opacity 0.2s; }
 pre:hover .copy-btn { opacity: 1; }
 .right-panel { width: 300px; min-width: 300px; background: var(--bg-sidebar); border-left: 1px solid var(--border); overflow-y: auto; padding: 12px; flex-shrink: 0; }
@@ -124,7 +124,7 @@ pre:hover .copy-btn { opacity: 1; }
     </div>
     <div class="divider"></div>
     <div class="panel-section">
-      <div class="panel-title">⏰ 待复习</div>
+      <div class="panel-title">⏰ 本课程待复习</div>
       <div id="review-panel"><div class="loading">加载中...</div></div>
     </div>
     <div class="divider"></div>
@@ -154,6 +154,10 @@ pre:hover .copy-btn { opacity: 1; }
   let TOKEN = "";
   let SESSION_STARTED_AT = new Date().toISOString();
   let isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const DIAGRAM_LANGS = new Set([
+    "plantuml", "puml", "graphviz", "dot", "d2", "vega-lite", "vegalite",
+    "vega", "svgbob", "pikchr", "structurizr"
+  ]);
 
   function init() {
     const hash = window.location.hash;
@@ -211,8 +215,22 @@ pre:hover .copy-btn { opacity: 1; }
     return d.innerHTML;
   }
 
-  function escapeAttrJsString(s) {
-    return escapeHtml(JSON.stringify(String(s)));
+  function escapeAttr(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function escapeJsArgAttr(s) {
+    return escapeAttr(JSON.stringify(String(s)));
+  }
+
+  function ratingLabel(rating) {
+    const labels = { 1: "忘了", 2: "记得一点", 3: "记得大部分", 4: "轻松想起" };
+    return labels[rating] || String(rating);
   }
 
   function renderAll() {
@@ -264,7 +282,7 @@ pre:hover .copy-btn { opacity: 1; }
       const status = isDone ? "✅" : (isActive ? "▸" : " ");
       const cls = isActive ? "nav-item active" : "nav-item";
       const label = mod.name.replace(/^\d{2}-/, "").replace(/-/g, " ");
-      html += '<div class="' + cls + '" onclick="switchModule(\'' + mod.id + '\')">' +
+      html += '<div class="' + cls + '" onclick="switchModule(' + escapeJsArgAttr(mod.id) + ')">' +
         '<span class="status">' + status + "</span> " + escapeHtml(label) + "</div>";
     }
     el.innerHTML = html;
@@ -284,7 +302,7 @@ pre:hover .copy-btn { opacity: 1; }
       const cls = status === "available" ? "tree-node available" : "tree-node";
       const progress = node.progress != null ? " (" + node.progress + "%)" : "";
       const name = (node.name || id).replace(/^\d{2}-/, "").replace(/-/g, " ");
-      html += '<div class="' + cls + '" title="' + escapeHtml(id) + '">' +
+      html += '<div class="' + cls + '" title="' + escapeAttr(id) + '">' +
         icon + " " + escapeHtml(name) + progress + "</div>";
     }
     el.innerHTML = html;
@@ -301,8 +319,8 @@ pre:hover .copy-btn { opacity: 1; }
     for (const part of parts) {
       if (part.type === "markdown") {
         html += renderMarkdown(part.content);
-      } else if (part.type === "mermaid") {
-        html += renderMermaidBlock(part.content);
+      } else if (part.type === "diagram") {
+        html += renderDiagramBlock(part.lang, part.content);
       } else if (part.type === "study") {
         html += renderStudyBlock(part.lang, part.content);
       }
@@ -313,21 +331,23 @@ pre:hover .copy-btn { opacity: 1; }
 
   function splitStudyBlocks(md) {
     const parts = [];
-    const regex = /```(mermaid|study-\w+)\s*\n([\s\S]*?)```/g;
+    const regex = /```([A-Za-z0-9_-]+)\s*\n([\s\S]*?)```/g;
     let last = 0;
     let match;
     while ((match = regex.exec(md)) !== null) {
-      if (match.index > last) {
-        parts.push({ type: "markdown", content: md.slice(last, match.index) });
-      }
-      const lang = match[1];
+      const lang = match[1].toLowerCase();
       const content = match[2];
-      if (lang === "mermaid") {
-        parts.push({ type: "mermaid", content: content.trim() });
-      } else {
-        parts.push({ type: "study", lang: lang, content: content.trim() });
+      if (lang === "mermaid" || DIAGRAM_LANGS.has(lang) || lang.startsWith("study-")) {
+        if (match.index > last) {
+          parts.push({ type: "markdown", content: md.slice(last, match.index) });
+        }
+        if (lang === "mermaid" || DIAGRAM_LANGS.has(lang)) {
+          parts.push({ type: "diagram", lang: lang, content: content.trim() });
+        } else {
+          parts.push({ type: "study", lang: lang, content: content.trim() });
+        }
+        last = match.index + match[0].length;
       }
-      last = match.index + match[0].length;
     }
     if (last < md.length) {
       parts.push({ type: "markdown", content: md.slice(last) });
@@ -340,9 +360,9 @@ pre:hover .copy-btn { opacity: 1; }
     return DOMPurify.sanitize(raw, { ADD_TAGS: ["svg", "path", "g", "circle", "line", "polyline", "polygon", "rect", "text", "tspan"], ADD_ATTR: ["viewBox", "d", "fill", "stroke", "transform"] });
   }
 
-  function renderMermaidBlock(code) {
-    const id = "mermaid-" + Math.random().toString(36).slice(2, 10);
-    return '<div class="mermaid-container" data-mermaid-id="' + id + '" data-mermaid-code="' + escapeHtml(code) + '"><div class="loading">渲染图表...</div></div>';
+  function renderDiagramBlock(lang, code) {
+    const id = "diagram-" + Math.random().toString(36).slice(2, 10);
+    return '<div class="diagram-container" data-diagram-id="' + escapeAttr(id) + '" data-diagram-lang="' + escapeAttr(lang) + '" data-diagram-code="' + escapeAttr(code) + '"><div class="loading">渲染图表...</div></div>';
   }
 
   function renderStudyBlock(lang, yamlContent) {
@@ -363,16 +383,16 @@ pre:hover .copy-btn { opacity: 1; }
   function renderRecall(data) {
     if (!data.question) return '<div class="error-box">这道回忆题缺少题目</div>';
     const id = data.id || ("recall-" + Math.random().toString(36).slice(2, 8));
-    const escapedId = escapeHtml(id);
+    const escapedId = escapeAttr(id);
     return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="recall" ' +
-      'data-study-question="' + escapeHtml(data.question) + '" data-study-answer="' + escapeHtml(data.answer || "") + '" ' +
+      'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(data.answer || "") + '" ' +
       'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border-left:4px solid var(--accent)">' +
       '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">📝 回忆题</div>' +
       '<div style="font-weight:600;margin-bottom:12px">' + escapeHtml(data.question) + "</div>" +
       '<div class="study-actions">' +
       '<textarea class="exercise-answer" placeholder="先写下你的答案..." style="width:100%;min-height:72px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px;resize:vertical;margin-bottom:8px"></textarea>' +
-      '<button onclick="saveExerciseAnswer(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent);margin-right:8px">保存作答</button>' +
-      '<button onclick="toggleAnswer(this)" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text)">显示答案</button>' +
+      '<button class="save-answer-btn" onclick="saveExerciseAnswer(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent);margin-right:8px">提交作答</button>' +
+      '<button class="show-answer-btn" disabled onclick="toggleAnswer(this)" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-secondary);cursor:default;font-size:13px;color:var(--text-secondary)">提交后查看参考答案</button>' +
       '<div class="answer" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border-radius:6px">' +
       (data.answer ? escapeHtml(data.answer) : "无参考答案") + "</div>" +
       '<div class="assess-result" style="display:none;margin-top:8px;font-size:13px"></div>' +
@@ -382,7 +402,7 @@ pre:hover .copy-btn { opacity: 1; }
   function renderTransfer(data) {
     if (!data.question) return '<div class="error-box">这道迁移题缺少题目</div>';
     const id = data.id || ("transfer-" + Math.random().toString(36).slice(2, 8));
-    const escapedId = escapeHtml(id);
+    const escapedId = escapeAttr(id);
     let hintsHtml = "";
     if (data.hints && data.hints.length) {
       hintsHtml = '<div style="margin-top:8px">';
@@ -396,15 +416,15 @@ pre:hover .copy-btn { opacity: 1; }
       hintsHtml += "</div></div>";
     }
     return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="transfer" ' +
-      'data-study-question="' + escapeHtml(data.question) + '" data-study-answer="' + escapeHtml(data.answer || "") + '" ' +
+      'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(data.answer || "") + '" ' +
       'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border-left:4px solid var(--warning)">' +
       '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">🔄 迁移题</div>' +
       '<div style="font-weight:600;margin-bottom:12px">' + escapeHtml(data.question) + "</div>" +
       hintsHtml +
       '<div class="study-actions">' +
       '<textarea class="exercise-answer" placeholder="先写下你的答案..." style="width:100%;min-height:88px;padding:8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:13px;resize:vertical;margin-top:8px;margin-bottom:8px"></textarea>' +
-      '<button onclick="saveExerciseAnswer(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent);margin-right:8px">保存作答</button>' +
-      '<button onclick="toggleAnswer(this)" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text);margin-top:8px">显示答案</button>' +
+      '<button class="save-answer-btn" onclick="saveExerciseAnswer(this.closest(\'.study-block\'))" style="padding:6px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--accent);margin-right:8px">提交作答</button>' +
+      '<button class="show-answer-btn" disabled onclick="toggleAnswer(this)" style="padding:6px 12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-secondary);cursor:default;font-size:13px;color:var(--text-secondary);margin-top:8px">提交后查看参考答案</button>' +
       '<div class="answer" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border-radius:6px">' +
       (data.answer ? escapeHtml(data.answer) : "无参考答案") + "</div>" +
       '<div class="assess-result" style="display:none;margin-top:8px;font-size:13px"></div>' +
@@ -414,14 +434,14 @@ pre:hover .copy-btn { opacity: 1; }
   function renderFeynman(data) {
     if (!data.concept) return '<div class="error-box">这道解释题缺少概念</div>';
     const id = data.id || ("feynman-" + Math.random().toString(36).slice(2, 8));
-    const escapedId = escapeHtml(id);
+    const escapedId = escapeAttr(id);
     let kpHtml = "";
     if (data.key_points) {
       kpHtml = '<div style="margin-top:8px"><button onclick="toggleNext(this)" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--text)">参考要点</button>' +
         '<div style="display:none;margin-top:8px;padding:8px;background:var(--bg);border-radius:4px;font-size:13px">📌 ' + escapeHtml(data.key_points) + "</div></div>";
     }
     return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="feynman" ' +
-      'data-study-concept="' + escapeHtml(data.concept) + '" ' +
+      'data-study-concept="' + escapeAttr(data.concept) + '" ' +
       'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border-left:4px solid var(--success)">' +
       '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">🧠 费曼解释</div>' +
       '<div style="font-weight:600;margin-bottom:4px">' + escapeHtml(data.concept) + "</div>" +
@@ -438,7 +458,7 @@ pre:hover .copy-btn { opacity: 1; }
   function renderCheckpoint(data) {
     if (!data.items || !data.items.length) return '<div class="error-box">这组检查题还没有配置检查项</div>';
     const id = data.module || ("checkpoint-" + Math.random().toString(36).slice(2, 8));
-    const escapedId = escapeHtml(id);
+    const escapedId = escapeAttr(id);
     let itemsHtml = "";
     for (const item of data.items) {
       const icon = item.type === "recall" ? "📝" : item.type === "transfer" ? "🔄" : item.type === "feynman" ? "🧠" : "📋";
@@ -447,7 +467,7 @@ pre:hover .copy-btn { opacity: 1; }
     const gate = data.gate ? ' · 门控: ' + escapeHtml(data.gate) : "";
     const minPass = data.min_pass || data.items.length;
     return '<div class="study-block" data-study-id="' + escapedId + '" data-study-type="checkpoint" ' +
-      'data-study-min-pass="' + minPass + '" data-study-total="' + data.items.length + '" ' +
+      'data-study-min-pass="' + escapeAttr(minPass) + '" data-study-total="' + escapeAttr(data.items.length) + '" ' +
       'style="background:var(--accent-light);border-radius:8px;padding:16px;margin:16px 0;border:2px solid var(--accent)">' +
       '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">✅ 模块检查</div>' +
       '<div style="font-weight:600;margin-bottom:8px">通过条件: ' + minPass + "/" + data.items.length + gate + "</div>" +
@@ -460,15 +480,20 @@ pre:hover .copy-btn { opacity: 1; }
   }
 
   async function postProcessContent(el) {
-    const mermaidContainers = el.querySelectorAll(".mermaid-container");
-    for (const container of mermaidContainers) {
-      const code = container.getAttribute("data-mermaid-code");
+    const diagramContainers = el.querySelectorAll(".diagram-container");
+    for (const container of diagramContainers) {
+      const code = container.getAttribute("data-diagram-code");
+      const lang = container.getAttribute("data-diagram-lang");
       try {
-        const id = container.getAttribute("data-mermaid-id");
-        const { svg } = await mermaid.render(id, code);
-        container.innerHTML = svg;
+        if (lang === "mermaid") {
+          const id = container.getAttribute("data-diagram-id");
+          const { svg } = await mermaid.render(id, code);
+          container.innerHTML = svg;
+        } else {
+          await renderRemoteDiagram(container, lang, code);
+        }
       } catch(e) {
-        container.innerHTML = '<div class="error-box">Mermaid 渲染失败: ' + escapeHtml(e.message) + "</div>";
+        container.innerHTML = '<div class="error-box">图表渲染失败: ' + escapeHtml(e.message) + "</div>";
       }
     }
     el.querySelectorAll("pre code").forEach(block => {
@@ -504,8 +529,42 @@ pre:hover .copy-btn { opacity: 1; }
           link.style.color = "var(--text-secondary)";
           img.replaceWith(link);
         };
+      } else if (src && !src.startsWith("/") && !src.startsWith("data:")) {
+        img.setAttribute("src", resolveCourseAsset(src));
       }
     });
+  }
+
+  async function renderRemoteDiagram(container, lang, code) {
+    const resp = await fetch("/api/render-diagram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Session-Token": TOKEN },
+      body: JSON.stringify({ type: lang, source: code })
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.error || "remote diagram render failed");
+    }
+    container.innerHTML = DOMPurify.sanitize(data.svg, {
+      ADD_TAGS: ["svg", "path", "g", "circle", "ellipse", "line", "polyline", "polygon", "rect", "text", "tspan", "defs", "marker", "style", "title"],
+      ADD_ATTR: ["viewBox", "d", "fill", "stroke", "transform", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "width", "height", "points", "font-size", "font-family", "text-anchor", "marker-end", "class", "style"]
+    });
+  }
+
+  function resolveCourseAsset(src) {
+    const file = STATE.current_content_file || "";
+    const baseParts = file ? file.split("/") : [STATE.course_slug || ""];
+    if (file) baseParts.pop();
+    const parts = [];
+    for (const part of baseParts.concat(src.split("/"))) {
+      if (!part || part === ".") continue;
+      if (part === "..") {
+        if (parts.length > 1) parts.pop();
+      } else {
+        parts.push(part);
+      }
+    }
+    return "/file/" + parts.map(encodeURIComponent).join("/");
   }
 
   function renderMathInElement(el) {
@@ -576,26 +635,28 @@ pre:hover .copy-btn { opacity: 1; }
       return;
     }
     if (due.total === 0) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary)">暂无待复习项</div>';
+      el.innerHTML = '<div style="font-size:12px;color:var(--text-secondary)">当前课程暂无待复习项</div>';
       return;
     }
-    let html = '<div style="font-size:13px;color:var(--warning);margin-bottom:8px">' + due.total + ' 个知识点需要复习</div>';
+    let html = '<div style="font-size:13px;color:var(--warning);margin-bottom:4px">' + due.total + ' 个知识点需要复习</div>' +
+      '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">先回想，再按真实感觉记录。</div>';
     for (const course of due.courses) {
       for (const item of course.items || []) {
         const rated = REVIEW_RATED.find(r => r.concept_id === item.id);
         if (rated) {
-          const labels = { 1: "完全忘了", 2: "记得一点", 3: "记得大部分", 4: "轻松想起" };
           html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">' +
             '<div style="font-weight:600">' + escapeHtml(item.name) + '</div>' +
-            '<div style="color:var(--success);font-size:12px">✅ 已评: ' + labels[rated.rating] + '</div></div>';
+            '<div style="color:var(--success);font-size:12px">✅ 已记录：' + escapeHtml(ratingLabel(rated.rating)) +
+            (rated.next_review ? ' · 下次 ' + escapeHtml(rated.next_review) : "") + '</div></div>';
         } else {
-          html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px" id="review-' + escapeHtml(item.id) + '">' +
+          html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px" id="review-' + escapeAttr(item.id) + '">' +
             '<div style="font-weight:600;margin-bottom:6px">' + escapeHtml(item.name) + '</div>' +
+            (item.retrievability != null ? '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">当前记忆强度约 ' + Math.round(item.retrievability * 100) + '%</div>' : "") +
             '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
-            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">1⃣ 忘了</button>' +
-            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',2)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">2⃣ 一点</button>' +
-            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',3)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">3⃣ 大部分</button>' +
-            '<button onclick="rateReview(' + escapeAttrJsString(item.id) + ',4)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px">4⃣ 轻松</button>' +
+            '<button data-rating="1" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',1)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px;color:var(--text)">忘了</button>' +
+            '<button data-rating="2" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',2)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px;color:var(--text)">一点</button>' +
+            '<button data-rating="3" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',3)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px;color:var(--text)">大部分</button>' +
+            '<button data-rating="4" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',4)" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;font-size:11px;color:var(--text)">轻松</button>' +
             '</div>' +
             '<div class="review-feedback" style="display:none;margin-top:4px;font-size:12px"></div></div>';
         }
@@ -619,13 +680,26 @@ pre:hover .copy-btn { opacity: 1; }
     status.textContent = "当前是浏览模式，不会写入本次学习记录";
   }
 
-  window.rateReview = async function(conceptId, rating) {
+  window.rateReview = async function(button, conceptId, rating) {
     const container = document.getElementById("review-" + conceptId);
     if (!container) return;
     const feedback = container.querySelector(".review-feedback");
+    const buttons = container.querySelectorAll("button[data-rating]");
+    const oldText = button ? button.textContent : "";
+    buttons.forEach(b => {
+      b.disabled = true;
+      b.style.opacity = "0.55";
+      b.style.cursor = "default";
+    });
+    if (button) {
+      button.textContent = "保存中";
+      button.style.borderColor = "var(--accent)";
+      button.style.color = "var(--accent)";
+      button.style.opacity = "1";
+    }
     feedback.style.display = "block";
     feedback.style.color = "var(--text-secondary)";
-    feedback.textContent = "记录中...";
+    feedback.textContent = "正在记录：" + ratingLabel(rating);
     try {
       const resp = await fetch("/api/review-rating", {
         method: "POST",
@@ -634,17 +708,34 @@ pre:hover .copy-btn { opacity: 1; }
       });
       const data = await resp.json();
       if (resp.ok && data.ok) {
-        REVIEW_RATED.push({ concept_id: conceptId, rating: rating });
+        const concept = data.concept || {};
+        REVIEW_RATED.push({
+          concept_id: conceptId,
+          rating: rating,
+          next_review: concept.next_review || ""
+        });
         feedback.style.color = "var(--success)";
-        feedback.textContent = "✅ 已记录";
-        setTimeout(() => renderReviewPanel(), 500);
+        feedback.textContent = "✅ 已记录：" + ratingLabel(rating) + (concept.next_review ? "，下次 " + concept.next_review : "");
+        setTimeout(() => renderReviewPanel(), 900);
       } else {
         feedback.style.color = "var(--danger)";
         feedback.textContent = "❌ " + (data.error || "记录失败");
+        buttons.forEach(b => {
+          b.disabled = false;
+          b.style.opacity = "1";
+          b.style.cursor = "pointer";
+        });
+        if (button) button.textContent = oldText;
       }
     } catch(e) {
       feedback.style.color = "var(--danger)";
       feedback.textContent = "❌ 网络错误: " + e.message;
+      buttons.forEach(b => {
+        b.disabled = false;
+        b.style.opacity = "1";
+        b.style.cursor = "pointer";
+      });
+      if (button) button.textContent = oldText;
     }
   };
 
@@ -704,14 +795,16 @@ pre:hover .copy-btn { opacity: 1; }
   }
 
   window.toggleAnswer = function(btn) {
+    const block = btn.closest(".study-block");
+    if (!block || block.getAttribute("data-answer-unlocked") !== "true") return;
     const actions = btn.closest(".study-actions") || btn.parentElement;
     const answer = actions.querySelector(".answer");
     if (answer.style.display === "none") {
       answer.style.display = "block";
-      btn.textContent = "隐藏答案";
+      btn.textContent = "隐藏参考答案";
     } else {
       answer.style.display = "none";
-      btn.textContent = "显示答案";
+      btn.textContent = "查看参考答案";
     }
   };
 
@@ -738,9 +831,28 @@ pre:hover .copy-btn { opacity: 1; }
       reference_answer: answer,
       time_spent_seconds: 0
     });
+    block.setAttribute("data-answer-unlocked", "true");
+    if (textarea) textarea.disabled = true;
+    const saveBtn = block.querySelector(".save-answer-btn");
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "已提交";
+      saveBtn.style.opacity = "0.6";
+      saveBtn.style.cursor = "default";
+    }
+    const answerBtn = block.querySelector(".show-answer-btn");
+    const answerBox = block.querySelector(".answer");
+    if (answerBtn) {
+      answerBtn.disabled = false;
+      answerBtn.textContent = "隐藏参考答案";
+      answerBtn.style.background = "var(--bg)";
+      answerBtn.style.color = "var(--text)";
+      answerBtn.style.cursor = "pointer";
+    }
+    if (answerBox) answerBox.style.display = "block";
     result.style.display = "block";
     result.style.color = "var(--success)";
-    result.textContent = "已保存，稍后统一反馈";
+    result.textContent = "已提交，参考答案已解锁；稍后统一反馈";
   };
 
   window.saveFeynmanExplanation = function(block) {

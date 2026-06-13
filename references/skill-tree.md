@@ -368,7 +368,7 @@ When tree has multiple paths, offer Build options:
 📚 精进路线：llm-basics → prompt-eng(深入) → framework → rag-adv
    ⏱ 适合想深入原理、做复杂系统的
 
-🎯 面试路线：llm-basics → prompt-eng → framework(原理重点) + 面试题库
+🎯 面试路线：llm-basics → prompt-eng → framework(原理重点) + 模块内面试追问
    ⏱ 每个模块都附带面试追问和手写题
 ```
 
@@ -380,7 +380,7 @@ The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tr
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,

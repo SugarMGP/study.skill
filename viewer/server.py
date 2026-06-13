@@ -6,7 +6,7 @@ Usage:
 
 Modes:
   interactive - Allows review ratings and session file writing.
-                Requires check-reviews.py and record-review.py in scripts/.
+                Requires bundled check-reviews.py and record-review.py.
   read-only   - Only serves course content. Does not require record-review.py.
                 Does not expose /api/review-rating or /api/session-result.
 """
@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import unquote, urlparse, parse_qs
+from urllib.request import Request, urlopen
 
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -35,9 +36,24 @@ COURSE_SLUG = None
 COURSE_DIR = None
 PROFILE_DIR = None
 VIEWER_HTML_PATH = None
+SKILL_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "scripts"
 INITIAL_STATE = None
 SERVER_MODE = "interactive"
 SESSIONS_DIR = None
+KROKI_ENDPOINT = "https://kroki.io"
+KROKI_TYPES = {
+    "plantuml": "plantuml",
+    "puml": "plantuml",
+    "graphviz": "graphviz",
+    "dot": "graphviz",
+    "d2": "d2",
+    "vega-lite": "vegalite",
+    "vegalite": "vegalite",
+    "vega": "vega",
+    "svgbob": "svgbob",
+    "pikchr": "pikchr",
+    "structurizr": "structurizr",
+}
 
 
 def validate_slug(slug: str) -> bool:
@@ -71,11 +87,13 @@ def validate_scripts(profile_dir: Path, mode: str) -> list:
     """Check that required scripts exist. Returns list of missing scripts."""
     if mode != "interactive":
         return []
-    scripts_dir = profile_dir / "scripts"
-    required = ["check-reviews.py", "record-review.py"]
+    required = [
+        (SKILL_SCRIPT_DIR / "check-reviews.py", "check-reviews.py"),
+        (SKILL_SCRIPT_DIR / "record-review.py", "record-review.py"),
+    ]
     missing = []
-    for name in required:
-        if not (scripts_dir / name).is_file():
+    for path, name in required:
+        if not path.is_file():
             missing.append(name)
     return missing
 
@@ -96,6 +114,23 @@ def cleanup_old_sessions(sessions_dir: Path, max_age_days: int = 7) -> int:
         except OSError:
             pass
     return removed
+
+
+def current_course_reviews(payload: dict, course_slug: str) -> dict:
+    for course in payload["courses"]:
+        if course["slug"] == course_slug:
+            items = course["items"]
+            if not items:
+                return {"total": 0, "courses": []}
+            return {
+                "total": len(items),
+                "courses": [{
+                    "slug": course_slug,
+                    "count": len(items),
+                    "items": items,
+                }],
+            }
+    return {"total": 0, "courses": []}
 
 
 def build_initial_state(learning_root: Path, course_slug: str, module: str = None) -> dict:
@@ -181,17 +216,20 @@ def build_initial_state(learning_root: Path, course_slug: str, module: str = Non
         state["current_content"] = ""
         state["current_content_file"] = ""
 
-    state["check_reviews_available"] = (profile_dir / "scripts" / "check-reviews.py").exists()
+    check_reviews_path = SKILL_SCRIPT_DIR / "check-reviews.py"
+    state["check_reviews_available"] = check_reviews_path.exists()
 
     if state["check_reviews_available"]:
         import subprocess
         try:
-            cmd = [sys.executable, str(profile_dir / "scripts" / "check-reviews.py"),
-                   str(profile_dir), "--json"]
+            cmd = [sys.executable, str(check_reviews_path), str(profile_dir), "--json"]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=15,
                                     encoding="utf-8", errors="replace")
             if result.returncode == 0 and result.stdout.strip():
-                state["due_reviews"] = json.loads(result.stdout.strip())
+                state["due_reviews"] = current_course_reviews(
+                    json.loads(result.stdout.strip()),
+                    course_slug,
+                )
             else:
                 state["due_reviews"] = {"total": 0, "courses": []}
                 if result.returncode != 0:
@@ -263,6 +301,8 @@ class ViewerHandler(SimpleHTTPRequestHandler):
             self._handle_review_rating()
         elif path == '/api/session-result':
             self._handle_session_result()
+        elif path == '/api/render-diagram':
+            self._handle_render_diagram()
         else:
             self.send_error(404)
 
@@ -279,16 +319,17 @@ class ViewerHandler(SimpleHTTPRequestHandler):
                 return
             import subprocess
             course_state_dir = str(PROFILE_DIR / "courses" / COURSE_SLUG)
-            cmd = [sys.executable, str(PROFILE_DIR / "scripts" / "record-review.py"),
+            cmd = [sys.executable, str(SKILL_SCRIPT_DIR / "record-review.py"),
                    course_state_dir, concept_id, str(rating)]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30,
                                     encoding="utf-8", errors="replace")
             if result.returncode == 0:
-                self._send_json({"ok": True, "output": result.stdout.strip()})
+                concept = json.loads(result.stdout.strip())
+                self._send_json({"ok": True, "concept": concept})
             else:
                 self._send_json({"error": result.stderr.strip() or "record-review.py failed"}, 500)
         except FileNotFoundError:
-            self._send_json({"error": "record-review.py not found"}, 500)
+            self._send_json({"error": "bundled record-review.py not found"}, 500)
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
 
@@ -314,6 +355,33 @@ class ViewerHandler(SimpleHTTPRequestHandler):
             json.loads(tmp_file.read_text(encoding="utf-8"))
             tmp_file.replace(session_file)
             self._send_json({"ok": True, "path": str(session_file)})
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+
+    def _handle_render_diagram(self):
+        try:
+            body = self._read_body()
+            diagram_type = str(body.get("type", "")).strip().lower()
+            source = body.get("source")
+            kroki_type = KROKI_TYPES.get(diagram_type)
+            if not kroki_type or not isinstance(source, str) or not source.strip():
+                self._send_json({"error": "invalid params: need supported type and source"}, 400)
+                return
+
+            url = f"{KROKI_ENDPOINT}/{kroki_type}/svg"
+            request = Request(
+                url,
+                data=source.encode("utf-8"),
+                headers={
+                    "Content-Type": "text/plain; charset=utf-8",
+                    "Accept": "image/svg+xml",
+                    "User-Agent": "study.skill-viewer/1.0",
+                },
+                method="POST",
+            )
+            with urlopen(request, timeout=20) as response:
+                svg = response.read().decode("utf-8", errors="replace")
+            self._send_json({"ok": True, "svg": svg})
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
 
@@ -366,6 +434,7 @@ class ViewerHandler(SimpleHTTPRequestHandler):
         ext_map = {
             '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
             '.gif': 'image/gif', '.svg': 'image/svg+xml', '.webp': 'image/webp',
+            '.avif': 'image/avif',
             '.css': 'text/css', '.js': 'application/javascript',
             '.md': 'text/plain; charset=utf-8',
             '.json': 'application/json; charset=utf-8',
@@ -423,9 +492,9 @@ def main():
     missing = validate_scripts(profile_dir, args.mode)
     if missing:
         print(f"Error: missing required scripts for {args.mode} mode: {', '.join(missing)}", file=sys.stderr)
-        print(f"  Expected in: {profile_dir / 'scripts'}", file=sys.stderr)
+        print(f"  Expected in: {SKILL_SCRIPT_DIR}", file=sys.stderr)
         if args.mode == "interactive":
-            print(f"  Run init script first: bash scripts/init-profile.sh {learning_root}", file=sys.stderr)
+            print("  Reinstall or repair the study skill files before using interactive mode.", file=sys.stderr)
         sys.exit(1)
 
     sessions_dir = profile_dir / "tmp" / "viewer-sessions"

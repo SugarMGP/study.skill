@@ -1,6 +1,6 @@
 # 数据模型 Schema
 
-> schema_version: 2
+> schema_version: 3
 
 ## 目录结构
 
@@ -24,7 +24,7 @@
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "learner_id": "default",
   "created_at": "2026-06-09T10:00:00+08:00",
   "updated_at": "2026-06-09T10:00:00+08:00",
@@ -32,9 +32,7 @@
     "native_language": "zh",
     "daily_time_budget_minutes": 30,
     "feedback_style": "normal",
-    "correction_mode": "inline",
-    "automation_declined": false,
-    "automation_declined_at": null
+    "correction_mode": "inline"
   },
   "learner_profile": {
     "baseline": null,
@@ -58,8 +56,6 @@
 | preferences.daily_time_budget_minutes | int | ✅ | 30 | 每日学习时长（分钟） |
 | preferences.feedback_style | enum | ✅ | "normal" | `minimal` / `normal` / `detailed` |
 | preferences.correction_mode | enum | ✅ | "inline" | `inline`（即时纠错）/ `batch`（会话末纠错） |
-| preferences.automation_declined | bool | ✅ | false | 用户是否拒绝系统提醒 / automation（自动化提醒） |
-| preferences.automation_declined_at | ISO 8601/null | — | null | 用户拒绝自动化提醒的时间 |
 | learner_profile.baseline | string/null | — | null | 学习基础画像，例如“有后端经验” |
 | learner_profile.goals | string[] | ✅ | [] | 长期学习目标 |
 | learner_profile.known_languages | string[] | ✅ | [] | 已掌握语言或工具，例如 `cpp`、`go`、`java` |
@@ -78,7 +74,7 @@
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "slug": "react-hooks",
   "name": "React Hooks 从零到一",
   "status": "active",
@@ -103,7 +99,7 @@
 | name | string | ✅ | — | — | 课程显示名称 |
 | status | enum | ✅ | "active" | active/paused/completed/archived | 课程状态 |
 | mode | enum | ✅ | — | speedrun/system/interview/exam | 学习模式 |
-| mode_label | string | ✅ | — | — | 模式中文名（显示用） |
+| mode_label | string | ✅ | — | — | 模式显示名（用于展示，可按课程语言写） |
 | current_module | string | — | null | — | 当前正在学习的模块 |
 | completed_modules | string[] | ✅ | [] | — | 已完成模块列表 |
 | last_session | ISO 8601 | — | null | — | 最后学习时间 |
@@ -127,11 +123,11 @@
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "mode": "system",
   "mode_label": "系统精讲",
-  "depth_chars_per_module": 3500,
-  "exercises_per_module": 4,
+  "depth_chars_per_module": 6000,
+  "exercises_per_module": 5,
   "target_retention": 0.90,
   "new_items_per_session": 5,
   "spacing_factor": 1.0,
@@ -147,9 +143,9 @@
 | 字段 | 类型 | 必填 | 默认值 | 范围 | 说明 |
 |------|------|:---:|--------|------|------|
 | mode | enum | ✅ | — | speedrun/system/interview/exam | 学习模式 |
-| mode_label | string | ✅ | — | — | 模式中文名 |
-| depth_chars_per_module | int | ✅ | 3500 | [500, 8000] | 每模块目标字数 |
-| exercises_per_module | int | ✅ | 4 | [0, 10] | 每模块练习题数 |
+| mode_label | string | ✅ | — | — | 模式显示名（可按课程语言写） |
+| depth_chars_per_module | int | ✅ | 6000 | [500, 9000] | 每模块目标正文规模；课程生成以正文规模和结构覆盖为主，时间只作粗参考 |
+| exercises_per_module | int | ✅ | 5 | [0, 10] | 每模块练习题数 |
 | target_retention | float | ✅ | 0.90 | [0.70, 0.98] | 目标记忆保持率 |
 | new_items_per_session | int | ✅ | 5 | [1, 20] | 每次会话新知识点数 |
 | spacing_factor | float | ✅ | 1.0 | [0.3, 3.0] | 复习间隔乘数 |
@@ -164,10 +160,10 @@
 
 | 模式 | depth_chars | exercises | target_retention | auto_advance | require_mastery |
 |------|------------|-----------|-----------------|-------------|----------------|
-| speedrun | 1200 | 2 | 0.85 | true | false |
-| system | 3500 | 4 | 0.90 | false | true |
-| interview | 1000 | 1(追问组) | 0.90 | true | false |
-| exam | 1500 | 4 | 0.90 | false | true |
+| speedrun | 2400 | 2 | 0.85 | true | false |
+| system | 6000 | 5 | 0.90 | false | true |
+| interview | 2600 | 3 | 0.90 | true | false |
+| exam | 4000 | 5 | 0.90 | false | true |
 
 **自适应调整规则：**
 
@@ -175,7 +171,7 @@
 |---------|------|
 | 太快了/跟不上 | speed_factor *= 0.7, new_items -= 2 (min 1), spacing_factor *= 0.9 |
 | 太慢了/太墨迹 | speed_factor *= 1.3, new_items += 2, spacing_factor *= 1.1 |
-| 太浅了 | depth_chars_per_module *= 1.5 (cap 8000) |
+| 太浅了 | depth_chars_per_module *= 1.5 (cap 9000) |
 | 太深了/听不懂 | depth_chars_per_module *= 0.7 (floor 500) |
 
 每次调整后写入 `adaptive_history` 数组：
@@ -194,7 +190,7 @@
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09T14:30:00+08:00",
   "concepts": [
@@ -222,7 +218,7 @@
 | course_slug | string | ✅ | — | 所属课程标识 |
 | last_review_session | ISO 8601 | — | null | 最后一次复习会话时间 |
 | concepts[].id | string | ✅ | — | 知识点唯一标识 |
-| concepts[].name | string | ✅ | — | 知识点名称（中文） |
+| concepts[].name | string | ✅ | — | 知识点名称（按课程语言写） |
 | concepts[].module | string | ✅ | — | 所属模块 ID |
 | concepts[].status | enum | ✅ | "learning" | learning/mastered/needs_relearning/retired |
 | concepts[].D | float | ✅ | 4.0 | 难度 [1, 10] |
@@ -253,7 +249,7 @@
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,
