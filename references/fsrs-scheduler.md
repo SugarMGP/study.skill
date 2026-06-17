@@ -11,7 +11,7 @@ This enables independent review schedules and multi-course concurrent learning.
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09",
   "concepts": [

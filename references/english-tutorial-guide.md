@@ -35,68 +35,35 @@ Layer 2: Deep understanding (40%) -> theories, cases, arguments, evidence
 Layer 3: Critical extension (30%) -> competing views, applications, current debates
 ```
 
-## Chapter Template
+## Natural Chapter Shape
 
-Each chapter must include outcomes, prerequisites, a guided explanation, practice, and recap. Include mistakes and next steps only when they are concrete and useful. Headings can be adjusted for the subject, but do not remove the learning loop.
+Do not force every lesson into the same heading template. Keep the learning
+loop, but let the headings fit the subject.
 
-```markdown
-# Chapter X: {Title}
+A chapter maps to a collapsible module. The module-level `content.md` is a short
+preface:
 
-## What you'll learn
+- the core problem this chapter solves
+- prerequisites and any small refresher the chapter will provide
+- the section list and what each section is for
+- what the learner should be able to judge, explain, or do by the end
 
-By the end of this chapter, you will be able to:
+The actual lesson body lives in section files:
+`{module}/{section}/content.md`. Each section should teach one main question or
+concept. It should not be a thin outline.
 
-- {Apply/Analyze-level outcome}
-- {Apply/Analyze-level outcome}
-- {Analyze/Evaluate-level outcome}
+A section should naturally include:
 
-## Before you start
+- a concrete problem, symptom, task, or surprising observation before terms
+- plain-language intuition before precise terminology
+- a small worked example before realistic scale
+- a decision rule or boundary: when to use it, when not to, and what to compare it with
+- a real misconception or failure symptom near the relevant concept, only when useful
+- one active check or practice task when the learner should answer
+- a concise recap when it helps organize the section
 
-- {Required background}
-- {Required tool, version, file, dataset, or reading}
-
-## The idea in one minute
-
-{Short plain-language explanation. Avoid slogans.}
-
-## X.1 {Section title}
-
-### Build the mental model
-
-{Plain explanation -> precise term -> small example/case -> why it matters.}
-
-{When a primary source helps here, add one short inline link and say what it is good for.}
-
-{When the learner profile contains relevant prior experience, use a brief transfer analogy and state its limit when needed.}
-
-### Try it
-
-{A small task the learner can complete now. For code: command + expected output.}
-
-### Check your understanding
-
-{One recall or transfer question. Use a `study-*` block when the learner should answer before seeing the reference response.}
-
-## X.2 {Section title}
-
-{Repeat the same pattern and increase difficulty gradually.}
-
-## Where learners often get stuck
-
-{Add this only when there are real mistakes or misconceptions to address. Prefer placing the warning beside the relevant concept instead of forcing a separate table.}
-
-## Recap
-
-- {Key idea}
-- {Decision rule}
-- {Pitfall to remember}
-
-## Optional next step
-
-{One concrete next action, such as running a variant, completing a checkpoint, analyzing a case, or opening the next module because it answers a named gap. Omit this if the only thing to say is “continue to the next chapter.”}
-```
-
-Recommended chapter size: 2-4 sections. If a section needs more than 4 subtopics, split it.
+Recommended module size: 2-7 section pages. Merge a section that is too short to
+stand alone. Split a section that needs more than four substantial subtopics.
 
 ## English Style Rules
 
@@ -156,10 +123,12 @@ State what the learner needs before the chapter starts: prior concepts, installe
 For technical courses:
 
 - list language/tool versions when they affect behavior
-- include dependencies and setup commands
+- include dependencies and setup commands only when the learner is expected to
+  run the code
 - show expected output
 - run code before claiming it works
-- if code was not executed, say so plainly
+- if code was not executed, say so in the chat handoff or completion note, not
+  inside learner-facing course files
 
 ### 7. Place source links where they help
 
@@ -197,7 +166,12 @@ Do not force an analogy into every section.
 
 ### 9. Use checks, not long quizzes
 
-Use one small active-recall or transfer question after a concept. Use a checkpoint near the end of the chapter. Save only useful evidence with `study-*` blocks from `courseware-format.md`.
+Use one small question after a concept. Pick the block by question type:
+`study-choice` for selection, `study-truefalse` for misconceptions, and
+`study-input` for short answers, explanations, scenario analysis, interview
+answers, or exam-style written work. Near the end of a chapter, use a small set
+of ordinary question blocks instead of a separate checkpoint block. Save only
+useful evidence with `study-*` blocks from `courseware-format.md`.
 
 ### 9.5 Avoid orphan side artifacts
 
@@ -209,8 +183,8 @@ Use these replacements:
 
 - Define terms when they first appear. If a chapter has many terms, add a short
   chapter-local “Term check”.
-- Put interview, exam, and end-of-chapter practice inside the relevant chapter
-  as `study-transfer` or `study-checkpoint`.
+- Put interview, exam, and end-of-chapter practice inside the relevant section
+  as `study-choice`, `study-truefalse`, or `study-input`.
 - Add spaced-review items to `concepts.json` during Phase 3 after the learner has
   encountered the concept; do not pre-generate cards for unseen content.
 - Export Anki CSV files, printable glossaries, or resource appendices only when
@@ -238,5 +212,8 @@ Avoid vague warnings such as “be careful with complexity.” Do not invent mis
 - Do not front-load history, taxonomy, or theory before the learner has a task.
 - Do not turn the chapter into API reference. Link to reference material instead.
 - Do not hide prerequisites or expected outputs.
+- Do not put generator/runtime caveats in the lesson body, such as “not run
+  locally”, “package not installed”, or “verification status”.
+- Do not force repeated slogan headings such as “The idea in one minute”.
 - Do not add decorative diagrams or exercises that do not help the chapter goal.
 - Do not generate side files that the viewer or Phase 3 learning flow will not read.

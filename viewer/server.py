@@ -2,13 +2,13 @@
 """study.skill viewer server.
 
 Usage:
-  python viewer/server.py --course <slug> --learning-root <path> [--mode interactive|read-only] [--module <module>] [--port <port>]
+  python viewer/server.py --course <slug> --learning-root <path> [--mode interactive|read-only] [--module <module>] [--section <section>] [--port <port>]
 
 Modes:
-  interactive - Allows review ratings and session file writing.
+  interactive - Allows review ratings and learning record writing.
                 Requires bundled check-reviews.py and record-review.py.
   read-only   - Only serves course content. Does not require record-review.py.
-                Does not expose /api/review-rating or /api/session-result.
+                Does not expose /api/review-rating or /api/learning-record.
 """
 
 import argparse
@@ -16,7 +16,6 @@ import json
 import os
 import re
 import sys
-import time
 import uuid
 import webbrowser
 from datetime import datetime, timezone
@@ -29,17 +28,17 @@ from urllib.request import Request, urlopen
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
+SCHEMA_VERSION = 4
 SESSION_TOKEN = str(uuid.uuid4())
-SESSION_ID = str(uuid.uuid4())
 LEARNING_ROOT = None
 COURSE_SLUG = None
-COURSE_DIR = None
 PROFILE_DIR = None
 VIEWER_HTML_PATH = None
 SKILL_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "scripts"
-INITIAL_STATE = None
 SERVER_MODE = "interactive"
-SESSIONS_DIR = None
+LEARNING_RECORD_PATH = None
+DEFAULT_MODULE = None
+DEFAULT_SECTION = None
 KROKI_ENDPOINT = "https://kroki.io"
 KROKI_TYPES = {
     "plantuml": "plantuml",
@@ -83,7 +82,7 @@ def load_text(path: Path) -> str:
         return f.read()
 
 
-def validate_scripts(profile_dir: Path, mode: str) -> list:
+def validate_scripts(mode: str) -> list:
     """Check that required scripts exist. Returns list of missing scripts."""
     if mode != "interactive":
         return []
@@ -96,24 +95,6 @@ def validate_scripts(profile_dir: Path, mode: str) -> list:
         if not path.is_file():
             missing.append(name)
     return missing
-
-
-def cleanup_old_sessions(sessions_dir: Path, max_age_days: int = 7) -> int:
-    """Remove session files older than max_age_days. Returns count removed."""
-    if not sessions_dir.is_dir():
-        return 0
-    cutoff = time.time() - (max_age_days * 86400)
-    removed = 0
-    for f in sessions_dir.iterdir():
-        if not f.is_file() or not f.suffix == ".json":
-            continue
-        try:
-            if f.stat().st_mtime < cutoff:
-                f.unlink()
-                removed += 1
-        except OSError:
-            pass
-    return removed
 
 
 def current_course_reviews(payload: dict, course_slug: str) -> dict:
@@ -133,13 +114,228 @@ def current_course_reviews(payload: dict, course_slug: str) -> dict:
     return {"total": 0, "courses": []}
 
 
-def build_initial_state(learning_root: Path, course_slug: str, module: str = None) -> dict:
+def title_from_markdown(path: Path, fallback: str) -> str:
+    if not path.exists():
+        return fallback
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        text = line.strip()
+        if text.startswith("# "):
+            return text[2:].strip() or fallback
+    return fallback
+
+
+def label_from_id(identifier: str) -> str:
+    return re.sub(r'^\d{2}-', '', identifier).replace('-', ' ')
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def default_learning_record(course_slug: str, timestamp: str) -> dict:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "source": "study.skill.viewer",
+        "course_slug": course_slug,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+        "current": {
+            "module": None,
+            "section": None,
+            "content_file": None,
+            "updated_at": None,
+        },
+        "pages": [],
+        "questions_for_llm": [],
+        "exercises": [],
+        "legacy_checkpoints": [],
+        "review_summary": {
+            "rated_count": 0,
+            "items": [],
+        },
+        "completions": [],
+    }
+
+
+def load_learning_record(path: Path, course_slug: str) -> dict:
+    if not path.exists():
+        return default_learning_record(course_slug, now_iso())
+    record = load_json(path)
+    if record.get("schema_version") != SCHEMA_VERSION:
+        raise ValueError(f"learning-record.json schema_version must be {SCHEMA_VERSION}")
+    if record.get("source") != "study.skill.viewer":
+        raise ValueError("learning-record.json source mismatch")
+    if record.get("course_slug") != course_slug:
+        raise ValueError("learning-record.json course_slug mismatch")
+    return record
+
+
+def write_learning_record(path: Path, record: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(record, ensure_ascii=False, indent=2)
+    tmp_file = path.with_suffix(".tmp")
+    tmp_file.write_text(data, encoding="utf-8")
+    json.loads(tmp_file.read_text(encoding="utf-8"))
+    tmp_file.replace(path)
+
+
+def upsert_record_item(items: list, key_fields: tuple[str, ...], item: dict) -> None:
+    for index, existing in enumerate(items):
+        if all(existing.get(field) == item.get(field) for field in key_fields):
+            merged = dict(existing)
+            merged.update(item)
+            items[index] = merged
+            return
+    items.append(item)
+
+
+def merge_learning_record_event(record: dict, event: str, payload: dict, timestamp: str) -> dict:
+    record["updated_at"] = timestamp
+    module = payload.get("module")
+    section = payload.get("section")
+    content_file = payload.get("content_file")
+
+    if module or section or content_file:
+        record["current"] = {
+            "module": module,
+            "section": section,
+            "content_file": content_file,
+            "updated_at": timestamp,
+        }
+
+    if event == "page_view":
+        page = {
+            "module": module,
+            "section": section,
+            "content_file": content_file,
+            "title": payload.get("title"),
+            "last_opened_at": timestamp,
+            "opens": 1,
+        }
+        existing_pages = record.setdefault("pages", [])
+        for existing in existing_pages:
+            if (
+                existing.get("module") == module
+                and existing.get("section") == section
+                and existing.get("content_file") == content_file
+            ):
+                existing["title"] = page["title"]
+                existing["last_opened_at"] = timestamp
+                existing["opens"] = int(existing.get("opens", 0)) + 1
+                break
+        else:
+            page["first_opened_at"] = timestamp
+            existing_pages.append(page)
+    elif event == "questions_snapshot":
+        questions = payload.get("questions")
+        if not isinstance(questions, list):
+            raise ValueError("questions_snapshot requires questions list")
+        record["questions_for_llm"] = [str(item) for item in questions if str(item).strip()]
+    elif event == "exercise_submitted":
+        exercise = dict(payload.get("exercise") or {})
+        if not exercise.get("id"):
+            raise ValueError("exercise_submitted requires exercise.id")
+        exercise["submitted_at"] = timestamp
+        upsert_record_item(record.setdefault("exercises", []), ("module", "section", "id"), exercise)
+    elif event == "review_rated":
+        item = dict(payload.get("item") or {})
+        if not item.get("concept_id"):
+            raise ValueError("review_rated requires item.concept_id")
+        item["rated_at"] = timestamp
+        summary = record.setdefault("review_summary", {"rated_count": 0, "items": []})
+        upsert_record_item(summary.setdefault("items", []), ("concept_id",), item)
+        summary["rated_count"] = len(summary["items"])
+    elif event == "legacy_checkpoint_submitted":
+        checkpoint = dict(payload.get("checkpoint") or {})
+        if not checkpoint.get("id"):
+            raise ValueError("legacy_checkpoint_submitted requires checkpoint.id")
+        checkpoint["submitted_at"] = timestamp
+        upsert_record_item(
+            record.setdefault("legacy_checkpoints", []),
+            ("module", "section", "id"),
+            checkpoint,
+        )
+    elif event == "completion":
+        completion = {
+            "module": module,
+            "section": section,
+            "content_file": content_file,
+            "started_at": payload.get("started_at"),
+            "completed_at": timestamp,
+            "question_count": payload.get("question_count", 0),
+            "exercise_ids": payload.get("exercise_ids", []),
+            "review_rated_count": payload.get("review_rated_count", 0),
+        }
+        record.setdefault("completions", []).append(completion)
+        for page in record.setdefault("pages", []):
+            if (
+                page.get("module") == module
+                and page.get("section") == section
+                and page.get("content_file") == content_file
+            ):
+                page["completed_at"] = timestamp
+                break
+    else:
+        raise ValueError(f"unsupported learning record event: {event}")
+
+    return record
+
+
+def discover_modules(course_dir: Path, course_slug: str) -> list:
+    modules = []
+    for entry in sorted(course_dir.iterdir()):
+        if not entry.is_dir() or not re.match(r'^\d{2}-', entry.name):
+            continue
+
+        content_path = entry / "content.md"
+        sections = []
+
+        for section_dir in sorted(entry.iterdir()):
+            if not section_dir.is_dir() or not re.match(r'^\d{2}-', section_dir.name):
+                continue
+            section_content = section_dir / "content.md"
+            if not section_content.exists():
+                continue
+            sections.append({
+                "id": section_dir.name,
+                "module_id": entry.name,
+                "title": title_from_markdown(section_content, label_from_id(section_dir.name)),
+                "content_path": f"{course_slug}/{entry.name}/{section_dir.name}/content.md",
+            })
+
+        mod = {
+            "id": entry.name,
+            "name": title_from_markdown(content_path, label_from_id(entry.name)),
+            "has_content": content_path.exists(),
+            "sections": sections,
+        }
+        if content_path.exists():
+            mod["content_path"] = f"{course_slug}/{entry.name}/content.md"
+        modules.append(mod)
+    return modules
+
+
+def is_module_locked(domain_tree: dict, module_id: str | None) -> bool:
+    if not module_id:
+        return False
+    nodes = domain_tree.get("nodes") or {}
+    node = nodes.get(module_id) or {}
+    return node.get("status") == "locked"
+
+
+def first_unlocked_module(modules: list, domain_tree: dict) -> str | None:
+    for mod in modules:
+        if (mod["has_content"] or mod["sections"]) and not is_module_locked(domain_tree, mod["id"]):
+            return mod["id"]
+    return None
+
+
+def build_initial_state(learning_root: Path, course_slug: str, module: str = None, section: str = None) -> dict:
     profile_dir = learning_root / ".learning-profile"
     course_dir = learning_root / "courses" / course_slug
     course_state_dir = profile_dir / "courses" / course_slug
 
     state = {
-        "session_id": SESSION_ID,
         "course_slug": course_slug,
         "learning_root": str(learning_root),
     }
@@ -174,6 +370,10 @@ def build_initial_state(learning_root: Path, course_slug: str, module: str = Non
     else:
         state["profile"] = {}
 
+    record_path = course_state_dir / "learning-record.json"
+    state["learning_record"] = load_learning_record(record_path, course_slug)
+    record_current = state["learning_record"].get("current") or {}
+
     readme_path = course_dir / "README.md"
     if readme_path.exists():
         state["readme"] = load_text(readme_path)
@@ -186,29 +386,44 @@ def build_initial_state(learning_root: Path, course_slug: str, module: str = Non
     else:
         state["syllabus"] = ""
 
-    modules = []
-    current_module = module or state["meta"].get("current_module")
-    for entry in sorted(course_dir.iterdir()):
-        if entry.is_dir() and re.match(r'^\d{2}-', entry.name):
-            content_path = entry / "content.md"
-            mod = {
-                "id": entry.name,
-                "name": entry.name,
-                "has_content": content_path.exists(),
-            }
-            if content_path.exists():
-                mod["content_path"] = f"{course_slug}/{entry.name}/content.md"
-            if current_module is None and mod["has_content"]:
-                current_module = entry.name
-            modules.append(mod)
+    modules = discover_modules(course_dir, course_slug)
+    requested_module = module
+    current_module = requested_module or record_current.get("module") or state["meta"].get("current_module")
+    module_ids = {item["id"] for item in modules}
+    if current_module not in module_ids:
+        current_module = None
+    if current_module and is_module_locked(state["domain_tree"], current_module):
+        if requested_module:
+            raise PermissionError("module is locked")
+        current_module = first_unlocked_module(modules, state["domain_tree"])
+    for mod in modules:
+        if current_module is None and (mod["has_content"] or mod["sections"]):
+            if is_module_locked(state["domain_tree"], mod["id"]):
+                continue
+            current_module = mod["id"]
+            break
     state["modules"] = modules
     state["current_module"] = current_module
+    state["current_section"] = None
 
     if current_module:
-        content_path = course_dir / current_module / "content.md"
-        if content_path.exists():
+        current_mod = next((item for item in modules if item["id"] == current_module), None)
+        current_section = None
+        requested_section = record_current.get("section") if section is None else section
+        if current_mod and requested_section:
+            current_section = next((item for item in current_mod["sections"] if item["id"] == requested_section), None)
+
+        if current_section:
+            content_path = course_dir / current_module / current_section["id"] / "content.md"
             state["current_content"] = load_text(content_path)
-            state["current_content_file"] = f"{course_slug}/{current_module}/content.md"
+            state["current_content_file"] = current_section["content_path"]
+            state["current_section"] = current_section["id"]
+            state["current_section_title"] = current_section["title"]
+        elif current_mod and current_mod.get("content_path"):
+            rel_path = current_mod["content_path"].split("/", 1)[1]
+            content_path = course_dir / rel_path
+            state["current_content"] = load_text(content_path)
+            state["current_content_file"] = current_mod["content_path"]
         else:
             state["current_content"] = ""
             state["current_content_file"] = ""
@@ -275,7 +490,7 @@ class ViewerHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
-        query = parse_qs(parsed.query)
+        query = parse_qs(parsed.query, keep_blank_values=True)
 
         if path == '/':
             self._serve_viewer()
@@ -299,8 +514,8 @@ class ViewerHandler(SimpleHTTPRequestHandler):
 
         if path == '/api/review-rating':
             self._handle_review_rating()
-        elif path == '/api/session-result':
-            self._handle_session_result()
+        elif path == '/api/learning-record':
+            self._handle_learning_record()
         elif path == '/api/render-diagram':
             self._handle_render_diagram()
         else:
@@ -325,6 +540,18 @@ class ViewerHandler(SimpleHTTPRequestHandler):
                                     encoding="utf-8", errors="replace")
             if result.returncode == 0:
                 concept = json.loads(result.stdout.strip())
+                if LEARNING_RECORD_PATH:
+                    timestamp = now_iso()
+                    record = load_learning_record(LEARNING_RECORD_PATH, COURSE_SLUG)
+                    payload = {
+                        "item": {
+                            "concept_id": concept_id,
+                            "rating": rating,
+                            "next_review": concept.get("next_review", ""),
+                        },
+                    }
+                    record = merge_learning_record_event(record, "review_rated", payload, timestamp)
+                    write_learning_record(LEARNING_RECORD_PATH, record)
                 self._send_json({"ok": True, "concept": concept})
             else:
                 self._send_json({"error": result.stderr.strip() or "record-review.py failed"}, 500)
@@ -333,28 +560,31 @@ class ViewerHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
 
-    def _handle_session_result(self):
+    def _handle_learning_record(self):
         if SERVER_MODE != "interactive":
             self.send_error(403, "not available in read-only mode")
             return
-        if not SESSIONS_DIR:
-            self._send_json({"error": "sessions dir not configured"}, 500)
+        if not LEARNING_RECORD_PATH:
+            self._send_json({"error": "learning record path not configured"}, 500)
             return
         try:
             body = self._read_body()
-            session_id = body.get("session_id") or SESSION_ID
-            try:
-                session_id = str(uuid.UUID(str(session_id)))
-            except ValueError:
-                self._send_json({"error": "invalid session_id"}, 400)
+            if body.get("source") != "study.skill.viewer":
+                self._send_json({"error": "invalid source"}, 400)
                 return
-            session_file = SESSIONS_DIR / f"{session_id}.json"
-            data = json.dumps(body, ensure_ascii=False, indent=2)
-            tmp_file = session_file.with_suffix(".tmp")
-            tmp_file.write_text(data, encoding="utf-8")
-            json.loads(tmp_file.read_text(encoding="utf-8"))
-            tmp_file.replace(session_file)
-            self._send_json({"ok": True, "path": str(session_file)})
+            if body.get("course_slug") != COURSE_SLUG:
+                self._send_json({"error": "course_slug mismatch"}, 400)
+                return
+            event = str(body.get("event") or "")
+            payload = body.get("payload")
+            if not isinstance(payload, dict):
+                self._send_json({"error": "payload must be object"}, 400)
+                return
+            timestamp = now_iso()
+            record = load_learning_record(LEARNING_RECORD_PATH, COURSE_SLUG)
+            record = merge_learning_record_event(record, event, payload, timestamp)
+            write_learning_record(LEARNING_RECORD_PATH, record)
+            self._send_json({"ok": True, "path": str(LEARNING_RECORD_PATH), "record": record})
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
 
@@ -399,12 +629,17 @@ class ViewerHandler(SimpleHTTPRequestHandler):
     def _serve_initial_state(self, query):
         try:
             module = query.get("module", [None])[0]
-            if module and module != INITIAL_STATE.get("current_module"):
-                state = build_initial_state(LEARNING_ROOT, COURSE_SLUG, module)
-            else:
-                state = INITIAL_STATE
+            section = query.get("section", [None])[0]
+            state = build_initial_state(
+                LEARNING_ROOT,
+                COURSE_SLUG,
+                module or DEFAULT_MODULE,
+                DEFAULT_SECTION if section is None else section,
+            )
             state["server_mode"] = SERVER_MODE
             self._send_json(state)
+        except PermissionError as e:
+            self._send_json({"error": str(e)}, 403)
         except Exception as e:
             self.send_error(500, str(e))
 
@@ -453,14 +688,16 @@ class ViewerHandler(SimpleHTTPRequestHandler):
 
 
 def main():
-    global LEARNING_ROOT, COURSE_SLUG, COURSE_DIR, PROFILE_DIR
-    global VIEWER_HTML_PATH, INITIAL_STATE, SERVER_MODE, SESSIONS_DIR
+    global LEARNING_ROOT, COURSE_SLUG, PROFILE_DIR
+    global VIEWER_HTML_PATH, SERVER_MODE, LEARNING_RECORD_PATH
+    global DEFAULT_MODULE, DEFAULT_SECTION
 
     parser = argparse.ArgumentParser(description="study.skill viewer server")
     parser.add_argument("--course", required=True, help="Course slug")
     parser.add_argument("--learning-root", required=True, help="Learning data root directory")
     parser.add_argument("--mode", default="interactive", choices=["read-only", "interactive"], help="Server mode")
     parser.add_argument("--module", default=None, help="Module to display initially")
+    parser.add_argument("--section", default=None, help="Section to display initially")
     parser.add_argument("--port", type=int, default=0, help="Port (0 = random)")
     args = parser.parse_args()
 
@@ -489,7 +726,7 @@ def main():
 
     profile_dir = learning_root / ".learning-profile"
 
-    missing = validate_scripts(profile_dir, args.mode)
+    missing = validate_scripts(args.mode)
     if missing:
         print(f"Error: missing required scripts for {args.mode} mode: {', '.join(missing)}", file=sys.stderr)
         print(f"  Expected in: {SKILL_SCRIPT_DIR}", file=sys.stderr)
@@ -497,23 +734,22 @@ def main():
             print("  Reinstall or repair the study skill files before using interactive mode.", file=sys.stderr)
         sys.exit(1)
 
-    sessions_dir = profile_dir / "tmp" / "viewer-sessions"
+    learning_record_path = profile_dir / "courses" / course_slug / "learning-record.json"
     if args.mode == "interactive":
-        sessions_dir.mkdir(parents=True, exist_ok=True)
-        removed = cleanup_old_sessions(sessions_dir)
-        if removed > 0:
-            print(f"  cleaned {removed} old session file(s)")
+        timestamp = now_iso()
+        record = load_learning_record(learning_record_path, course_slug)
+        record["schema_version"] = SCHEMA_VERSION
+        record["updated_at"] = timestamp
+        write_learning_record(learning_record_path, record)
 
     LEARNING_ROOT = learning_root
     COURSE_SLUG = course_slug
-    COURSE_DIR = course_dir
     PROFILE_DIR = profile_dir
     VIEWER_HTML_PATH = viewer_html
     SERVER_MODE = args.mode
-    SESSIONS_DIR = sessions_dir
-
-    INITIAL_STATE = build_initial_state(learning_root, course_slug, args.module)
-    INITIAL_STATE["server_mode"] = args.mode
+    LEARNING_RECORD_PATH = learning_record_path
+    DEFAULT_MODULE = args.module
+    DEFAULT_SECTION = args.section
 
     server = HTTPServer(("127.0.0.1", args.port), ViewerHandler)
     port = server.server_address[1]
@@ -524,7 +760,8 @@ def main():
     print(f"  course: {course_slug}", flush=True)
     print(f"  learning-root: {learning_root}", flush=True)
     print(f"  url: {url}", flush=True)
-    print(f"  session: {SESSION_ID}", flush=True)
+    if args.mode == "interactive":
+        print(f"  learning-record: {learning_record_path}", flush=True)
 
     webbrowser.open(url)
 

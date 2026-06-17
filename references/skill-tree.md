@@ -161,8 +161,8 @@ decisions:
 |-------|-------------|---------|
 | `module` | Bound course module ID | `02-deep-learning-foundations` |
 | `concepts` | Concept IDs taught by this node | `["overfitting", "validation-set"]` |
-| `mastery_gate` | Required checks before `mastered` | `{"recall":2,"transfer":1,"feynman":1,"min_correct":0.85}` |
-| `missing_evidence` | Gate items still missing | `["transfer", "feynman"]` |
+| `mastery_gate` | Required evidence tags before `mastered` | `{"recall":2,"apply":1,"explain":1,"min_correct":0.85}` |
+| `missing_evidence` | Gate evidence still missing | `["apply", "explain"]` |
 
 ## Generating a Domain Tree from Broad Topics
 
@@ -315,7 +315,7 @@ Use one reward table across the skill:
 |-------|----|-----------|
 | Ordinary correct answer | +5 | User answers a practice or recall question correctly |
 | Key concept answer | +10 | Answer proves a prerequisite or core distinction |
-| Feynman explanation passed | +20 | User explains in their own words with no major gap |
+| Explanation evidence passed | +20 | User explains in their own words with no major gap |
 | Mastery Gate passed | +50 | Module/node gate passes |
 | Streak milestone | title/achievement | Based on real `streak_days` |
 
@@ -339,7 +339,7 @@ work.
 ### 任务系统（Quest System）
 
 - **Daily quest**: one realistic session task, e.g. "完成 1 节并做 1 道混合题".
-- **Node quest**: the current mastery gate, e.g. "完成 1 道迁移题 + 1 次费曼解释".
+- **Node quest**: the current mastery gate, e.g. "完成 1 个应用证据 + 1 个解释证据".
 - **Achievement quest**: streak or project milestone.
 
 Quests are display hints for the next useful action. They do not replace the
@@ -380,7 +380,7 @@ The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tr
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,

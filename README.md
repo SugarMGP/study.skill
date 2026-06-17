@@ -96,13 +96,13 @@ npx skills add SugarMGP/study.skill
 ├── .learning-profile/
 │   ├── profile.json             # 全局偏好和学习者画像：每日时长、已会/薄弱前置
 │   ├── scripts/                 # 运行期工具：复习检查、复习记录、安全写入
-│   ├── tmp/viewer-sessions/     # 本地播放器保存的临时学习记录
 │   └── courses/
 │       └── {课程名}/
 │           ├── meta.json        # 课程元数据：模式、当前模块、完成模块
-│           ├── params.json      # 自适应参数：深度、速度、复习频率
+│           ├── params.json      # 运行期参数：复习保持率、掌握门槛、节奏反馈
 │           ├── concepts.json    # 知识点状态：每个概念的 D/S 和复习历史，R 实时计算
-│           └── domain-tree.json # 技能树与轻量游戏化进度
+│           ├── domain-tree.json # 技能树与轻量游戏化进度
+│           └── learning-record.json # 播放器浏览、作答和完成证据
 ├── courses/
 │   └── {课程名}/
 │       ├── README.md            # 课程概览

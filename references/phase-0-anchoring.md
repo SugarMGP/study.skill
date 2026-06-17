@@ -45,9 +45,13 @@ sentence and proceed; the rule prevents sloppiness, not speed.
 
 ## Units and Course Size
 
-- **一讲 (Lecture)**: one main concept. Use the selected mode's character/word target as the concrete sizing rule; time is only a rough planning hint.
-- **一模块 (Module)**: 2-5 lectures, one coherent sub-topic. Use `depth_chars_per_module` as the generation target.
-- **一门课 (Course)**: at most 15 modules and 30 lectures. Split larger topics into multiple courses.
+- **一小节 (Section)**: one main question or concept, stored as its own
+  `{module}/{section}/content.md`. This is the primary reading page in the
+  local viewer.
+- **一模块 (Module)**: a collapsible chapter. It has a short preface in
+  `{module}/content.md` and usually 2-7 section pages below it.
+- **一门课 (Course)**: usually no more than 12 modules and 60 section pages.
+  Split larger topics into a course series.
 
 **Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions
 in one message. Use user's answers to skip questions that are already answered.
@@ -99,10 +103,12 @@ If user's intent is unclear: "是工作需要快速上手，还是系统学？�
 These are internal quality constraints. Do NOT mention word counts or exercise counts
 to the user — apply them silently when generating content.
 
-`depth_chars_per_module` is the executable size guard, not the whole quality
-definition. A module is acceptable only when it also satisfies the selected
-mode's structural coverage. Time is only a rough planning aid because reading
-speed, coding speed, and prior knowledge vary widely.
+The selected mode's prose band is the executable size guard for the total
+learner-facing prose inside one module, counting the module preface plus all
+section pages. It is not a fixed template target and is not persisted as a
+runtime parameter. A module is acceptable only when it also satisfies the
+selected mode's structural coverage. Time is only a rough planning aid because
+reading speed, coding speed, and prior knowledge vary widely.
 
 Counting rules:
 
@@ -114,53 +120,52 @@ Counting rules:
   comparable depth.
 - Do not pad a module just to hit the target. If the structural coverage is
   complete and the learner's goal is narrow, shorter is acceptable.
-- If the content would exceed the upper band by more than about 25%, split it
-  into another lecture or module before writing.
+- Section pages should be substantial enough to teach, not just outline. If a
+  section is shorter than roughly 600 Chinese characters / 350 English words,
+  merge it with a neighbor unless it is only a short "reading guide" page. If it
+  exceeds roughly 2200 Chinese characters / 1300 English words, split it.
+- If the total module content would exceed the upper band by more than about
+  25%, split it into another module before writing.
 
-| Mode | 目标正文规模/模块 | 结构覆盖/模块 | 粗略学习负荷 | 解释深度 |
-|------|------------------|----------------|--------------|---------|
-| 速成导览 | 中文 1800-3200 字；英文 900-1900 words | 2-3 个小节；1 条主路径；1 个可运行/可检查例子；1-2 个互动题 | 短到中；通常一坐能完成 | 精简解释，先跑通主路径，只讲会阻塞上手的原理 |
-| 系统精讲 | 中文 4500-7500 字；英文 2800-4700 words | 3-5 个小节；2-4 个概念块；2 个以上例子/案例/代码；3-5 个互动题；必要时配图或对比表 | 中到长；适合分段学习 | 深挖为什么、怎么选、边界和底层机制；讲清概念关系和迁移条件 |
-| 面试冲刺 | 中文 1800-3600 字；英文 900-2200 words | 1 个高频考点簇；2-4 个追问；1 套回答评分标准；2-3 个 `study-transfer` | 中等；以输出答案为目标 | 用场景题组织回答要点、追问方向、反例和判断标准 |
-| 考试备考 | 中文 2800-5200 字；英文 1500-3200 words | 对齐考纲/材料；1-2 个完整例题；3-5 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲清定义、推导、题型、分值权重和易混点；不考的不展开 |
+| Mode | 目标正文规模/模块 | 小节规模建议 | 结构覆盖/模块 | 粗略学习负荷 | 解释深度 |
+|------|------------------|----------------|----------------|--------------|----------|
+| 速成导览 | 中文 1800-3200 字；英文 900-1900 words | 2-3 节，每节中文 700-1400 字 / 英文 400-850 words | 1 条主路径；1 个可运行/可检查例子；1-2 个互动题 | 短到中；通常一坐能完成 | 精简解释，先跑通主路径，只讲会阻塞上手的原理 |
+| 系统精讲 | 中文 6000-11000 字；英文 3600-6800 words | 4-7 节，每节中文 1000-2200 字 / 英文 650-1300 words | 3-6 个概念块；2 个以上例子/案例/代码；4-7 个互动题；必要时配图或对比表 | 长；适合分小节学习 | 深挖为什么、怎么选、边界和底层机制；讲清概念关系和迁移条件 |
+| 面试冲刺 | 中文 2200-4500 字；英文 1200-2600 words | 2-4 节，每节中文 800-1800 字 / 英文 450-1000 words | 1 个高频考点簇；2-4 个追问；1 套回答评分标准；2-3 个面试型 `study-input` / `study-choice` | 中等；以输出答案为目标 | 用场景题组织回答要点、追问方向、反例和判断标准 |
+| 考试备考 | 中文 3500-7000 字；英文 2000-4200 words | 3-6 节，每节中文 900-1900 字 / 英文 550-1150 words | 对齐考纲/材料；1-2 个完整例题；3-6 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲清定义、推导、题型、分值权重和易混点；不考的不展开 |
 
 Code examples and diagrams are not constrained by prose length. Include them
 whenever they reduce cognitive load or make the learner's answer checkable.
 
-#### After Mode Selection: Prepare params.json
+#### After Mode Selection: Prepare Runtime Params
 
 Once the user chooses a mode, keep the mode defaults as pending course state.
 Do not write files yet unless `{learning_root}` and `{course-slug}` are already known.
 After Q4 and route confirmation, create `{learning_root}/.learning-profile/courses/{course-slug}/params.json`
-with these defaults. This persists across sessions and survives context compression.
+with the runtime defaults below. Course size, prose depth, section split rules,
+and exercise density stay in this reference as generation rules; do not persist
+them into `params.json`.
 
 ```json
 {
-  "schema_version": 3,
-  "mode": "speedrun",
-  "mode_label": "速成导览",
-  "depth_chars_per_module": 2400,
-  "exercises_per_module": 2,
+  "schema_version": 4,
   "target_retention": 0.85,
-  "new_items_per_session": 5,
   "spacing_factor": 1.0,
-  "auto_advance": true,
   "require_mastery_before_advance": false,
-  "speed_factor": 1.0,
-  "last_speed_feedback": null,
-  "last_speed_feedback_at": null,
+  "last_pace_feedback": null,
+  "last_pace_feedback_at": null,
   "adaptive_history": []
 }
 ```
 
-Mode defaults:
+Runtime defaults:
 
-| Mode | depth_chars | exercises | target_retention | auto_advance | require_mastery |
-|------|------------|-----------|-----------------|-------------|----------------|
-| 速成导览 | 2400 | 2 | 0.85 | true | false |
-| 系统精讲 | 6000 | 5 | 0.90 | false | true |
-| 面试冲刺 | 2600 | 3 | 0.90 | true | false |
-| 考试备考 | 4000 | 5 | 0.90 | false | true |
+| Mode | target_retention | require_mastery |
+|------|------------------|----------------|
+| 速成导览 | 0.85 | false |
+| 系统精讲 | 0.90 | true |
+| 面试冲刺 | 0.90 | false |
+| 考试备考 | 0.90 | true |
 
 When user gives speed/depth feedback during Phase 3, update params.json immediately.
 
@@ -204,7 +209,7 @@ If user selects 🟡 or 🔴, offer a pretest:
 - If user declines: proceed with self-reported level.
 
 Implications:
-- 零基础 → 更密集的类比、单句直觉锚点、慢节奏
+- 零基础 → 更密集的类比、自然建立直觉、慢节奏
 - 有基础 → 快速过基础，聚焦进阶和原理
 - 熟练 → 跳过基础模块，直接进入原理、最佳实践、面试题
 
@@ -214,8 +219,8 @@ Daily: 15 分钟 / 30 分钟 / 1 小时 / 2 小时+
 Total: 3 天 / 1 周 / 2 周 / 1 个月 / 不限
 
 Implications:
-- 15min/day → smaller modules and compact explanations; keep `depth_chars_per_module`
-  near the lower end of the selected mode and split long modules early
+- 15min/day → smaller section pages and compact explanations; choose the lower
+  end of the selected mode's prose band and split long modules early
 - 2h/day → full Gagné Nine Events cycle per session, deeper dives
 - Short total → fewer modules, focus on essentials (80/20 principle)
 
@@ -244,9 +249,9 @@ After all questions answered, synthesize. Adapt format to mode:
    → 课程范围：{extracted_scope}
 
 🗺 路线概览：
-模块一：{name} — {n} 讲
-模块二：{name} — {n} 讲
-模块三：{name} — {n} 讲
+模块一：{name} — {n} 小节
+模块二：{name} — {n} 小节
+模块三：{name} — {n} 小节
 {For 考试备考:}
 🎯 考试对标：覆盖 {exam_name} {topics_covered}
 ```
@@ -260,8 +265,9 @@ After confirmation:
    baseline, goals, known languages or skills, weak prerequisites, preferred
    analogies, teaching constraints, and material summary. Do not keep these only
    in chat context.
-4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`, and
-   an empty `concepts.json` using the schema in `state-schema.md`.
+4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`,
+   an empty `concepts.json`, and an empty `learning-record.json` using the
+   schema in `state-schema.md`.
 5. Use `write-state.py` when available; never overwrite existing state without reading it first.
 
 Example durable profile fields:
@@ -298,9 +304,9 @@ and return to the current topic.
 | User has no time estimate | "先按一周每天30分钟规划，后面可以调整？" |
 | Topic too broad (e.g., "学AI"/"学心理学") | **Generate skill tree first**. "这个领域太大了，先看看技能树，你想走哪个分支？" |
 | User picks a node but it's still broad | Zoom in one more level. "这个分支也很大，我们再拆一层，你对哪个方向更感兴趣？" |
-| Topic too narrow (e.g., "学 React useState") | Offer: "这是个具体 API，我可以做一小讲快速教学（约 1200-2200 字，时间只作粗参考），还是扩展为 React Hooks 系统学习？" |
+| Topic too narrow (e.g., "学 React useState") | Offer: "这是个具体 API，我可以做一个小节快速教学（约 1200-2200 字，时间只作粗参考），还是扩展为 React Hooks 系统学习？" |
 | User is a returning learner | Read `.learning-profile/courses/*/meta.json` first. Show progress. "上次你学到 {module}，继续还是换方向？" |
-| User wants to switch path/mode | **正式流程**：展示当前模式→新模式的差异（字数/练习数/深度变化）→ 用户确认 → 更新 `params.json`（mode, depth_chars, exercises, target_retention）+ `meta.json`（mode, mode_label）→ 不改已生成内容，只影响后续模块。 |
+| User wants to switch path/mode | **正式流程**：展示当前模式→新模式的差异（篇幅、练习密度、解释深度、掌握门槛）→ 用户确认 → 更新 `meta.json`（mode, mode_label）；如果新模式改变 `target_retention` 或 `require_mastery_before_advance`，同步更新 `params.json` → 不改已生成内容，只影响后续模块。 |
 | User says "看看进度" / "技能树" | Load `references/skill-tree.md`. Render current skill tree with all progress. |
 | User opts out of RPG | Update `meta.json.rpg_enabled=false`, `meta.json.rpg_preference_asked=true`; keep skill tree unless they also reject it. |
 | User opts out of skill tree | Update `meta.json.skill_tree_enabled=false`, `meta.json.rpg_enabled=false`, `meta.json.rpg_preference_asked=true`. |

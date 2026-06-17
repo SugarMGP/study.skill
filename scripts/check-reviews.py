@@ -50,10 +50,10 @@ def load_json(path: str) -> dict:
 
 def review_params(params: dict) -> tuple[float, float]:
     """Return review parameters, defaulting only absent legacy fields."""
-    mode = params.get("mode", "system")
-    if not isinstance(mode, str) or mode not in VALID_MODES:
+    mode = params.get("mode")
+    if mode is not None and (not isinstance(mode, str) or mode not in VALID_MODES):
         allowed = ", ".join(sorted(VALID_MODES))
-        raise ValueError(f"params.json field mode must be one of: {allowed}")
+        raise ValueError(f"params.json legacy field mode must be one of: {allowed}")
     default_retention = 0.85 if mode == "speedrun" else 0.90
 
     target_retention = params.get("target_retention", default_retention)

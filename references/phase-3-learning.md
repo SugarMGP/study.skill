@@ -14,7 +14,7 @@ This file is the source of truth for live teaching and continuation. It covers:
 - how to continue an existing generated course
 - how to use the local viewer
 - how to teach, practice, give feedback, and decide mastery
-- how to consume viewer session records and write state
+- how to consume viewer learning records and write state
 
 It does not cover platform automations, scheduled reminders, hooks, push
 notifications, or thread wakeups. Review checks happen when a learning session
@@ -38,8 +38,9 @@ At the start of each formal learning session:
 1. If old `.learning-profile/progress.json` or `review-schedule.json` exists, stop and migrate first.
 2. Read `.learning-profile/profile.json` and the active course `meta.json`,
    `params.json`, `concepts.json`, and `domain-tree.json`.
-3. Read local course content: `README.md`, `syllabus.md` if present, and current `content.md`.
-4. Show exact course/module/lecture, current skill-tree node, and one short RPG
+3. Read local course content: `README.md`, `syllabus.md` if present, current
+   module `content.md`, and current section `content.md` when a section is open.
+4. Show exact course/module/section, current skill-tree node, and one short RPG
    line when enabled.
 
 At the first formal learning session of each day only:
@@ -52,7 +53,7 @@ At the first formal learning session of each day only:
 Opening format:
 
 ```text
-📍 当前：{course_name} / {module_id} / {lecture_title}
+📍 当前：{course_name} / {module_id} / {section_title}
 🌳 节点：{node_id} · {node_status} · 掌握度 {progress}%
 ⏰ 待复习：{overdue_count} 个知识点，可先用 2-5 分钟过一遍
 🎮 Lv.{level} · {xp} XP · 称号「{title}」 · 当前任务：{quest}
@@ -80,12 +81,36 @@ When the user says "继续学习", "继续", "下一节", or similar, and course
    - the user explicitly refuses the viewer
 3. Use `read-only` only when the user says they only want to browse. Missing
    interactive dependencies are a repair task, not a silent downgrade.
-4. Fall back to chat teaching only with a concrete reason, then continue from
-   local `content.md`.
-5. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
-6. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
-7. External docs/source lookup is allowed only when local content is missing,
+4. If the viewer starts successfully, make the viewer the primary learning
+   surface. Do not continue with the full Core Teaching Loop in chat for the
+   same lesson.
+5. In chat, say only:
+   - the exact course/module/subsection now open
+   - the viewer URL
+   - what the learner should do there: read the section, submit the `study-*`
+     exercises, then come back for feedback
+   - the due-review line only when today's first-session check found due items
+6. While the viewer is open, answer targeted questions from the learner, but do
+   not re-teach the whole section unless the learner asks for a chat explanation
+   or the viewer is unusable.
+7. Fall back to chat teaching only with a concrete reason, then continue from
+   the current module or section `content.md`.
+8. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
+9. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
+10. External docs/source lookup is allowed only when local content is missing,
    the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
+
+Viewer handoff format:
+
+```text
+本地播放器已打开：{url}
+当前：{course_name} / {module_id} / {section_title}
+
+你先在播放器里读完这一节，并提交里面的练习。完成后回来告诉我，我会看你的作答、回答遗留问题，再更新进度和复习项。
+```
+
+Do not append a full explanation after this handoff. That creates two competing
+learning surfaces and makes the viewer feel like decoration.
 
 ## Core Teaching Loop
 
@@ -96,7 +121,7 @@ Teach one main concept at a time:
 3. Ask a small active-recall or transfer question.
 4. Give feedback: what is right, what is weak, why it matters.
 5. After 2-3 new concepts, ask one mixed question that combines old and new ideas.
-6. End with a self-test or checkpoint before moving modules.
+6. End with a small self-test made of ordinary question blocks before moving modules.
 
 For Chinese courses, follow the style in `chinese-tutorial-guide.md`. For English courses,
 follow `english-tutorial-guide.md`. Do not switch languages unless the learner asks for it
@@ -129,8 +154,8 @@ Before marking a module `mastered` or adding it to `completed_modules`, require 
 
 | Tier | Gate |
 | --- | --- |
-| Foundation / 基础 | 2 recall + 1 transfer + 1 Feynman explanation + >=85% correct |
-| Core / 核心 | 1 recall + 1 application/transfer + 1 explanation or practice + >=75% correct |
+| Foundation / 基础 | evidence tagged as 2 recall + 1 apply/analyze + 1 explain + >=85% correct |
+| Core / 核心 | evidence tagged as 1 recall + 1 apply/analyze + 1 explain or practice + >=75% correct |
 | Enrichment / 拓展 | >=60% self-test; may skip on user request |
 
 In speedrun mode: Foundation >=75%, Core >=60%, Enrichment optional.
@@ -143,20 +168,23 @@ blocks the next module. It does not let the agent fake completion:
 - Missing evidence means `in_progress`.
 - XP and achievements require real evidence.
 
-## Viewer Session Consumption
+## Viewer Learning Record Consumption
 
-When the local viewer is used and the user clicks "完成本次学习":
+When the local viewer is used and the learner comes back after reading and submitting exercises:
 
-1. Read the newest session file from
-   `{learning_root}/.learning-profile/tmp/viewer-sessions/{session_id}.json`.
+1. Read the course learning record from
+   `{learning_root}/.learning-profile/courses/{course_slug}/learning-record.json`.
 2. Verify `source == "study.skill.viewer"` and `course_slug` matches the active course.
 3. Answer `questions_for_llm` first.
-4. Evaluate `exercises`, `feynman_explanations`, and `checkpoints` against the current module's mastery gate.
-5. Use review records only for session summary; `record-review.py` already updates `concepts.json`.
-6. If evidence is enough, update `meta.json`, `domain-tree.json`, XP, achievements, and concepts.
-7. If evidence is not enough, keep the node `in_progress` and write what evidence is missing.
+4. Use the latest item in `completions` to locate the module, section, and exercise ids for this completed learning page.
+5. Evaluate the matching `exercises` against the current module's mastery gate. Use `mastery_tags` to identify recall, apply/analyze, explain, interview, or exam evidence. For old courses, also read `legacy_checkpoints` if present.
+6. Use review records only for session summary; `record-review.py` already updates `concepts.json`.
+7. If evidence is enough, update `meta.json`, `domain-tree.json`, XP, achievements, and concepts.
+8. If evidence is not enough, keep the node `in_progress` and write what evidence is missing.
 
-The viewer stores evidence, not correctness. Do not treat saved records as automatic completion.
+The viewer stores reading and answer evidence, not correctness. `pages[].completed_at`
+and `completions[]` mean the viewer recorded the page as read through; they do not
+mean the module is mastered.
 
 ## State Updates
 
@@ -181,18 +209,20 @@ Update:
    - grant XP only for real learning evidence
 4. `params.json`
    - update immediately when the user says "太快/太慢/太浅/太深/跟不上"
-   - append an `adaptive_history` entry with before/after values
+   - write `last_pace_feedback`, `last_pace_feedback_at`, and append an
+     `adaptive_history` entry with the trigger and the next teaching adjustment
+   - do not invent numeric tuning fields just to make the feedback look automated
 
 ## Pace Feedback
 
-| User feedback | State change |
-| --- | --- |
-| 太快了 / 跟不上 | `speed_factor *= 0.7`, `new_items_per_session -= 2` with min 1, `spacing_factor *= 0.9` |
-| 太慢了 / 太墨迹 | `speed_factor *= 1.3`, `new_items_per_session += 2`, `spacing_factor *= 1.1` |
-| 太浅了 | `depth_chars_per_module *= 1.5` with cap 9000 |
-| 太深了 / 听不懂 | `depth_chars_per_module *= 0.7` with floor 500 |
+| User feedback | State change | Next teaching behavior |
+| --- | --- | --- |
+| 太快了 / 跟不上 | `last_pace_feedback="too_fast"` | Split the next concept smaller, add prerequisite refreshers and more guided questions |
+| 太慢了 / 太墨迹 | `last_pace_feedback="too_slow"` | Skip obvious scaffolding, use denser examples, and move to application sooner |
+| 太浅了 | `last_pace_feedback="too_shallow"` | Add mechanism, boundary, trade-off, or harder transfer examples within the selected mode |
+| 太深了 / 听不懂 | `last_pace_feedback="too_deep"` | Return to concrete examples, reduce abstraction, and repair missing prerequisites before continuing |
 
-Reply briefly, then actually write `params.json`. Do not keep the adjustment only in chat.
+Reply briefly, then actually write `params.json`. Do not keep the adjustment only in chat. If the feedback really means the learner chose the wrong mode, ask whether to switch mode instead of silently changing hidden numeric knobs.
 
 ## Session End Summary
 
@@ -211,7 +241,7 @@ Omit RPG fields when `rpg_enabled=false`.
 
 | Failure mode | Prevention |
 | --- | --- |
-| Tutorial hell disguised as teaching | Require active recall, transfer, or Feynman explanation |
+| Tutorial hell disguised as teaching | Require saved questions with recall, apply/analyze, or explain evidence |
 | Illusion of competence | Prefer recall over rereading |
 | Passive AI dependency | Hint before answer; worked example includes reasoning |
 | Over-scaffolding | Fade support as the learner improves |

@@ -1,6 +1,6 @@
 # 数据模型 Schema
 
-> schema_version: 3
+> schema_version: 4
 
 ## 目录结构
 
@@ -13,7 +13,8 @@
 │           ├── meta.json             # 课程元数据
 │           ├── params.json           # 自适应参数
 │           ├── concepts.json         # 知识点状态
-│           └── domain-tree.json      # 技能树与 RPG 进度
+│           ├── domain-tree.json      # 技能树与 RPG 进度
+│           └── learning-record.json  # 播放器浏览、作答和完成证据
 └── courses/
     └── {course-slug}/                # 课程内容（学习资料）
 ```
@@ -24,7 +25,7 @@
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "learner_id": "default",
   "created_at": "2026-06-09T10:00:00+08:00",
   "updated_at": "2026-06-09T10:00:00+08:00",
@@ -74,7 +75,7 @@
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "slug": "react-hooks",
   "name": "React Hooks 从零到一",
   "status": "active",
@@ -123,64 +124,45 @@
 
 ```json
 {
-  "schema_version": 3,
-  "mode": "system",
-  "mode_label": "系统精讲",
-  "depth_chars_per_module": 6000,
-  "exercises_per_module": 5,
+  "schema_version": 4,
   "target_retention": 0.90,
-  "new_items_per_session": 5,
   "spacing_factor": 1.0,
-  "speed_factor": 1.0,
-  "auto_advance": false,
   "require_mastery_before_advance": true,
-  "last_speed_feedback": null,
-  "last_speed_feedback_at": null,
+  "last_pace_feedback": null,
+  "last_pace_feedback_at": null,
   "adaptive_history": []
 }
 ```
 
 | 字段 | 类型 | 必填 | 默认值 | 范围 | 说明 |
 |------|------|:---:|--------|------|------|
-| mode | enum | ✅ | — | speedrun/system/interview/exam | 学习模式 |
-| mode_label | string | ✅ | — | — | 模式显示名（可按课程语言写） |
-| depth_chars_per_module | int | ✅ | 6000 | [500, 9000] | 每模块目标正文规模；课程生成以正文规模和结构覆盖为主，时间只作粗参考 |
-| exercises_per_module | int | ✅ | 5 | [0, 10] | 每模块练习题数 |
 | target_retention | float | ✅ | 0.90 | [0.70, 0.98] | 目标记忆保持率 |
-| new_items_per_session | int | ✅ | 5 | [1, 20] | 每次会话新知识点数 |
 | spacing_factor | float | ✅ | 1.0 | [0.3, 3.0] | 复习间隔乘数 |
-| speed_factor | float | ✅ | 1.0 | [0.5, 2.0] | 教学速度乘数 |
-| auto_advance | bool | ✅ | false | — | 掌握后自动进入下一模块 |
 | require_mastery_before_advance | bool | ✅ | true | — | 必须通过掌握度检查才前进 |
-| last_speed_feedback | enum | — | null | too_fast/too_slow/just_right/null | 最近一次速度反馈 |
-| last_speed_feedback_at | ISO 8601 | — | null | — | 反馈时间 |
-| adaptive_history | array | ✅ | [] | — | 参数调整历史记录 |
+| last_pace_feedback | enum/string | — | null | — | 最近一次节奏或深度反馈，例如 too_fast/too_slow/too_shallow/too_deep |
+| last_pace_feedback_at | ISO 8601 | — | null | — | 反馈时间 |
+| adaptive_history | array | ✅ | [] | — | 节奏/深度反馈历史记录 |
+
+`params.json` 只保存运行期会被脚本或学习流程消费的参数。课程模式、显示名和
+已确认路线放在 `meta.json` 与课程文件中；课程规模、正文长度和题量是
+`phase-0-anchoring.md` / `phase-2-generation.md` 的生成规则，不再持久化到
+`params.json`。
 
 **模式默认值：**
 
-| 模式 | depth_chars | exercises | target_retention | auto_advance | require_mastery |
-|------|------------|-----------|-----------------|-------------|----------------|
-| speedrun | 2400 | 2 | 0.85 | true | false |
-| system | 6000 | 5 | 0.90 | false | true |
-| interview | 2600 | 3 | 0.90 | true | false |
-| exam | 4000 | 5 | 0.90 | false | true |
+| 模式 | target_retention | require_mastery |
+|------|------------------|----------------|
+| speedrun | 0.85 | false |
+| system | 0.90 | true |
+| interview | 0.90 | false |
+| exam | 0.90 | true |
 
-**自适应调整规则：**
-
-| 用户反馈 | 调整 |
-|---------|------|
-| 太快了/跟不上 | speed_factor *= 0.7, new_items -= 2 (min 1), spacing_factor *= 0.9 |
-| 太慢了/太墨迹 | speed_factor *= 1.3, new_items += 2, spacing_factor *= 1.1 |
-| 太浅了 | depth_chars_per_module *= 1.5 (cap 9000) |
-| 太深了/听不懂 | depth_chars_per_module *= 0.7 (floor 500) |
-
-每次调整后写入 `adaptive_history` 数组：
+每次节奏或深度反馈后写入 `adaptive_history` 数组：
 ```json
 {
   "at": "2026-06-09T14:30:00+08:00",
   "trigger": "too_fast",
-  "before": {"speed_factor": 1.0, "new_items_per_session": 5},
-  "after": {"speed_factor": 0.7, "new_items_per_session": 3}
+  "note": "下节拆小概念，先补前置，再给更多引导题"
 }
 ```
 
@@ -190,7 +172,7 @@
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09T14:30:00+08:00",
   "concepts": [
@@ -249,7 +231,7 @@
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,
@@ -282,6 +264,96 @@
 | rpg.achievements | string[] | ✅ | [] | 已获得成就 |
 | rpg.quests | array | ✅ | [] | 当前任务 |
 | nodes | object | ✅ | {} | 技能节点，key 为节点 ID |
+
+---
+
+## learning-record.json（课程级学习记录）
+
+由本地播放器写入。它记录学习者实际看过哪些页面、提交了哪些题、留下哪些问题、
+以及播放器自动记录的页面完成事件。它不是掌握度结论；agent 必须读取记录、判断证据，再更新
+`meta.json`、`domain-tree.json`、`concepts.json` 或 XP。
+
+```json
+{
+  "schema_version": 4,
+  "source": "study.skill.viewer",
+  "course_slug": "react-hooks",
+  "created_at": "2026-06-09T10:00:00+08:00",
+  "updated_at": "2026-06-09T14:30:00+08:00",
+  "current": {
+    "module": "03-useContext",
+    "section": "01-provider",
+    "content_file": "react-hooks/03-useContext/01-provider/content.md",
+    "updated_at": "2026-06-09T14:30:00+08:00"
+  },
+  "pages": [
+    {
+      "module": "03-useContext",
+      "section": "01-provider",
+      "content_file": "react-hooks/03-useContext/01-provider/content.md",
+      "title": "Provider 是怎么把值传下去的",
+      "first_opened_at": "2026-06-09T14:10:00+08:00",
+      "last_opened_at": "2026-06-09T14:25:00+08:00",
+      "opens": 2,
+      "completed_at": "2026-06-09T14:30:00+08:00"
+    }
+  ],
+  "questions_for_llm": ["为什么 Provider 改值会让子组件更新？"],
+  "exercises": [
+    {
+      "id": "provider-flow-1",
+      "type": "choice",
+      "module": "03-useContext",
+      "section": "01-provider",
+      "question": "Context 的值从哪里读？",
+      "user_answer": "B",
+      "reference_answer": "B",
+      "explanation": "消费者组件读取最近的 Provider value。",
+      "mastery_tags": ["recall"],
+      "submitted_at": "2026-06-09T14:28:00+08:00"
+    }
+  ],
+  "review_summary": {
+    "rated_count": 1,
+    "items": [
+      {
+        "concept_id": "useState-basics",
+        "rating": 3,
+        "next_review": "2026-06-12",
+        "rated_at": "2026-06-09T14:20:00+08:00"
+      }
+    ]
+  },
+  "legacy_checkpoints": [],
+  "completions": [
+    {
+      "module": "03-useContext",
+      "section": "01-provider",
+      "content_file": "react-hooks/03-useContext/01-provider/content.md",
+      "started_at": "2026-06-09T14:10:00+08:00",
+      "completed_at": "2026-06-09T14:30:00+08:00",
+      "question_count": 1,
+      "exercise_ids": ["provider-flow-1"],
+      "review_rated_count": 1
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|:---:|--------|------|
+| source | string | ✅ | study.skill.viewer | 记录来源 |
+| course_slug | string | ✅ | — | 所属课程标识 |
+| current | object | ✅ | 空位置 | 播放器最后停留位置 |
+| pages | array | ✅ | [] | 浏览过的模块/小节页面 |
+| questions_for_llm | string[] | ✅ | [] | 学习者留下的问题 |
+| exercises | array | ✅ | [] | `study-*` 题目的原始作答证据 |
+| review_summary | object | ✅ | 空摘要 | 当前课程复习评分摘要；评分已经写入 `concepts.json` |
+| legacy_checkpoints | array | ✅ | [] | 旧版 `study-checkpoint` 兼容记录 |
+| completions | array | ✅ | [] | 播放器自动记录的页面完成事件 |
+
+`exercises` 只保存原始作答、参考内容和 `mastery_tags`。不要保存
+`correct`、`passed`、`score` 这类终态字段；判断职责在 agent。
 
 ---
 

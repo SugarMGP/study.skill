@@ -102,7 +102,7 @@ For each source, extract:
 | Real pitfalls and misconceptions | → Inline warnings or learner-facing misconception notes, only when source-backed or practice-backed |
 | "Golden example" per concept | → Best teaching example |
 | Version-specific notes | → Version comparison tables |
-| Interview / exam question patterns | → Module-local `study-transfer` or `study-checkpoint` practice with scoring points |
+| Interview / exam question patterns | → Module-local `study-input`, `study-choice`, or `study-truefalse` practice with scoring points |
 | Learning time estimates | → Module scheduling |
 | Diagrams, screenshots, visual examples | → course images or text diagram choices |
 
@@ -138,10 +138,10 @@ Present findings. Adapt the format to topic type.
 - ...
 
 🎯 建议课程结构：
-模块一：... ({n} 讲，难度 ★★☆☆☆)
-模块二：... ({n} 讲，难度 ★★★☆☆)
-模块三：... ({n} 讲，难度 ★★★★☆)
-[模块四：面试高频考点 ({n} 讲)]
+模块一：... ({n} 小节，难度 ★★☆☆☆)
+模块二：... ({n} 小节，难度 ★★★☆☆)
+模块三：... ({n} 小节，难度 ★★★★☆)
+[模块四：面试高频考点 ({n} 小节)]
 
 💡 调研笔记：
 - {key insight 1}
@@ -165,9 +165,9 @@ Present findings. Adapt the format to topic type.
 - ...
 
 🎯 建议课程结构：
-模块一：... ({n} 讲，难度 ★★☆☆☆)
-模块二：... ({n} 讲，难度 ★★★☆☆)
-模块三：... ({n} 讲，难度 ★★★★☆)
+模块一：... ({n} 小节，难度 ★★☆☆☆)
+模块二：... ({n} 小节，难度 ★★★☆☆)
+模块三：... ({n} 小节，难度 ★★★★☆)
 
 💡 调研笔记：
 - {key insight 1}
@@ -198,9 +198,9 @@ Present findings. Adapt the format to topic type.
 - ...
 
 🎯 建议课程结构（对齐教材/考纲）：
-模块一：{chapter_range} ({n} 讲，难度 ★★☆☆☆)
-模块二：{chapter_range} ({n} 讲，难度 ★★★☆☆)
-模块三：{chapter_range} ({n} 讲，难度 ★★★★☆☆)
+模块一：{chapter_range} ({n} 小节，难度 ★★☆☆☆)
+模块二：{chapter_range} ({n} 小节，难度 ★★★☆☆)
+模块三：{chapter_range} ({n} 小节，难度 ★★★★☆☆)
 
 💡 备考笔记：
 - 这些章节占分值最高，优先学

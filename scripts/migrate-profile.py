@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate old study.skill learning state to schema_version 3.
+"""Migrate old study.skill learning state to schema_version 4.
 
 Usage:
   python scripts/migrate-profile.py [profile_dir]
@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
@@ -41,7 +41,7 @@ def write_json(path: Path, data: dict) -> None:
 def verify_migration(courses_dir: Path, slugs: set[str]) -> None:
     for slug in slugs:
         course_dir = courses_dir / slug
-        for filename in ("meta.json", "params.json", "concepts.json", "domain-tree.json"):
+        for filename in ("meta.json", "params.json", "concepts.json", "domain-tree.json", "learning-record.json"):
             data = read_json(course_dir / filename)
             if data.get("schema_version") != SCHEMA_VERSION:
                 raise ValueError(f"migration verification failed: {course_dir / filename}")
@@ -100,13 +100,72 @@ def upgrade_course_files(courses_dir: Path) -> None:
     for course_dir in courses_dir.iterdir():
         if not course_dir.is_dir():
             continue
-        for filename in ("meta.json", "params.json", "concepts.json", "domain-tree.json"):
+        meta = read_json(course_dir / "meta.json")
+        mode = mode_from_scope(meta.get("mode_label", "")) if meta else "system"
+        if meta.get("mode") in {"speedrun", "system", "interview", "exam"}:
+            mode = meta["mode"]
+        for filename in ("meta.json", "concepts.json", "domain-tree.json"):
             path = course_dir / filename
             data = read_json(path)
             if not data:
                 continue
             data["schema_version"] = SCHEMA_VERSION
             write_json(path, data)
+        params_path = course_dir / "params.json"
+        params = read_json(params_path)
+        if params:
+            write_json(params_path, compact_params(params, mode))
+        ensure_learning_record(course_dir, course_dir.name)
+
+
+def default_learning_record(slug: str, timestamp: str) -> dict:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "source": "study.skill.viewer",
+        "course_slug": slug,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+        "current": {
+            "module": None,
+            "section": None,
+            "content_file": None,
+            "updated_at": None,
+        },
+        "pages": [],
+        "questions_for_llm": [],
+        "exercises": [],
+        "review_summary": {
+            "rated_count": 0,
+            "items": [],
+        },
+        "completions": [],
+    }
+
+
+def ensure_learning_record(course_dir: Path, slug: str) -> None:
+    path = course_dir / "learning-record.json"
+    timestamp = now_iso()
+    data = read_json(path)
+    if not data:
+        write_json(path, default_learning_record(slug, timestamp))
+        return
+    data["schema_version"] = SCHEMA_VERSION
+    data.setdefault("source", "study.skill.viewer")
+    data.setdefault("course_slug", slug)
+    data.setdefault("created_at", timestamp)
+    data["updated_at"] = timestamp
+    data.setdefault("current", {
+        "module": None,
+        "section": None,
+        "content_file": None,
+        "updated_at": None,
+    })
+    data.setdefault("pages", [])
+    data.setdefault("questions_for_llm", [])
+    data.setdefault("exercises", [])
+    data.setdefault("review_summary", {"rated_count": 0, "items": []})
+    data.setdefault("completions", [])
+    write_json(path, data)
 
 
 def delete_old_files(*paths: Path) -> None:
@@ -145,31 +204,19 @@ def mode_from_scope(scope: str) -> str:
 def mode_defaults(mode: str) -> dict:
     return {
         "speedrun": {
-            "depth_chars_per_module": 2400,
-            "exercises_per_module": 2,
             "target_retention": 0.85,
-            "auto_advance": True,
             "require_mastery_before_advance": False,
         },
         "interview": {
-            "depth_chars_per_module": 2600,
-            "exercises_per_module": 3,
             "target_retention": 0.90,
-            "auto_advance": True,
             "require_mastery_before_advance": False,
         },
         "exam": {
-            "depth_chars_per_module": 4000,
-            "exercises_per_module": 5,
             "target_retention": 0.90,
-            "auto_advance": False,
             "require_mastery_before_advance": True,
         },
         "system": {
-            "depth_chars_per_module": 6000,
-            "exercises_per_module": 5,
             "target_retention": 0.90,
-            "auto_advance": False,
             "require_mastery_before_advance": True,
         },
     }[mode]
@@ -226,6 +273,22 @@ def build_domain_tree(slug: str, name: str, old_course: dict, review_items: list
     }
 
 
+def compact_params(existing: dict, mode: str) -> dict:
+    defaults = mode_defaults(mode)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "target_retention": existing.get("target_retention", defaults["target_retention"]),
+        "spacing_factor": existing.get("spacing_factor", 1.0),
+        "require_mastery_before_advance": existing.get(
+            "require_mastery_before_advance",
+            defaults["require_mastery_before_advance"],
+        ),
+        "last_pace_feedback": existing.get("last_pace_feedback", existing.get("last_speed_feedback")),
+        "last_pace_feedback_at": existing.get("last_pace_feedback_at", existing.get("last_speed_feedback_at")),
+        "adaptive_history": existing.get("adaptive_history", []),
+    }
+
+
 def migrate(profile_dir: Path) -> int:
     progress_path = profile_dir / "progress.json"
     review_path = profile_dir / "review-schedule.json"
@@ -260,7 +323,6 @@ def migrate(profile_dir: Path) -> int:
         course_review_items = [item for item in review_items if item["course_slug"] == slug]
         scope = old_course.get("scope", "系统精讲")
         mode = mode_from_scope(scope)
-        defaults = mode_defaults(mode)
         course_dir = courses_dir / slug
         course_name = old_course.get("name", slug)
 
@@ -283,22 +345,9 @@ def migrate(profile_dir: Path) -> int:
             "created_at": old_course.get("created_at", timestamp),
         })
 
-        write_json(course_dir / "params.json", {
-            "schema_version": SCHEMA_VERSION,
-            "mode": mode,
-            "mode_label": scope,
-            "depth_chars_per_module": defaults["depth_chars_per_module"],
-            "exercises_per_module": defaults["exercises_per_module"],
-            "target_retention": review.get("target_retention", defaults["target_retention"]),
-            "new_items_per_session": 5,
-            "spacing_factor": 1.0,
-            "speed_factor": 1.0,
-            "auto_advance": defaults["auto_advance"],
-            "require_mastery_before_advance": defaults["require_mastery_before_advance"],
-            "last_speed_feedback": None,
-            "last_speed_feedback_at": None,
-            "adaptive_history": [],
-        })
+        write_json(course_dir / "params.json", compact_params({
+            "target_retention": review.get("target_retention", mode_defaults(mode)["target_retention"]),
+        }, mode))
 
         concepts = []
         for item in course_review_items:
@@ -324,6 +373,7 @@ def migrate(profile_dir: Path) -> int:
             "concepts": concepts,
         })
         write_json(course_dir / "domain-tree.json", build_domain_tree(slug, course_name, old_course, course_review_items))
+        ensure_learning_record(course_dir, slug)
         print(f"Migrated {slug}")
 
     upgrade_course_files(courses_dir)

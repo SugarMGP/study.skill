@@ -44,9 +44,9 @@ Pipeline:
 
 Units:
 
-- **一讲 (Lecture / 单次小课)**: one main concept. Size is controlled by the selected mode's word/character target in `phase-0-anchoring.md`; time is only a rough planning hint.
-- **一模块 (Module / 主题单元)**: 2-5 lectures, one coherent sub-topic.
-- **一门课 (Course / 完整课程)**: <=15 modules and <=30 lectures; split larger topics.
+- **一小节 (Section / 单次学习页)**: one main question or concept, stored as its own `{module}/{section}/content.md`.
+- **一模块 (Module / 可折叠章节)**: a short preface in `{module}/content.md` plus 2-7 section pages.
+- **一门课 (Course / 完整课程)**: usually <=12 modules and <=60 section pages; split larger topics.
 
 Iron Law:
 
@@ -55,6 +55,7 @@ NO TEACHING WITHOUT ANCHORING FIRST.
 NO GENERATION WITHOUT RESEARCH FIRST.
 NO STATE WRITE WITHOUT THE CURRENT SCHEMA.
 NO COMPLETION CLAIMS WITHOUT VERIFICATION.
+NO LEARNER-FACING COURSE FILES WITH AGENT/RUNTIME CAVEATS.
 ```
 
 Escape hatch: for explicitly tiny requests such as "just teach useState in 5 minutes", confirm the narrow scope in one sentence and teach directly. The rule prevents sloppiness, not speed.
@@ -82,10 +83,10 @@ Before answering any learning request:
 
 1. Load `phase-3-learning.md` and `learning-viewer.md`.
 2. Prefer the local viewer in `interactive` mode when course files exist.
-3. Read `README.md`, `syllabus.md`, and current `content.md` before teaching.
-4. Teach with explanation -> practice -> feedback -> self-test.
-5. Persist pace/depth feedback immediately in `params.json`.
-6. At session end, consume viewer session records if present, then update `meta.json`, `concepts.json`, and `domain-tree.json` only when evidence supports the change.
+3. If the viewer starts successfully, do not duplicate the lesson in chat. Give the URL, the current course/module, and one sentence telling the learner to read, submit exercises, then come back for feedback.
+4. Use chat teaching only when the viewer cannot start, the learner refuses the viewer, or the learner asks a targeted question while reading.
+5. When the learner returns, read the course `learning-record.json` before deciding progress, feedback, XP, or review items.
+6. Persist pace/depth feedback immediately in `params.json`.
 
 ### Review Or Progress Request
 
@@ -113,7 +114,9 @@ Before answering any learning request:
 | "RPG needs explicit opt-in." | RPG is on by default unless state or user says false. |
 | "I can hand-write state quickly." | Use the schema and atomic write path. |
 | "next_review means the user will be reminded automatically." | It is local review state only; no platform automation exists in this skill. |
-| "The viewer saved a session, so progress is complete." | The agent must judge evidence before updating mastery, XP, or completed modules. |
+| "The viewer saved a learning record, so progress is complete." | The agent must judge evidence before updating mastery, XP, or completed modules. |
+| "The code was not run locally, so I should warn learners in `content.md`." | Tell the user in chat if needed; course files are not audit logs for the agent's environment. |
+| "Every chapter needs the same heading template." | Keep the learning loop, not fixed headings. Do not force phrases such as "先记住一句话". |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |
 
 ## Motivation
