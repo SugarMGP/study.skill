@@ -43,17 +43,6 @@ else
     echo "  profile.json already exists — skipped"
 fi
 
-# Always copy runtime helper scripts to profile.
-REPO_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROFILE_SCRIPTS="$PROFILE_DIR/scripts"
-mkdir -p "$PROFILE_SCRIPTS"
-for script_name in check-reviews.py record-review.py write-state.py migrate-profile.py; do
-    REPO_SCRIPT="$REPO_SCRIPT_DIR/$script_name"
-    cp "$REPO_SCRIPT" "$PROFILE_SCRIPTS/$script_name"
-    chmod +x "$PROFILE_SCRIPTS/$script_name"
-    CREATED+=("scripts/$script_name")
-done
-
 if [ ${#CREATED[@]} -gt 0 ]; then
     echo "Learning profile initialized at $LEARNING_DIR"
     for f in "${CREATED[@]}"; do echo "  created: $f"; done

@@ -28,9 +28,9 @@ python {skill_dir}/viewer/server.py \
 | read-only | 仅当用户明确说“只浏览/只看课件，不记录” | 不写入学习记录 |
 
 interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和
-`scripts/record-review.py`。`.learning-profile/scripts/` 里的脚本给学习目录中的
-手动命令和复习检查使用；播放器不要依赖旧拷贝。脚本缺失时保留真实失败，
-先修复 skill 安装或学习目录，不要降级成伪造的复习结果。
+`scripts/record-review.py`。运行期脚本不复制到 `.learning-profile/`；手动命令、
+复习检查和播放器都直接调用当前 skill 目录下的脚本。脚本缺失时保留真实失败，
+先修复 skill 安装，不要降级成伪造的复习结果。
 
 ## 页面能做什么
 
@@ -65,6 +65,8 @@ agent 是否在开场主动提醒，仍以 `phase-3-learning.md` 和 `phase-4-co
 
 课件生成时的图片、图表和练习块选择规则以 `courseware-format.md` 为准。
 播放器这里只说明能渲染和能保存什么。不要把设计目的、技术选型、内部字段说明写进用户能看到的课件。
+章节前言可以列出小节名称和学习顺序，但不要写到子小节文件的 Markdown
+超链接；播放器不会把这些链接当作课程导航，正式导航来自左侧目录树。
 
 新课程可以使用层级目录：
 

@@ -63,17 +63,14 @@ If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node =
 
 ### Default Skill Tree and RPG Policy
 
-Skill tree and lightweight RPG progress are default features for every formal
-course, not only programming topics.
+Load `references/skill-tree.md` for the full default policy, opt-out wording,
+RPG behavior, and state integration. Phase 0 only owns when to initialize the
+tree:
 
-- `skill_tree_enabled`: default `true`
-- `rpg_enabled`: default `true`
-- If user says "不要游戏化/不要娱乐元素/不要 RPG/别搞等级 XP 成就", set `rpg_enabled: false` in `meta.json`.
-- If user says "不要技能树/不用地图", set `skill_tree_enabled: false` and `rpg_enabled: false` in `meta.json`.
-- Ask whether to keep RPG either before the first teaching session starts or after
-  the first teaching session ends. Do not ask repeatedly once `rpg_preference_asked` is true.
-- Even when RPG is on, keep it lightweight: one short progress line, no long
-  celebrations unless a real milestone happens.
+- broad topic: generate a domain exploration tree before Q1.
+- specific topic: initialize an empty course-local tree after route confirmation;
+  fill nodes only after Module 00 and syllabus are confirmed.
+- user opts out: write the `meta.json` flags exactly as `skill-tree.md` requires.
 
 ### Quick Start Minimum Loop
 
@@ -122,8 +119,10 @@ Counting rules:
   complete and the learner's goal is narrow, shorter is acceptable.
 - Section pages should be substantial enough to teach, not just outline. If a
   section is shorter than roughly 600 Chinese characters / 350 English words,
-  merge it with a neighbor unless it is only a short "reading guide" page. If it
-  exceeds roughly 2200 Chinese characters / 1300 English words, split it.
+  merge it only with a neighbor that shares the same learner question, worked
+  example, decision rule, and practice evidence; otherwise keep it separate or
+  expand it with explanation. If it exceeds roughly 2200 Chinese characters /
+  1300 English words, split it.
 - If the total module content would exceed the upper band by more than about
   25%, split it into another module before writing.
 
@@ -219,10 +218,11 @@ Daily: 15 分钟 / 30 分钟 / 1 小时 / 2 小时+
 Total: 3 天 / 1 周 / 2 周 / 1 个月 / 不限
 
 Implications:
-- 15min/day → smaller section pages and compact explanations; choose the lower
-  end of the selected mode's prose band and split long modules early
+- 15min/day → shorter learning sessions and earlier splits; reduce optional
+  scope before reducing explanation depth for selected content
 - 2h/day → full Gagné Nine Events cycle per session, deeper dives
-- Short total → fewer modules, focus on essentials (80/20 principle)
+- Short total → fewer modules and fewer optional branches; selected essentials
+  still need explanation, examples, and checks
 
 ### Q4: Location — "学习目录放哪里？"
 
@@ -268,7 +268,7 @@ After confirmation:
 4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`,
    an empty `concepts.json`, and an empty `learning-record.json` using the
    schema in `state-schema.md`.
-5. Use `write-state.py` when available; never overwrite existing state without reading it first.
+5. Use `{skill_dir}/scripts/write-state.py`; never overwrite existing state without reading it first.
 
 Example durable profile fields:
 
@@ -308,6 +308,6 @@ and return to the current topic.
 | User is a returning learner | Read `.learning-profile/courses/*/meta.json` first. Show progress. "上次你学到 {module}，继续还是换方向？" |
 | User wants to switch path/mode | **正式流程**：展示当前模式→新模式的差异（篇幅、练习密度、解释深度、掌握门槛）→ 用户确认 → 更新 `meta.json`（mode, mode_label）；如果新模式改变 `target_retention` 或 `require_mastery_before_advance`，同步更新 `params.json` → 不改已生成内容，只影响后续模块。 |
 | User says "看看进度" / "技能树" | Load `references/skill-tree.md`. Render current skill tree with all progress. |
-| User opts out of RPG | Update `meta.json.rpg_enabled=false`, `meta.json.rpg_preference_asked=true`; keep skill tree unless they also reject it. |
-| User opts out of skill tree | Update `meta.json.skill_tree_enabled=false`, `meta.json.rpg_enabled=false`, `meta.json.rpg_preference_asked=true`. |
+| User opts out of RPG | Load `skill-tree.md` and write the opt-out flags it defines; keep skill tree unless they also reject it. |
+| User opts out of skill tree | Load `skill-tree.md` and write the skill-tree opt-out flags it defines. |
 | User completes a module | Update node progress. |

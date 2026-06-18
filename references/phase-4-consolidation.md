@@ -18,9 +18,9 @@ Load `references/fsrs-scheduler.md` for algorithm and storage format.
 
 At the beginning of the first formal learning session of a day:
 
-1. Run `{learning_root}/.learning-profile/scripts/check-reviews.py {learning_root}/.learning-profile`.
+1. Run `{skill_dir}/scripts/check-reviews.py {learning_root}/.learning-profile`.
 2. If script output is needed by the viewer or another deterministic consumer, use `--json`.
-3. If the script is missing, stop and run the init script or repair the learning profile before continuing.
+3. If the skill script is missing, stop and repair the skill installation before continuing.
 4. If no overdue items exist, proceed normally and do not mention reviews.
 5. If overdue items exist, present one compact line:
 
@@ -69,8 +69,8 @@ After user selects a course or says "都过一遍":
 1 忘了  2 记得一点  3 记得大部分  4 轻松想起
 ```
 
-3. After each rating, run `record-review.py`.
-4. If the script is missing, stop and repair the learning profile. Do not hand-write review results.
+3. After each rating, run `{skill_dir}/scripts/record-review.py`.
+4. If the skill script is missing, stop and repair the skill installation. Do not hand-write review results.
 5. R is computed, not stored.
 
 After each batch:

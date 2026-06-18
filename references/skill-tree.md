@@ -34,7 +34,7 @@ RPG progress is default on:
 
 Turn RPG off only when `meta.json.rpg_enabled` is `false` or the user explicitly
 says they do not want game/entertainment/RPG elements. If the user opts out,
-update `meta.json` immediately through `write-state.py` when available:
+update `meta.json` immediately through `{skill_dir}/scripts/write-state.py`:
 
 ```json
 {

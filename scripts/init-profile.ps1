@@ -19,7 +19,7 @@ $created = @()
 if (-not (Test-Path -LiteralPath $profileFile)) {
     $now = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
     $profileJson = [ordered]@{
-        SCHEMA_VERSION = 4
+        schema_version = 4
         learner_id = "default"
         created_at = $now
         updated_at = $now
@@ -44,15 +44,6 @@ if (-not (Test-Path -LiteralPath $profileFile)) {
     $created += "profile.json"
 } else {
     Write-Host "  profile.json already exists - skipped"
-}
-
-# Always copy runtime helper scripts to profile.
-$profileScripts = "$profileDir\scripts"
-New-Item -ItemType Directory -Force -Path $profileScripts | Out-Null
-foreach ($scriptName in @("check-reviews.py", "record-review.py", "write-state.py", "migrate-profile.py")) {
-    $repoScript = Join-Path $PSScriptRoot $scriptName
-    Copy-Item $repoScript (Join-Path $profileScripts $scriptName) -Force
-    $created += "scripts\$scriptName"
 }
 
 if ($created.Count -gt 0) {

@@ -45,13 +45,13 @@ schema_version 4 的关键规则：
 使用仓库脚本：
 
 ```bash
-python scripts/migrate-profile.py /path/to/learning/.learning-profile
+python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profile
 ```
 
 Windows PowerShell：
 
 ```powershell
-python .\scripts\migrate-profile.py "$env:USERPROFILE\learning\.learning-profile"
+python {skill_dir}\scripts\migrate-profile.py "$env:USERPROFILE\learning\.learning-profile"
 ```
 
 不传参数时，默认读取 `~/learning/.learning-profile`。
@@ -73,22 +73,12 @@ ls .learning-profile/courses/*/meta.json
 ls .learning-profile/courses/*/params.json
 ls .learning-profile/courses/*/concepts.json
 ls .learning-profile/courses/*/learning-record.json
-python .learning-profile/scripts/check-reviews.py .learning-profile
+python {skill_dir}/scripts/check-reviews.py .learning-profile
 test ! -f .learning-profile/progress.json
 test ! -f .learning-profile/review-schedule.json
 ```
 
-如果 `check-reviews.py` 还没有复制到学习目录，先重新运行初始化脚本：
-
-```bash
-bash scripts/init-profile.sh /path/to/learning
-```
-
-Windows：
-
-```powershell
-.\scripts\init-profile.ps1 -Path "$env:USERPROFILE\learning"
-```
+运行期脚本从当前 skill 目录直接调用，不复制到学习目录。
 
 迁移验证通过后，旧文件必须不存在。若还存在，先不要继续教学；重新运行迁移脚本或手动完成删除。
 
@@ -98,7 +88,7 @@ Windows：
 `schema_version: 1`、`schema_version: 2` 或 `schema_version: 3`，仍然运行同一个脚本：
 
 ```bash
-python scripts/migrate-profile.py /path/to/learning/.learning-profile
+python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profile
 ```
 
 脚本会：

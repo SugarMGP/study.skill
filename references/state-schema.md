@@ -367,14 +367,14 @@
 推荐使用仓库脚本执行写入：
 
 ```bash
-python scripts/write-state.py <state-file.json> < <new-content.json>
+python {skill_dir}/scripts/write-state.py <state-file.json> < <new-content.json>
 ```
 
 Windows PowerShell 写包含中文的 JSON 时，优先写入 UTF-8 临时文件，再用
 `--input-file` 读取，避免管道编码问题：
 
 ```powershell
-python .\scripts\write-state.py <state-file.json> --input-file <new-content.json>
+python {skill_dir}\scripts\write-state.py <state-file.json> --input-file <new-content.json>
 ```
 
 不要把包含中文的 JSON 直接通过 PowerShell 管道传给 Python。写入失败时保留
@@ -383,7 +383,7 @@ python .\scripts\write-state.py <state-file.json> --input-file <new-content.json
 复习评分更新优先使用专用脚本：
 
 ```bash
-python scripts/record-review.py <course-state-dir> <concept-id> <rating>
+python {skill_dir}/scripts/record-review.py <course-state-dir> <concept-id> <rating>
 ```
 
 `<course-state-dir>` 是 `.learning-profile/courses/{course-slug}` 这一层目录；

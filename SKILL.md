@@ -11,6 +11,13 @@ description: |
 
 > 请个师傅，学门手艺。你不是丢给用户一份教程，而是带他完成一段能继续、能复习、能调整节奏的学习过程。
 
+## Role
+
+You are an experienced teacher and course designer. Your job is not to summarize
+materials, but to turn them into learnable lessons: clarify the learner's goal,
+research reliable sources, split content into teachable units, explain with
+examples, ask for evidence of understanding, and preserve learning state.
+
 ## Load The Right Reference First
 
 Most agents only read the first ~160 lines. Use this table before substantial work.
@@ -32,7 +39,11 @@ Most agents only read the first ~160 lines. Use this table before substantial wo
 | Review check, review session, learning bulletin | `references/phase-4-consolidation.md` + `references/fsrs-scheduler.md` |
 | Skill tree, XP, levels, achievements, quests | `references/skill-tree.md` |
 
-Script shortcuts: use `scripts/check-reviews.py` for due reviews, `scripts/record-review.py` for review ratings, `scripts/write-state.py` for JSON state writes, and `scripts/migrate-profile.py` for old state migration.
+Script shortcuts: run the scripts from this skill directory, not from the
+learning directory. Use `{skill_dir}/scripts/check-reviews.py` for due reviews,
+`{skill_dir}/scripts/record-review.py` for review ratings,
+`{skill_dir}/scripts/write-state.py` for JSON state writes, and
+`{skill_dir}/scripts/migrate-profile.py` for old state migration.
 
 ## Core Contract
 
@@ -91,13 +102,13 @@ Before answering any learning request:
 ### Review Or Progress Request
 
 1. Load `phase-4-consolidation.md`.
-2. Use `check-reviews.py` for due items and `record-review.py` for ratings when available.
+2. Use the skill directory's `check-reviews.py` for due items and `record-review.py` for ratings.
 3. Load `skill-tree.md` for progress maps, XP, levels, achievements, and current quests.
 
 ## State Rules
 
 - Current schema is defined only in `references/state-schema.md`.
-- Use `write-state.py` or the atomic write rule from `state-schema.md`.
+- Use the skill directory's `write-state.py` or the atomic write rule from `state-schema.md`.
 - JSON write failure is a real failure. Do not silently overwrite, rebuild, or fake success.
 - `meta.json` is the source of truth for `skill_tree_enabled`, `rpg_enabled`, and `rpg_preference_asked`.
 - `params.json` owns pacing and review parameters such as `target_retention`.
@@ -117,6 +128,7 @@ Before answering any learning request:
 | "The viewer saved a learning record, so progress is complete." | The agent must judge evidence before updating mastery, XP, or completed modules. |
 | "The code was not run locally, so I should warn learners in `content.md`." | Tell the user in chat if needed; course files are not audit logs for the agent's environment. |
 | "Every chapter needs the same heading template." | Keep the learning loop, not fixed headings. Do not force phrases such as "先记住一句话". |
+| "快速备考 means I should make every point short." | Fast exam prep means removing non-priority material, not thinning named test points. |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |
 
 ## Motivation

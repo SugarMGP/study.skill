@@ -12,13 +12,13 @@ This file is the source of truth for live teaching and continuation. It covers:
 
 - how to start a formal learning session
 - how to continue an existing generated course
-- how to use the local viewer
 - how to teach, practice, give feedback, and decide mastery
-- how to consume viewer learning records and write state
+- how to use viewer evidence for mastery decisions and state writes
 
 It does not cover platform automations, scheduled reminders, hooks, push
 notifications, or thread wakeups. Review checks happen when a learning session
-starts.
+starts. Exact local viewer startup, supported syntax, learning-record fields,
+and chat handoff text live in `learning-viewer.md`.
 
 ## The Iron Law Of Teaching
 
@@ -45,8 +45,8 @@ At the start of each formal learning session:
 
 At the first formal learning session of each day only:
 
-1. Run `.learning-profile/scripts/check-reviews.py`.
-2. If the script is missing, stop and run the init script or repair the learning profile before continuing.
+1. Run `{skill_dir}/scripts/check-reviews.py {learning_root}/.learning-profile`.
+2. If the skill script is missing, stop and repair the skill installation before continuing.
 3. If due reviews exist, show one compact line and ask whether to spend 2-5
    minutes reviewing. If the user does not choose review, continue the main lesson.
 
@@ -61,56 +61,28 @@ Opening format:
 
 If no overdue items exist, omit the review line.
 
-If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`, ask
-once before teaching starts or after the first session summary:
-
-```text
-我会默认保留技能树、等级、XP、成就这些轻量进度元素。如果你觉得花哨，我可以关掉。要保留吗？
-```
-
-Persist the answer in `meta.json`; keep `domain-tree.json` mirrored.
+If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`,
+follow `skill-tree.md` for the one-time RPG preference question and state write.
 
 ## Existing Course Continuation
 
 When the user says "继续学习", "继续", "下一节", or similar, and course files exist:
 
 1. Load `references/learning-viewer.md`.
-2. Start the local viewer in `interactive` mode before chat teaching unless:
-   - the viewer cannot start
-   - required files are missing
-   - the user explicitly refuses the viewer
-3. Use `read-only` only when the user says they only want to browse. Missing
-   interactive dependencies are a repair task, not a silent downgrade.
-4. If the viewer starts successfully, make the viewer the primary learning
+2. Follow `learning-viewer.md` for startup mode, fallback conditions, and the
+   short handoff message.
+3. If the viewer starts successfully, make the viewer the primary learning
    surface. Do not continue with the full Core Teaching Loop in chat for the
    same lesson.
-5. In chat, say only:
-   - the exact course/module/subsection now open
-   - the viewer URL
-   - what the learner should do there: read the section, submit the `study-*`
-     exercises, then come back for feedback
-   - the due-review line only when today's first-session check found due items
-6. While the viewer is open, answer targeted questions from the learner, but do
+4. While the viewer is open, answer targeted questions from the learner, but do
    not re-teach the whole section unless the learner asks for a chat explanation
    or the viewer is unusable.
-7. Fall back to chat teaching only with a concrete reason, then continue from
+5. Fall back to chat teaching only with a concrete reason, then continue from
    the current module or section `content.md`.
-8. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
-9. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
-10. External docs/source lookup is allowed only when local content is missing,
+6. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
+7. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
+8. External docs/source lookup is allowed only when local content is missing,
    the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
-
-Viewer handoff format:
-
-```text
-本地播放器已打开：{url}
-当前：{course_name} / {module_id} / {section_title}
-
-你先在播放器里读完这一节，并提交里面的练习。完成后回来告诉我，我会看你的作答、回答遗留问题，再更新进度和复习项。
-```
-
-Do not append a full explanation after this handoff. That creates two competing
-learning surfaces and makes the viewer feel like decoration.
 
 ## Core Teaching Loop
 
@@ -172,23 +144,28 @@ blocks the next module. It does not let the agent fake completion:
 
 When the local viewer is used and the learner comes back after reading and submitting exercises:
 
-1. Read the course learning record from
-   `{learning_root}/.learning-profile/courses/{course_slug}/learning-record.json`.
-2. Verify `source == "study.skill.viewer"` and `course_slug` matches the active course.
-3. Answer `questions_for_llm` first.
-4. Use the latest item in `completions` to locate the module, section, and exercise ids for this completed learning page.
-5. Evaluate the matching `exercises` against the current module's mastery gate. Use `mastery_tags` to identify recall, apply/analyze, explain, interview, or exam evidence. For old courses, also read `legacy_checkpoints` if present.
-6. Use review records only for session summary; `record-review.py` already updates `concepts.json`.
-7. If evidence is enough, update `meta.json`, `domain-tree.json`, XP, achievements, and concepts.
-8. If evidence is not enough, keep the node `in_progress` and write what evidence is missing.
+1. Follow `learning-viewer.md` to read the current course `learning-record.json`,
+   validate the record source, answer learner questions, and locate the latest
+   completed page.
+2. Evaluate the matching exercise evidence against the current module's mastery
+   gate. Use `mastery_tags` to identify recall, apply/analyze, explain,
+   interview, or exam evidence. For old courses, also read `legacy_checkpoints`
+   if present.
+3. Use review records only for session summary; `record-review.py` already
+   updates `concepts.json`.
+4. If evidence is enough, update `meta.json`, `domain-tree.json`, XP,
+   achievements, and concepts.
+5. If evidence is not enough, keep the node `in_progress` and write what
+   evidence is missing.
 
-The viewer stores reading and answer evidence, not correctness. `pages[].completed_at`
-and `completions[]` mean the viewer recorded the page as read through; they do not
-mean the module is mastered.
+The viewer stores reading and answer evidence, not correctness. Page completion
+is not mastery.
 
 ## State Updates
 
-Before writing state, generate complete updated JSON in memory, re-read the target file, then write through `.learning-profile/scripts/write-state.py`. If missing, stop and run the init script or repair the learning profile before continuing.
+Before writing state, generate complete updated JSON in memory, re-read the
+target file, then write through `{skill_dir}/scripts/write-state.py`. If the
+script is missing, stop and repair the skill installation before continuing.
 
 Update:
 

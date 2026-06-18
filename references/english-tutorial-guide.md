@@ -45,12 +45,14 @@ preface:
 
 - the core problem this chapter solves
 - prerequisites and any small refresher the chapter will provide
-- the section list and what each section is for
+- the section list and what each section is for; file layout and navigation
+  rules come from `courseware-format.md`.
 - what the learner should be able to judge, explain, or do by the end
 
-The actual lesson body lives in section files:
-`{module}/{section}/content.md`. Each section should teach one main question or
-concept. It should not be a thin outline.
+The actual lesson body lives in section files. Section split, merge, and
+navigation-link rules come from `courseware-format.md`. This guide only controls
+English prose: each section should read like a complete lesson, not a thin
+outline.
 
 A section should naturally include:
 
@@ -59,11 +61,15 @@ A section should naturally include:
 - a small worked example before realistic scale
 - a decision rule or boundary: when to use it, when not to, and what to compare it with
 - a real misconception or failure symptom near the relevant concept, only when useful
-- one active check or practice task when the learner should answer
+- one active check or practice task when the learner should answer; exercise
+  block rules come from `courseware-format.md`
 - a concise recap when it helps organize the section
 
-Recommended module size: 2-7 section pages. Merge a section that is too short to
-stand alone. Split a section that needs more than four substantial subtopics.
+Course generation is not source compression. First bridge and rewrite the source
+material: add transitions, prerequisites, plain-language explanations, and small
+examples before dense terms, diagrams, formulas, code, or claims. Omit or shrink
+content only when the confirmed goal, time budget, exam scope, pretest evidence,
+or explicit user instruction justifies it.
 
 ## English Style Rules
 
@@ -132,10 +138,9 @@ For technical courses:
 
 ### 7. Place source links where they help
 
-Do not create a default `resources.md` just to hold links. Put short official or
-authoritative links next to the concept they clarify. Put course-level sources
-in the course overview or syllabus. Create a separate appendix only when the
-learner asks for it or the course links to it as part of the learning path.
+Put short official or authoritative links next to the concept they clarify.
+Exact link placement, course-level source lists, and resource appendices are
+owned by `courseware-format.md`.
 
 Good:
 
@@ -147,8 +152,6 @@ Rules:
 - Prefer official docs, standards, textbooks, papers, or source repositories.
 - Say why the link is useful in one sentence.
 - Do not dump broad link lists inside the lesson body.
-- Keep broad reading paths short and place them in the overview or syllabus
-  unless a linked appendix has a clear use.
 
 ### 8. Use the learner profile when it reduces effort
 
@@ -175,9 +178,9 @@ useful evidence with `study-*` blocks from `courseware-format.md`.
 
 ### 9.5 Avoid orphan side artifacts
 
-Do not generate standalone `glossary.md`, `practice.md`, `interview-qa.md`,
-`exam-practice.md`, `flashcards.csv`, or `resources.md` by default. They are only
-useful when the learning flow actually surfaces them.
+Do not turn terms, question banks, flashcards, or resources into orphan side
+materials. The default file policy is owned by `courseware-format.md`; this
+guide only controls how those items should appear in English prose.
 
 Use these replacements:
 
@@ -187,9 +190,6 @@ Use these replacements:
   as `study-choice`, `study-truefalse`, or `study-input`.
 - Add spaced-review items to `concepts.json` during Phase 3 after the learner has
   encountered the concept; do not pre-generate cards for unseen content.
-- Export Anki CSV files, printable glossaries, or resource appendices only when
-  the learner explicitly asks or a known tool will consume them. Link any export
-  from the overview or relevant chapter and state its use.
 
 ### 10. Keep optional depth out of the main path
 
@@ -216,4 +216,3 @@ Avoid vague warnings such as “be careful with complexity.” Do not invent mis
   locally”, “package not installed”, or “verification status”.
 - Do not force repeated slogan headings such as “The idea in one minute”.
 - Do not add decorative diagrams or exercises that do not help the chapter goal.
-- Do not generate side files that the viewer or Phase 3 learning flow will not read.

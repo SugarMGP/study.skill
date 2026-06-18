@@ -29,14 +29,15 @@ papers), enter **material-driven research mode**:
 the syllabus. The goal is "只学要考的" — only what's tested.
 
 **Research tasks (material-driven):**
-1. Analyze the material for topic list, ordering, depth, and exam format
+1. Analyze the material for topic list, ordering, depth, priority language, and exam format
 2. For each topic in the material, find 1-2 supplementary sources:
    - explanations or analogies in the course language for difficult concepts
    - Similar practice problems with solutions
    - Past exam papers from the same course/school if available
    - Official exercise answers if the material has exercises
-3. Extract key concepts and their relationships from the material → Knowledge DAG
-4. Map material chapters to learning modules
+3. For exam mode, extract an explicit **named exam point list** from final-review decks, syllabi, past papers, or teacher-marked "重点/掌握/必考" notes. Keep the original wording and source location when available.
+4. Extract key concepts and their relationships from the material → Knowledge DAG
+5. Map material chapters to learning modules
 
 **Source count**: 1 primary (user's material) + 1-2 supplementary. Flag what's missing.
 
@@ -111,9 +112,11 @@ For each source, extract:
 | Extraction | Purpose |
 |-------------|---------|
 | Material chapter/section mapping | → module outline aligned with textbook |
+| Named exam points / final-review items | → required coverage list for exam-mode generation |
 | Exam format and question types | → module-local exam-style `study-*` practice |
 | Grading criteria / 评分标准 | → what to emphasize in answers |
 | Topic weight in exam | → module priority (high-weight topics first) |
+| Priority labels such as 重点掌握/理解/了解 | → separate full teaching from one-sentence recognition notes |
 | **Diagrams & visuals** | **→ collect quality existing images for reuse. Note URL + description. Prioritize: architecture diagrams, flowcharts, comparison tables, data visualizations.** |
 
 ### Output: Research Summary
