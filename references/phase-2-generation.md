@@ -34,11 +34,13 @@ Load `learning-viewer.md` only when exact player-supported syntax, viewer startu
 
 Do not claim a course, module, code example, or exercise is complete until the relevant quality gate has been checked. If runnable code was not executed, say so in your chat handoff or internal completion note, not inside learner-facing course files.
 
+After the course generation phase is complete, treat the main course as frozen unless the user explicitly asks to revise the original files. Later clarifications, deeper explanations, extra exercises, practice papers, retellings, and errata discussions go through the `99-content-supplements` workflow defined in `courseware-format.md`.
+
 ## Natural Structure Rule
 
 Do not force a repeated heading template. Keep the learning loop instead: goal -> prerequisite -> concrete entry point -> explanation -> example/case/code -> decision rule -> practice -> recap. Headings should fit the topic and language. Do not require slogans such as "先记住一句话" or "The idea in one minute".
 
-Generation must apply the shared teaching completeness rules in `courseware-format.md`: self-contained lessons, source-to-courseware bridging, first-use concept introduction, complete demonstrations for procedural topics, and narrow section merge rules. Phase 2 decides sequence and scope; do not redefine those shared rules here.
+Generation must apply the shared teaching completeness rules in `courseware-format.md`: self-contained lessons, source-to-courseware bridging, first-use concept introduction, section pass standard, complete demonstrations for procedural topics, image/source-question explanation, exercise progression, and narrow section merge rules. Phase 2 decides sequence and scope; do not redefine those shared rules here.
 
 Before telling the user the course is ready, compare the generated files with this reference and fix missing learning-loop requirements directly in the files.
 
@@ -49,7 +51,7 @@ Generate real, runnable courses. Do not dump links or generic outlines.
 Every module should contain:
 
 - clear learning objectives
-- a short preface in `{module}/content.md`: core problem, prerequisites, section map, and end capability
+- a short preface in `{module}/content.md`: previous-module bridge when relevant, core problem, prerequisites, section map, why the section order matters, and end capability
 - section pages under `{module}/{section}/content.md`; section split and merge rules come from `courseware-format.md`
 - beginner-facing entry points before definitions in foundation sections
 - plain-language intuition followed by precise terms
@@ -143,10 +145,13 @@ After Module 00 is confirmed, generate `syllabus.md` and all remaining modules i
 - module order, section titles, and learning objectives
 - prerequisites and unlock order when relevant
 - mode-specific emphasis, such as interview follow-ups or exam question forms
+- the fixed `99-content-supplements` module, titled "内容补充", marked as always available and outside the main learning path
 - short course-level source list, limited to sources that actually shaped the syllabus
 - links to optional appendices only when those appendices were explicitly requested or have a runtime consumer
 
 **Course structure guard:** one course should stay within <=12 modules and <=60 section pages. If the outline exceeds either limit, split it into a series of separate courses before writing modules. Do not use "batch generation" to hide an oversized single course. Batches are only for context management inside a course that already passes the structure guard.
+
+The fixed `99-content-supplements` module is outside this structure guard. Do not count it as one of the <=12 main modules or its future supplement sections as part of the <=60 main section pages.
 
 For each module:
 
@@ -212,7 +217,7 @@ Before outputting any module, check against this tiered checklist.
 | Learning objectives | 2-3 at Understand/Apply | 3-5 at Apply/Analyze | 2-3 at Analyze/Evaluate |
 | Beginner entry before definitions | [MUST] concrete scene/problem + why it matters | [SHOULD] unless prior module already prepared it | [OPTIONAL] |
 | Language-specific natural writing rules | [MUST] | [MUST] | [MUST] |
-| Plain explanation -> precise term -> example/case/code -> recap | [MUST] | [MUST] | [MUST] |
+| Problem entry -> concept explanation -> minimum complete example/source item -> step-by-step breakdown -> decision boundary -> practice -> recap | [MUST] | [MUST] | [MUST] |
 | Diagram or equivalent visual structure | [SHOULD] if structure is complex; else table/examples OK | [MUST] when content involves flow/architecture/hierarchy/contrast/dependency; else table/examples OK | [SHOULD] |
 | Interactive practice | [MUST] 1-2 learner-answerable questions across the module; use `study-choice`, `study-truefalse`, or `study-input` when answer should be saved or unlocked after submit | [MUST] 3-6 learner-answerable questions across section pages, covering recall + apply/analyze/explain evidence through `mastery_tags` | [SHOULD] 1-2 learner-answerable questions |
 | Concrete continuation action | [SHOULD] only if it names a real action, variant, self-test, or next module bridge | [SHOULD] only if it names a real action, variant, self-test, or next module bridge | [OPTIONAL] |
@@ -224,6 +229,8 @@ Before outputting any module, check against this tiered checklist.
 | Source-to-section coverage | [MUST] important material points are taught or scoped out with reason | [MUST] every important researched/source point has a section home and enough explanation | [MUST] optional points are clearly marked as optional, not silently lost |
 | Source fragment use | [MUST] follow `courseware-format.md` source-fragment rule | [MUST] follow `courseware-format.md` source-fragment rule | [SHOULD] follow `courseware-format.md` when fragments clarify optional content |
 | Complete demonstration for procedural topics | [MUST] follow `courseware-format.md` complete-demonstration rule | [MUST] follow `courseware-format.md` complete-demonstration rule | [SHOULD] follow `courseware-format.md` when optional topic teaches an operation or answer pattern |
+| Image/source-question explanation | [MUST] explain how to read reused figures, tables, source questions, or code | [MUST] explain how each reused source artifact becomes understanding, answer, code, or judgment | [SHOULD] when source artifacts are included |
+| Exercise progression | [SHOULD] include recognition plus one apply/explain check for core items | [MUST] avoid single-point memory-only checks for core items; include apply/analyze/explain evidence | [SHOULD] |
 | First-use concept introduction | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule |
 | Learner-profile adaptation | [SHOULD] when profile has relevant facts | [MUST] when profile has relevant known languages, weak prereqs, or constraints | [SHOULD] |
 | Mode-specific depth coverage | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation |
@@ -239,7 +246,7 @@ Before outputting any module, check against this tiered checklist.
 - Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps?
 - Could the learner answer the tested item after reading only this section, even if they never opened the original review deck?
 
-**Length diagnostic protocol:** After generation, optionally run `scripts/check-course-depth.py` on the generated course or module. It counts non-symbol characters in Markdown content. Treat short sections as strong signals to expand missing teaching. Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant.
+**Length diagnostic protocol:** After generation, optionally run `scripts/check-course-depth.py` on the generated course or module. It counts non-symbol characters in Markdown content. Treat short sections as strong signals to inspect missing learning-chain pieces from `courseware-format.md`: complete example, step breakdown, figure/source-question explanation, common error, decision boundary, or exercise progression. Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant.
 
 **Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
@@ -276,7 +283,8 @@ Module 00 creates the root structure and course contract. After the user confirm
 │   ├── content.md
 │   └── 01-{section-name}/
 │       └── content.md
-└── ...
+└── 99-content-supplements/
+    └── content.md          # Always-available supplement module
 ```
 
 Default course content must stay on the path that Phase 3 and the local viewer actually read. Side artifacts and exports follow `courseware-format.md`.
@@ -285,10 +293,12 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 
 1. **Module 00 first, confirmation second, remaining modules third.** If the user has explicitly waived later confirmations, use the confirmed route as the contract and continue.
 2. Put learner-facing questions in the relevant module or section `content.md`; use `study-*` blocks for questions that should be saved or should reveal reference content only after the learner submits.
-3. Do not create side files by default; terminology, links, interview/exam practice, review items, and exports follow `courseware-format.md`.
-4. Generate or update `domain-tree.json` when `meta.json.skill_tree_enabled=true`. Nodes must mirror the confirmed syllabus. RPG fields are included by default when `meta.json.rpg_enabled=true`.
-5. Depth per mode comes from `phase-0-anchoring.md` Q1. Generate first for structural coverage and teaching completeness; use module/section prose bands only as post-generation diagnostics. Code examples, source fragments, images, tables, formulas, and diagrams are not constrained by prose length; include them whenever they help understanding.
-6. Before offering to start Module 01, self-check every generated file against the natural learning-loop requirements, quality gate, and `courseware-format.md`.
+3. Create `99-content-supplements/content.md` for every new course. Future supplemental lessons, practice papers, retellings, or expansions append under this module as section pages. Follow `courseware-format.md`; do not create ad hoc side folders for supplements.
+4. Do not create side files by default; terminology, links, interview/exam practice, review items, and exports follow `courseware-format.md`.
+5. Generate or update `domain-tree.json` when `meta.json.skill_tree_enabled=true`. Nodes must mirror the confirmed syllabus, and the `99-content-supplements` node must remain always available/unlocked. RPG fields are included by default when `meta.json.rpg_enabled=true`.
+6. Depth per mode comes from `phase-0-anchoring.md` Q1. Generate first for structural coverage and teaching completeness; use module/section prose bands only as post-generation diagnostics. Code examples, source fragments, images, tables, formulas, and diagrams are not constrained by prose length; include them whenever they help understanding.
+7. Before offering to start Module 01, self-check every generated file against the natural learning-loop requirements, quality gate, and `courseware-format.md`.
+8. Once this generation pass is handed off as complete, do not later edit mainline course files as a casual improvement. Use `99-content-supplements` for additions unless the user explicitly asks to revise original course content.
 
 ## Ownership Map
 

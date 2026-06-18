@@ -210,6 +210,14 @@ For a specific topic, generate a compact tree after Module 00 is confirmed:
 
 The course-local tree should mirror the generated syllabus. Do not invent extra branches that are not part of the confirmed course.
 
+Always include the fixed supplement node when the course has `99-content-supplements/`:
+
+- `99-content-supplements` displays as `内容补充`.
+- It stays `available` or `unlockable`, never `locked`, because learners may need remediation or extra practice at any time.
+- It is outside the main prerequisite chain and does not block course completion.
+- Do not grant mastery XP merely because the supplement node exists. Grant XP only for real learning evidence inside a supplement section, such as completed practice, accepted explanation, or reviewed mistakes.
+- When adding a new supplement section, update the node's `key_topics` or progress note if useful, but do not rewrite the main syllabus nodes.
+
 ## Example: "我想学大模型" Domain Map
 
 ```

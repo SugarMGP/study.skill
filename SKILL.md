@@ -89,8 +89,9 @@ Before answering any learning request:
 2. Prefer the local viewer in `interactive` mode when course files exist.
 3. If the viewer starts successfully, do not duplicate the lesson in chat. Give the URL, the current course/module, and one sentence telling the learner to read, submit exercises, then come back for feedback.
 4. Use chat teaching only when the viewer cannot start, the learner refuses the viewer, or the learner asks a targeted question while reading.
-5. When the learner returns, read the course `learning-record.json` before deciding progress, feedback, XP, or review items.
+5. When the learner returns, read the course `learning-record.json` before deciding progress, feedback, XP, or review items. If you answer `questions_for_llm`, clear the answered questions in `learning-record.json`.
 6. Persist pace/depth feedback immediately in `params.json`.
+7. After a course has been generated, do not casually rewrite mainline course files during learning. Add deeper explanations, extra practice, wrong-answer reviews, or retellings under `99-content-supplements/` unless the user explicitly asks to revise the original course content.
 
 ### Review Or Progress Request
 
@@ -122,6 +123,7 @@ Before answering any learning request:
 | "The code was not run locally, so I should warn learners in `content.md`." | Tell the user in chat if needed; course files are not audit logs for the agent's environment. |
 | "Every chapter needs the same heading template." | Keep the learning loop, not fixed headings. Do not force phrases such as "先记住一句话". |
 | "快速备考 means I should make every point short." | Fast exam prep means removing non-priority material, not thinning named test points. |
+| "The learner wants more detail, so I should patch the original section." | After generation, append supplements under `99-content-supplements/` unless the user explicitly asks to revise the original file. |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |
 
 ## Motivation

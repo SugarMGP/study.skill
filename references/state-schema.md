@@ -223,6 +223,8 @@
 
 默认生成。结构参考 `references/skill-tree.md`。当 `meta.json.skill_tree_enabled=false` 时可以不展示、不更新；当 `meta.json.rpg_enabled=false` 时保留普通进度，但不展示等级、XP、称号、成就、任务等娱乐元素。
 
+如果课程存在 `99-content-supplements/`，`domain-tree.json.nodes` 中的 `99-content-supplements` 必须保持 `available` 或 `unlockable`，不能写成 `locked`。它不属于主线 prerequisite chain（先修链），也不阻塞课程完成。
+
 ```json
 {
   "schema_version": 4,
@@ -338,13 +340,15 @@
 | course_slug | string | ✅ | — | 所属课程标识 |
 | current | object | ✅ | 空位置 | 播放器最后停留位置 |
 | pages | array | ✅ | [] | 浏览过的模块/小节页面 |
-| questions_for_llm | string[] | ✅ | [] | 学习者留下的问题 |
+| questions_for_llm | string[] | ✅ | [] | 学习者留下的问题；agent 回答后必须删除已回答项 |
 | exercises | array | ✅ | [] | `study-*` 题目的原始作答证据 |
 | review_summary | object | ✅ | 空摘要 | 当前课程复习评分摘要；评分已经写入 `concepts.json` |
 | legacy_checkpoints | array | ✅ | [] | 旧版 `study-checkpoint` 兼容记录 |
 | completions | array | ✅ | [] | 播放器自动记录的页面完成事件 |
 
 `exercises` 只保存原始作答、参考内容和 `mastery_tags`。不要保存 `correct`、`passed`、`score` 这类终态字段；判断职责在 agent。
+
+`questions_for_llm` 是待处理队列，不是历史问答记录。agent 从这里读取并回答问题后，必须通过 `write-state.py` 写回更新后的 `learning-record.json`，删除已回答项；全部回答完就写成 `[]`。不要为了保留历史而让已回答问题继续留在队列里。
 
 ---
 

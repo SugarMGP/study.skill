@@ -66,6 +66,16 @@ When the user says "继续学习", "继续", "下一节", or similar, and course
 7. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
 8. External docs/source lookup is allowed only when local content is missing, the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
 
+## Supplemental Content During Learning
+
+When the learner says a generated course section is too thin, asks for a deeper explanation, requests more examples, wants a practice paper, or needs a wrong-answer review, do not silently rewrite the main course files. Follow the main-course freeze rule in `courseware-format.md`: append a new section under `99-content-supplements/` unless the learner explicitly asks to modify the original module or section.
+
+Supplement examples:
+
+- “这里再细讲一下” -> create the next `99-content-supplements/{NN}-{topic}/content.md` section and state which original module/section it supplements.
+- “再出十道题” -> create a supplement section that can be all exercises, with `study-*` blocks when answers should be saved or revealed after submission.
+- “原文写错了，改掉” -> revise the original file, then check that syllabus/module preface/progress references still match.
+
 ## Core Teaching Loop
 
 Teach one main concept at a time:
@@ -122,7 +132,7 @@ In speedrun mode: Foundation >=75%, Core >=60%, Enrichment optional.
 
 When the local viewer is used and the learner comes back after reading and submitting exercises:
 
-1. Follow `learning-viewer.md` to read the current course `learning-record.json`, validate the record source, answer learner questions, and locate the latest completed page.
+1. Follow `learning-viewer.md` to read the current course `learning-record.json`, validate the record source, answer learner questions, clear answered `questions_for_llm`, and locate the latest completed page.
 2. Evaluate the matching exercise evidence against the current module's mastery gate. Use `mastery_tags` to identify recall, apply/analyze, explain, interview, or exam evidence. For old courses, also read `legacy_checkpoints` if present.
 3. Use review records only for session summary; `record-review.py` already updates `concepts.json`.
 4. If evidence is enough, update `meta.json`, `domain-tree.json`, XP, achievements, and concepts.
@@ -153,6 +163,10 @@ Update:
    - update immediately when the user says "太快/太慢/太浅/太深/跟不上"
    - write `last_pace_feedback`, `last_pace_feedback_at`, and append an `adaptive_history` entry with the trigger and the next teaching adjustment
    - do not invent numeric tuning fields just to make the feedback look automated
+5. `learning-record.json`
+   - after answering `questions_for_llm`, remove answered questions and write the updated record back through `{skill_dir}/scripts/write-state.py`
+   - keep unanswered questions only when the agent explicitly did not answer them
+   - do not leave stale answered questions in the list; otherwise the next session will repeat the same answer
 
 ## Pace Feedback
 

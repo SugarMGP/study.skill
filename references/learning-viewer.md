@@ -42,6 +42,10 @@ interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和 `scripts
 
 页面不能判断练习对错，不能标记模块 mastered（已掌握），不能更新技能树 mastered，也不能发放 XP。
 
+## 播放器文件结构
+
+播放器前端由 `viewer/viewer.html`、`viewer/assets/viewer.css` 和 `viewer/assets/viewer.js` 组成，后端入口是 `viewer/server.py`。`server.py` 只负责命令行启动和组装运行上下文，具体课程状态、学习记录、HTTP 路由和图表渲染由 `viewer/` 下的拆分模块承担。不要把前端样式或交互重新塞回 `viewer.html`，也不要把课程生成质量判断写进 server 运行时代码。
+
 ## 课程文件可用语法
 
 生成课程时优先使用这些语法，播放器会直接展示：
@@ -88,7 +92,7 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 | course_slug | 课程目录名 |
 | current | 播放器最后停留的模块、小节和内容文件 |
 | pages | 用户看过哪些章节/小节、打开次数、最后打开时间和自动完成时间 |
-| questions_for_llm | 当前待问问题列表 |
+| questions_for_llm | 当前待问问题列表；agent 回答后必须清空已回答项 |
 | review_summary | 复习评分摘要；评分本身已通过 record-review.py 写入 concepts.json |
 | exercises | 选择题、判断题和开放作答题的原始作答 |
 | legacy_checkpoints | 旧版 `study-checkpoint` 兼容记录；新课程不用 |
@@ -105,7 +109,7 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 | current | 判断播放器最新停留位置；不能单独当作完成证据 |
 | pages | 判断用户是否看过对应章节或小节；`completed_at` 只代表播放器记录到该页已读完，不代表掌握 |
 | completions | 找出最近一次完成事件，定位本次要评估的模块/小节 |
-| questions_for_llm | 会话结束后逐条回答 |
+| questions_for_llm | 会话结束后逐条回答；回答后写回空列表或仅保留未回答项 |
 | review_summary | 只用于总结本次复习；不要重复写 concepts.json |
 | exercises | 判断选择题、判断题和开放题证据；用 `mastery_tags` 识别 recall、apply、explain、interview、exam 等证据类型 |
 | legacy_checkpoints | 兼容旧课程的检查记录 |
@@ -116,10 +120,11 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 
 1. 读取当前课程的 `learning-record.json`，不要再从 `tmp/viewer-sessions/` 查最新文件。
 2. 先回答 `questions_for_llm`。
-3. 找到 `completions` 中最后一条记录，用其中的 `module`、`section` 和 `exercise_ids` 定位本次证据。
-4. 根据相关 `exercises` 的题型、作答和 `mastery_tags` 判断是否满足掌握度门槛；旧课程再兼容读取 `legacy_checkpoints`。
-5. 只有证据满足门槛时，才通过 `write-state.py` 更新 `meta.json`、`domain-tree.json` 和 XP。
-6. 证据不足时保持 `in_progress`，不要为了进度好看伪造完成。
+3. 回答完成后，立即通过 `{skill_dir}/scripts/write-state.py` 写回 `learning-record.json`：把已回答的问题从 `questions_for_llm` 删除；如果全部回答完，写成空数组。不要等下次打开播放器再靠前端覆盖。
+4. 找到 `completions` 中最后一条记录，用其中的 `module`、`section` 和 `exercise_ids` 定位本次证据。
+5. 根据相关 `exercises` 的题型、作答和 `mastery_tags` 判断是否满足掌握度门槛；旧课程再兼容读取 `legacy_checkpoints`。
+6. 只有证据满足门槛时，才通过 `write-state.py` 更新 `meta.json`、`domain-tree.json` 和 XP。
+7. 证据不足时保持 `in_progress`，不要为了进度好看伪造完成。
 
 本地播放器不可用时，读取当前模块或小节的 `content.md`，按 `phase-3-learning.md` 在聊天中继续教学。
 
