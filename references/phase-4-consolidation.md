@@ -8,9 +8,7 @@
 
 This file is the source of truth for review sessions and progress bulletins.
 
-The skill does not create platform automations, scheduled tasks, hooks, push
-notifications, or thread wakeups. A "复习提醒" means: when the learner starts
-studying that day, the agent checks due items and shows a short prompt.
+The skill does not create platform automations, scheduled tasks, hooks, push notifications, or thread wakeups. A "复习提醒" means: when the learner starts studying that day, the agent checks due items and shows a short prompt.
 
 Load `references/fsrs-scheduler.md` for algorithm and storage format.
 
@@ -28,8 +26,7 @@ At the beginning of the first formal learning session of a day:
 ⏰ 待复习：{total} 个知识点，可先用 2-5 分钟过一遍。
 ```
 
-Ask whether to review now or continue the main lesson. Do not let review consume
-the session by default.
+Ask whether to review now or continue the main lesson. Do not let review consume the session by default.
 
 If the user chooses a full review, group by course:
 
@@ -85,8 +82,7 @@ After each batch:
 
 Items with `lapses >= 3` and `R < 0.7` become `status: "needs_relearning"`.
 
-These items should be reintroduced in a Phase 3 learning session, not drilled
-forever through review. Present them at session end:
+These items should be reintroduced in a Phase 3 learning session, not drilled forever through review. Present them at session end:
 
 ```text
 下面这些知识点不适合继续硬背，需要重新讲一遍：
@@ -104,8 +100,7 @@ Show this compact line at session start or when the user asks "现在学到哪�
 🎮 Lv.{level} · {xp} XP · 称号「{title}」
 ```
 
-Omit the review segment when no due items exist. Omit RPG fields when
-`meta.json.rpg_enabled=false`.
+Omit the review segment when no due items exist. Omit RPG fields when `meta.json.rpg_enabled=false`.
 
 ### Full Bulletin
 

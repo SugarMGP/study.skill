@@ -27,10 +27,7 @@ python {skill_dir}/viewer/server.py \
 | interactive | 默认；正式学习、复习、保存作答和问题 | 写课程级学习记录；正式进度由你判断后写入 |
 | read-only | 仅当用户明确说“只浏览/只看课件，不记录” | 不写入学习记录 |
 
-interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和
-`scripts/record-review.py`。运行期脚本不复制到 `.learning-profile/`；手动命令、
-复习检查和播放器都直接调用当前 skill 目录下的脚本。脚本缺失时保留真实失败，
-先修复 skill 安装，不要降级成伪造的复习结果。
+interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和 `scripts/record-review.py`。运行期脚本不复制到 `.learning-profile/`；手动命令、复习检查和播放器都直接调用当前 skill 目录下的脚本。脚本缺失时保留真实失败，先修复 skill 安装，不要降级成伪造的复习结果。
 
 ## 页面能做什么
 
@@ -41,9 +38,7 @@ interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和
 - 保存选择题、判断题和开放作答题的原始作答。
 - 题目必须先提交作答，之后才自动展开参考答案或解析。
 
-右侧“本课程待复习”只是播放器里的会话工具，方便学习者主动处理当前课程到期项；
-agent 是否在开场主动提醒，仍以 `phase-3-learning.md` 和 `phase-4-consolidation.md`
-的“每天第一次正式学习开始时检查一次”为准。
+右侧“本课程待复习”只是播放器里的会话工具，方便学习者主动处理当前课程到期项； agent 是否在开场主动提醒，仍以 `phase-3-learning.md` 和 `phase-4-consolidation.md` 的“每天第一次正式学习开始时检查一次”为准。
 
 页面不能判断练习对错，不能标记模块 mastered（已掌握），不能更新技能树 mastered，也不能发放 XP。
 
@@ -56,17 +51,14 @@ agent 是否在开场主动提醒，仍以 `phase-3-learning.md` 和 `phase-4-co
 | 普通正文 | Markdown | 面向用户，不写内部设计说明 |
 | 本地图片 | `![说明](images/a.png)` | 相对路径按当前 `content.md` 所在目录解析 |
 | 外部图片 | `![说明](https://...)` | 可以直接加载；失败时显示原链接 |
-| 流程/时序/状态图 | ` ```mermaid ` | 默认图表格式 |
-| UML 图 | ` ```plantuml ` 或 ` ```puml ` | 类图、组件图、部署图、时序图 |
-| 依赖图/DAG | ` ```graphviz ` 或 ` ```dot ` | 知识依赖、图算法、系统依赖 |
-| 架构关系图 | ` ```d2 ` | 服务关系、模块关系 |
-| 数据图 | ` ```vega-lite ` | 小型统计图、趋势、分布 |
+| 流程/时序/状态图 | fenced code block with language `mermaid` | 默认图表格式 |
+| UML 图 | fenced code block with language `plantuml` 或 `puml` | 类图、组件图、部署图、时序图 |
+| 依赖图/DAG | fenced code block with language `graphviz` 或 `dot` | 知识依赖、图算法、系统依赖 |
+| 架构关系图 | fenced code block with language `d2` | 服务关系、模块关系 |
+| 数据图 | fenced code block with language `vega-lite` | 小型统计图、趋势、分布 |
 | 可保存练习 | `study-choice` / `study-truefalse` / `study-input` | 只保存原始作答，交给 LLM 判断；旧版 `study-recall` / `study-transfer` / `study-feynman` / `study-checkpoint` 仅兼容历史课程 |
 
-课件生成时的图片、图表和练习块选择规则以 `courseware-format.md` 为准。
-播放器这里只说明能渲染和能保存什么。不要把设计目的、技术选型、内部字段说明写进用户能看到的课件。
-章节前言可以列出小节名称和学习顺序，但不要写到子小节文件的 Markdown
-超链接；播放器不会把这些链接当作课程导航，正式导航来自左侧目录树。
+课件生成时的图片、图表和练习块选择规则以 `courseware-format.md` 为准。播放器这里只说明能渲染和能保存什么。不要把设计目的、技术选型、内部字段说明写进用户能看到的课件。章节前言可以列出小节名称和学习顺序，但不要写到子小节文件的 Markdown 超链接；播放器不会把这些链接当作课程导航，正式导航来自左侧目录树。
 
 新课程可以使用层级目录：
 
@@ -76,11 +68,9 @@ agent 是否在开场主动提醒，仍以 `phase-3-learning.md` 和 `phase-4-co
 01-{module}/02-{section}/content.md
 ```
 
-点击章节时显示章节前言；点击展开的小节时显示对应小节正文。旧课程如果只有
-`01-{module}/content.md`，播放器仍按整章内容显示。
+点击章节时显示章节前言；点击展开的小节时显示对应小节正文。旧课程如果只有 `01-{module}/content.md`，播放器仍按整章内容显示。
 
-PlantUML、Graphviz、D2、Vega-Lite 等非 Mermaid 图表通过 Kroki（文本图表渲染服务）
-渲染为 SVG；如果网络不可用，页面会显示真实错误。不要因此伪造图片已渲染成功。
+PlantUML、Graphviz、D2、Vega-Lite 等非 Mermaid 图表通过 Kroki（文本图表渲染服务）渲染为 SVG；如果网络不可用，页面会显示真实错误。不要因此伪造图片已渲染成功。
 
 ## 学习记录
 
@@ -104,10 +94,7 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 | legacy_checkpoints | 旧版 `study-checkpoint` 兼容记录；新课程不用 |
 | completions | 播放器自动记录的页面完成历史事件 |
 
-练习一律由教学 agent 判断。不要为这个固定行为新增
-`judgement_policy`、`requires_llm_judgement` 之类的策略字段；也禁止在
-`exercises`、`legacy_checkpoints` 里保存 `correct`、
-`passed`、`self_assessed` 这类自评终态。
+练习一律由教学 agent 判断。不要为这个固定行为新增 `judgement_policy`、`requires_llm_judgement` 之类的策略字段；也禁止在 `exercises`、`legacy_checkpoints` 里保存 `correct`、 `passed`、`self_assessed` 这类自评终态。
 
 字段消费路径：
 

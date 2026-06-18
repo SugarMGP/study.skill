@@ -6,20 +6,14 @@
 
 ## Default Policy
 
-Skill trees are default for every formal course, across all learnable domains:
-programming, language learning, math, design, music, finance, writing, exam prep,
-craft skills, and general knowledge.
+Skill trees are default for every formal course, across all learnable domains: programming, language learning, math, design, music, finance, writing, exam prep, craft skills, and general knowledge.
 
 Use a skill tree in two ways:
 
-1. **Domain exploration tree**: for broad topics like "学AI", "学心理学", "学英语",
-   "学摄影", "学投资", "学历史". Show branches so the user can choose a path.
-2. **Course-local tree**: for specific topics like "学 React Hooks", "学微积分极限",
-   "学水彩入门". Map the generated modules, prerequisites, locks, and progress.
+1. **Domain exploration tree**: for broad topics like "学AI", "学心理学", "学英语", "学摄影", "学投资", "学历史". Show branches so the user can choose a path.
+2. **Course-local tree**: for specific topics like "学 React Hooks", "学微积分极限", "学水彩入门". Map the generated modules, prerequisites, locks, and progress.
 
-Do not disable the tree because the topic is not programming. Disable only when
-`meta.json.skill_tree_enabled` is `false` or the user explicitly says they do not
-want a skill tree/map.
+Do not disable the tree because the topic is not programming. Disable only when `meta.json.skill_tree_enabled` is `false` or the user explicitly says they do not want a skill tree/map.
 
 ## RPG Defaults and Opt-Out
 
@@ -32,9 +26,7 @@ RPG progress is default on:
 - quests
 - unlocks
 
-Turn RPG off only when `meta.json.rpg_enabled` is `false` or the user explicitly
-says they do not want game/entertainment/RPG elements. If the user opts out,
-update `meta.json` immediately through `{skill_dir}/scripts/write-state.py`:
+Turn RPG off only when `meta.json.rpg_enabled` is `false` or the user explicitly says they do not want game/entertainment/RPG elements. If the user opts out, update `meta.json` immediately through `{skill_dir}/scripts/write-state.py`:
 
 ```json
 {
@@ -54,9 +46,7 @@ If the user rejects the skill tree itself, set both flags to false:
 }
 ```
 
-Ask whether to keep RPG either before teaching starts or after the first teaching
-session. Ask once; after `rpg_preference_asked=true`, do not ask again unless the
-user brings it up. Store the answer in `meta.json`, not only in chat context.
+Ask whether to keep RPG either before teaching starts or after the first teaching session. Ask once; after `rpg_preference_asked=true`, do not ask again unless the user brings it up. Store the answer in `meta.json`, not only in chat context.
 
 Suggested wording:
 
@@ -65,14 +55,11 @@ Suggested wording:
 如果你觉得花哨，我可以关掉娱乐元素，只保留正常学习进度。要保留吗？
 ```
 
-If the user keeps RPG, set `rpg_preference_asked=true` and leave
-`rpg_enabled=true`. If the user says no, set `rpg_enabled=false` and
-`rpg_preference_asked=true`.
+If the user keeps RPG, set `rpg_preference_asked=true` and leave `rpg_enabled=true`. If the user says no, set `rpg_enabled=false` and `rpg_preference_asked=true`.
 
 ## Skill Tree Format
 
-Use indented bullet-style with emoji status markers. No box-drawing characters
-(╔══╗, ━━━) — these misalign across terminals and fonts. 3 tiers, 5-8 branches per tier.
+Use indented bullet-style with emoji status markers. No box-drawing characters (╔══╗, ━━━) — these misalign across terminals and fonts. 3 tiers, 5-8 branches per tier.
 
 ```
 🌳 {领域名} 技能树
@@ -128,15 +115,11 @@ Use indented bullet-style with emoji status markers. No box-drawing characters
 
 Course-local node status is part of teaching decisions:
 
-- Start from `in_progress`; if none exists, choose `available` / `unlockable`
-  based on prerequisites and the syllabus order.
-- Do not auto-enter `locked` nodes. If the learner insists, say which
-  prerequisite is missing and keep the new node `in_progress`.
+- Start from `in_progress`; if none exists, choose `available` / `unlockable` based on prerequisites and the syllabus order.
+- Do not auto-enter `locked` nodes. If the learner insists, say which prerequisite is missing and keep the new node `in_progress`.
 - A node becomes `mastered` only after the Phase 3 Mastery Gate passes.
-- A few short answers may increase `progress`, but cannot mark a module
-  complete.
-- If evidence is missing, keep `status="in_progress"` and record the missing
-  gate items in the node.
+- A few short answers may increase `progress`, but cannot mark a module complete.
+- If evidence is missing, keep `status="in_progress"` and record the missing gate items in the node.
 
 ## Node Metadata
 
@@ -154,8 +137,7 @@ Each node carries:
 | `key_topics` | Keywords for what this covers | `["useState","useEffect","useRef"]` |
 | `interview_weight` | Relevance to interviews (1-5) | `4` |
 
-Course-local nodes should also carry the minimum teaching metadata needed for
-decisions:
+Course-local nodes should also carry the minimum teaching metadata needed for decisions:
 
 | Field | Description | Example |
 |-------|-------------|---------|
@@ -226,8 +208,7 @@ For a specific topic, generate a compact tree after Module 00 is confirmed:
 🎮 进度：Lv.1 · 0 XP · 称号「学徒」
 ```
 
-The course-local tree should mirror the generated syllabus. Do not invent extra
-branches that are not part of the confirmed course.
+The course-local tree should mirror the generated syllabus. Do not invent extra branches that are not part of the confirmed course.
 
 ## Example: "我想学大模型" Domain Map
 
@@ -296,8 +277,7 @@ When user picks a node (e.g., types `lowcode` or clicks on it):
 
 ## RPG Mechanics
 
-Keep RPG lightweight. It should make progress visible, not interrupt teaching.
-Do not turn every message into a game UI.
+Keep RPG lightweight. It should make progress visible, not interrupt teaching. Do not turn every message into a game UI.
 
 When `meta.json.rpg_enabled=true`, use RPG in exactly three places:
 
@@ -319,9 +299,7 @@ Use one reward table across the skill:
 | Mastery Gate passed | +50 | Module/node gate passes |
 | Streak milestone | title/achievement | Based on real `streak_days` |
 
-Wrong answers do not lose XP. Say the current node is still learning, then give
-targeted feedback. Do not grant mastery XP for skipped, guessed, or unverified
-work.
+Wrong answers do not lose XP. Say the current node is still learning, then give targeted feedback. Do not grant mastery XP for skipped, guessed, or unverified work.
 
 ### 等级系统（Level System）
 
@@ -342,8 +320,7 @@ work.
 - **Node quest**: the current mastery gate, e.g. "完成 1 个应用证据 + 1 个解释证据".
 - **Achievement quest**: streak or project milestone.
 
-Quests are display hints for the next useful action. They do not replace the
-course syllabus or mastery gate.
+Quests are display hints for the next useful action. They do not replace the course syllabus or mastery gate.
 
 ### 称号系统（Title System）
 
@@ -374,9 +351,7 @@ When tree has multiple paths, offer Build options:
 
 ## State Integration
 
-The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tree.json`.
-`meta.json` is the source of truth for `skill_tree_enabled` and `rpg_enabled`;
-`domain-tree.json` mirrors those values for display.
+The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tree.json`. `meta.json` is the source of truth for `skill_tree_enabled` and `rpg_enabled`; `domain-tree.json` mirrors those values for display.
 
 ```json
 {

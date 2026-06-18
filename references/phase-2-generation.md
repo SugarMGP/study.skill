@@ -12,8 +12,7 @@ Before entering this phase:
 
 - Phase 0 completed: user confirmed the learning route.
 - Phase 1 completed: user confirmed the research scope.
-- Read `profile.json.learner_profile` when available; use it to adapt examples,
-  analogies, prerequisites, and explanations.
+- Read `profile.json.learner_profile` when available; use it to adapt examples, analogies, prerequisites, and explanations.
 - Load `references/courseware-format.md` for shared courseware rules.
 - Load one language guide for learner-facing prose:
   - Chinese output: `references/chinese-tutorial-guide.md`
@@ -21,13 +20,11 @@ Before entering this phase:
 
 Default course language follows the user's request and profile. If unclear, use Chinese. If the user explicitly asks for English or bilingual output, route to the English guide or ask once for the learner-facing language.
 
-Do not start writing `README.md`, `syllabus.md`, module `content.md`, or section
-`content.md` files until `courseware-format.md` and the selected language guide
-have been read in this turn.
+Do not start writing `README.md`, `syllabus.md`, module `content.md`, or section `content.md` files until `courseware-format.md` and the selected language guide have been read in this turn.
 
 ## Responsibility Boundary
 
-This file is the source of truth for course generation: file layout, Module 00, module generation order, quality gate, course-size guard, verification rules, and generation sequence.
+This file is the source of truth for course generation: file layout, Module 00, module generation order, quality gate, course-size diagnostics, verification rules, and generation sequence.
 
 It does not define diagram syntax, image rules, or `study-*` block schemas. Those live in `courseware-format.md`. It does not define live teaching or mastery decisions. Those live in `phase-3-learning.md`.
 
@@ -39,20 +36,11 @@ Do not claim a course, module, code example, or exercise is complete until the r
 
 ## Natural Structure Rule
 
-Do not force a repeated heading template. Keep the learning loop instead:
-goal -> prerequisite -> concrete entry point -> explanation -> example/case/code
--> decision rule -> practice -> recap. Headings should fit the topic and
-language. Do not require slogans such as "先记住一句话" or "The idea in one
-minute".
+Do not force a repeated heading template. Keep the learning loop instead: goal -> prerequisite -> concrete entry point -> explanation -> example/case/code -> decision rule -> practice -> recap. Headings should fit the topic and language. Do not require slogans such as "先记住一句话" or "The idea in one minute".
 
-Generation should transform sources into teachable courseware. First connect
-the source material with transitions, prerequisites, concrete examples, and
-plain-language explanations. Only compress or omit content when the learner's
-goal, time budget, exam scope, pretest evidence, or explicit user instruction
-justifies the trade-off. Non-essential compression is a quality failure.
+Generation must apply the shared teaching completeness rules in `courseware-format.md`: self-contained lessons, source-to-courseware bridging, first-use concept introduction, complete demonstrations for procedural topics, and narrow section merge rules. Phase 2 decides sequence and scope; do not redefine those shared rules here.
 
-Before telling the user the course is ready, compare the generated files with
-this reference and fix missing learning-loop requirements directly in the files.
+Before telling the user the course is ready, compare the generated files with this reference and fix missing learning-loop requirements directly in the files.
 
 ## Output Standard
 
@@ -61,54 +49,36 @@ Generate real, runnable courses. Do not dump links or generic outlines.
 Every module should contain:
 
 - clear learning objectives
-- a short preface in `{module}/content.md`: core problem, prerequisites, section
-  map, and end capability
-- section pages under `{module}/{section}/content.md`; section split and merge
-  rules come from `courseware-format.md`
+- a short preface in `{module}/content.md`: core problem, prerequisites, section map, and end capability
+- section pages under `{module}/{section}/content.md`; section split and merge rules come from `courseware-format.md`
 - beginner-facing entry points before definitions in foundation sections
 - plain-language intuition followed by precise terms
+- first-use concept introductions according to `courseware-format.md`
 - examples, code, cases, or worked reasoning
 - active recall or transfer practice
 - decision criteria
 - real pitfalls or misconceptions when the topic has source-backed or practice-backed ones
 - concise recap and a concrete continuation action when useful
-- source notes for non-trivial claims, code, images, diagrams, and data; link
-  placement and export rules come from `courseware-format.md`
+- source notes for non-trivial claims, code, images, diagrams, and data; link placement and export rules come from `courseware-format.md`
 
 Course files are for learners. Do not include design notes, generation rationale, tool choices, internal field names, or agent self-evaluation unless they are part of the hidden machine-readable exercise block format defined in `courseware-format.md`.
 
-Do not include agent/runtime verification notes in learner-facing files. Forbidden
-phrases include "验证状态", "本机当前没有安装", "未执行验证", "code was not
-executed", "not installed locally", or equivalent statements. Learners do not
-need to see the generator's environment. Put that information in the chat
-summary if it matters.
+Do not include agent/runtime verification notes in learner-facing files. Forbidden phrases include "验证状态", "本机当前没有安装", "未执行验证", "code was not executed", "not installed locally", or equivalent statements. Learners do not need to see the generator's environment. Put that information in the chat summary if it matters.
 
 ## Learner Profile Adaptation
 
-Use `profile.json.learner_profile` as a teaching aid, not as a place to invent
-facts. Apply only explicit profile data:
+Use `profile.json.learner_profile` as a teaching aid, not as a place to invent facts. Apply only explicit profile data:
 
-- `known_languages`: use brief transfer analogies when they reduce cognitive
-  load. Example: if the learner knows Java and is learning Python decorators,
-  compare decorator syntax to wrapping a method with an annotation-like idea,
-  then explain where the analogy breaks.
-- `weak_prereqs`: insert compact prerequisite refreshers before the concept that
-  depends on them; do not turn the module into a different course.
-- `analogy_preferences`: choose examples from the learner's familiar domain,
-  such as backend, systems, math, design, or writing.
-- `teaching_constraints`: obey exclusions and preferences explicitly. If the
-  user said "不要把 Python 放进主线", use only the minimum Python syntax needed.
+- `known_languages`: use brief transfer analogies when they reduce cognitive load. Example: if the learner knows Java and is learning Python decorators, compare decorator syntax to wrapping a method with an annotation-like idea, then explain where the analogy breaks.
+- `weak_prereqs`: insert compact prerequisite refreshers before the concept that depends on them; do not turn the module into a different course.
+- `analogy_preferences`: choose examples from the learner's familiar domain, such as backend, systems, math, design, or writing.
+- `teaching_constraints`: obey exclusions and preferences explicitly. If the user said "不要把 Python 放进主线", use only the minimum Python syntax needed.
 
-Every analogy must include its boundary when the boundary matters. Do not force
-cross-language comparisons into every section; use them only where they shorten
-the path to understanding.
+Every analogy must include its boundary when the boundary matters. Do not force cross-language comparisons into every section; use them only where they shorten the path to understanding.
 
 ## Source Link Routing
 
-Use the sources discovered in Phase 1, but follow `courseware-format.md` for
-where links, citations, resources, terminology notes, and optional exports live.
-This phase only decides whether a source item belongs in the course scope and
-which module or section teaches it.
+Use the sources discovered in Phase 1, but follow `courseware-format.md` for where links, citations, resources, terminology notes, and optional exports live. This phase only decides whether a source item belongs in the course scope and which module or section teaches it.
 
 ## Step 1: Generate Course Overview (Module 00)
 
@@ -166,52 +136,29 @@ English prompt: `Does this outline look right? I can start writing the modules n
 
 ## Step 2: Generate Remaining Modules
 
-After Module 00 is confirmed, generate `syllabus.md` and all remaining modules in
-one pass. The Module 00 outline is the contract. No per-module confirmation is
-needed unless the user pauses or asks to revise the outline.
+After Module 00 is confirmed, generate `syllabus.md` and all remaining modules in one pass. The Module 00 outline is the contract. No per-module confirmation is needed unless the user pauses or asks to revise the outline.
 
 `syllabus.md` minimum content:
 
 - module order, section titles, and learning objectives
 - prerequisites and unlock order when relevant
 - mode-specific emphasis, such as interview follow-ups or exam question forms
-- short course-level source list, limited to sources that actually shaped the
-  syllabus
-- links to optional appendices only when those appendices were explicitly
-  requested or have a runtime consumer
+- short course-level source list, limited to sources that actually shaped the syllabus
+- links to optional appendices only when those appendices were explicitly requested or have a runtime consumer
 
-**Size guard:** one course should stay within <=12 modules and <=60 section
-pages. If the outline exceeds either limit, split it into a series of separate
-courses before writing modules. Do not use "batch generation" to hide an
-oversized single course. Batches are only for context management inside a course
-that already passes the size guard.
+**Course structure guard:** one course should stay within <=12 modules and <=60 section pages. If the outline exceeds either limit, split it into a series of separate courses before writing modules. Do not use "batch generation" to hide an oversized single course. Batches are only for context management inside a course that already passes the structure guard.
 
 For each module:
 
-- Write a module preface in `{module}/content.md`; keep it short and
-  navigational. Follow `courseware-format.md` for section list and link rules.
+- Write a module preface in `{module}/content.md`; keep it short and navigational. Follow `courseware-format.md` for section list and link rules.
 - Write each teachable unit as `{module}/{section}/content.md`.
-- Before writing section bodies, create a source-to-section map: each important
-  material point, researched concept, worked example, procedure, API behavior,
-  theorem, diagram, or question form must be assigned to exactly one section or
-  deliberately marked as omitted with a reason grounded in the confirmed scope.
-- Prefer rewriting, sequencing, bridging, and explaining over condensing. If a
-  source item is important but dense, add a transition, a smaller example, or a
-  prerequisite refresher before it; do not reduce it to one bullet unless it is
-  explicitly low-priority.
+- Before writing section bodies, create a source-to-section map: each important material point, researched concept, worked example, procedure, API behavior, theorem, diagram, or question form must be assigned to exactly one section or deliberately marked as omitted with a reason grounded in the confirmed scope.
+- Apply `courseware-format.md` for concept introductions, source fragments, complete demonstrations, section split/merge, diagrams, media, code examples, and saveable practice.
 - Follow the selected language guide's learner-facing prose rules.
-- Follow `courseware-format.md` for diagrams, media, code examples, and saveable practice.
 - Check mode-specific depth rules from `phase-0-anchoring.md`.
-- Use the selected mode's prose band and split rules from
-  `phase-0-anchoring.md` as the total prose-size guard for the module preface
-  plus all section pages. This is not a substitute for examples, diagrams,
-  worked solutions, and interactive questions. Do not use time estimates as the
-  concrete sizing target.
-- Apply `learner_profile` adaptations from this file before writing examples and
-  explanations.
-- For novice learners, weak prerequisites, or Tier 1 modules, start from a small
-  concrete example in the relevant section before introducing abstract terms,
-  formulas, real-scale systems, or official API detail.
+- Generate the lesson at the depth the source and learner need. Do not limit the first draft by the selected mode's prose band. The mode band in `phase-0-anchoring.md` is a post-generation diagnostic: if the finished module is far below it, expand missing explanation/examples/practice; if far above it, consider trimming redundant wording or splitting the module, but do not remove required examples, diagrams, worked solutions, source fragments, or interactive questions only to satisfy a number.
+- Apply `learner_profile` adaptations from this file before writing examples and explanations.
+- For novice learners, weak prerequisites, or Tier 1 modules, start from a small concrete example in the relevant section before introducing abstract terms, formulas, real-scale systems, or official API detail.
 
 The four modes must produce visibly different files:
 
@@ -224,82 +171,41 @@ Do not let every mode collapse into the same shallow tutorial with different lab
 
 ### Exam Crash Course Depth Rule
 
-When mode is `exam`, do not treat "快速备考" or "crash course" as a request for
-short summaries. It means shorten the route by cutting non-priority material,
-while expanding the named exam points enough that the learner knows how to answer
-questions.
+When mode is `exam`, do not treat "快速备考" or "crash course" as a request for short summaries. It means shorten the route by cutting non-priority material, while expanding the named exam points enough that the learner knows how to answer questions.
 
 Use this source hierarchy:
 
-1. Final-review deck, exam syllabus, past papers, or teacher-marked "重点/掌握/必考"
-   items decide scope and priority.
-2. Chapter decks, textbook chapters, and lecture notes provide teaching order,
-   original terms, examples, diagrams, and exercises.
-3. Non-exam chapters or concepts are omitted, or reduced to one-sentence
-   recognition notes when they help choices or true/false questions.
+1. Final-review deck, exam syllabus, past papers, or teacher-marked "重点/掌握/必考" items decide scope and priority.
+2. Chapter decks, textbook chapters, and lecture notes provide teaching order, original terms, examples, diagrams, and exercises.
+3. Non-exam chapters or concepts are omitted, or reduced to one-sentence recognition notes when they help choices or true/false questions.
 
-For every item explicitly named by the final-review or exam-scope material, the
-generated section must include:
+For every item explicitly named by the final-review or exam-scope material, the generated section must include:
 
 - what it means in plain learner-facing language
 - why it matters for this exam
 - how it appears as a question form
-- one worked example, SQL/formula/procedure, diagram reading, or judgment rule
-  when the item requires solving, designing, querying, calculating, or comparing
-- common confusion, scoring point, or answer keyword when the material or
-  supplementary source supports it
+- one worked example, SQL/formula/procedure, diagram reading, or judgment rule when the item requires solving, designing, querying, calculating, or comparing
+- common confusion, scoring point, or answer keyword when the material or supplementary source supports it
 - one exam-tagged `study-*` exercise when the item is likely to be tested
 
-A section is too shallow if it only lists named concepts without showing how to
-answer exam questions about them. If one material chapter contains many named
-exam points, split by exam point cluster; do not pack the chapter into one
-summary section.
+A section is too shallow if it only lists named concepts without showing how to answer exam questions about them. If one material chapter contains many named exam points, split by exam point cluster; do not pack the chapter into one summary section.
 
-### Depth And Split Rule
+### Depth And Coverage Rule
 
 Depth is measured by both prose size and learning activity coverage:
 
-- prose size: learner-facing explanation should fit the selected mode's module
-  and section bands in Phase 0.
-- concept coverage: each section page should carry one main concept or question,
-  not a bundle of unrelated facts.
-- source coverage: important source or research items must be taught, bridged,
-  practiced, or explicitly omitted for a scoped reason; they must not disappear
-  through silent summarization.
-- activity coverage: every module must include answerable practice through
-  `study-*` blocks when answers should be saved or revealed after submission.
-- evidence coverage: interview and exam modes must include scoring criteria,
-  answer rubrics, or worked solution steps; system mode must include why/how,
-  boundaries, and transfer checks.
-- exam priority coverage: exam mode must separate "重点掌握" from "了解"; high
-  priority points get explanation plus exam handling, while low priority points
-  stay short.
-
-Split rules are hard:
-
-- Split when two items answer different learner questions, use different worked
-  examples, require different prerequisites, belong to different procedures, or
-  would be practiced with different question types.
-- Split when a section page needs more than 4 substantial subtopics or exceeds
-  the selected mode's section-page guidance.
-- Split the module when it needs more than 7 section pages, more than 7
-  interactive questions, or more than about 125% of the selected mode's upper
-  module prose band.
-- Do not compress an oversized chapter by deleting examples, source-material
-  transitions, worked steps, diagrams, practice, or answer rubrics. Split the
-  content instead.
-
-Merge rules are narrow: merge only when the items share the same main question,
-same example or data, same decision rule, and same practice evidence. If the only
-relationship is "they appear near each other in the source", do not merge.
+- prose size: learner-facing explanation is checked after generation against the selected mode's diagnostic bands in Phase 0. The bands are not hard caps and must not suppress useful teaching.
+- concept coverage: section split and merge rules come from `courseware-format.md`.
+- source coverage: important source or research items must be taught, bridged, practiced, or explicitly omitted for a scoped reason; they must not disappear through silent summarization.
+- activity coverage: every module must include answerable practice through `study-*` blocks when answers should be saved or revealed after submission.
+- evidence coverage: interview and exam modes must include scoring criteria, answer rubrics, or worked solution steps; system mode must include why/how, boundaries, and transfer checks.
+- exam priority coverage: exam mode must separate "重点掌握" from "了解"; high priority points get explanation plus exam handling, while low priority points stay short.
 
 ## Step 3: Quality Gate
 
 Before outputting any module, check against this tiered checklist.
 
-**Foundation 模块 / Tier 1**: intro/basics.
-**Core 模块 / Tier 2**: main content.
-**Enrichment 模块 / Tier 3**: advanced/optional.
+**Foundation 模块 / Tier 1**: intro/basics. **Core 模块 / Tier 2**: main content. **Enrichment 模块 / Tier 3**: advanced/optional.
 
 | Requirement | Foundation | Core | Enrichment |
 |-------------|-----------|------|------------|
@@ -316,24 +222,24 @@ Before outputting any module, check against this tiered checklist.
 | Interview/exam practice | [SHOULD] in interview/exam mode | [MUST] in interview mode | [SHOULD] |
 | Analogy or concrete mental model + decision criteria | [MUST] | [MUST] | [SHOULD] |
 | Source-to-section coverage | [MUST] important material points are taught or scoped out with reason | [MUST] every important researched/source point has a section home and enough explanation | [MUST] optional points are clearly marked as optional, not silently lost |
+| Source fragment use | [MUST] follow `courseware-format.md` source-fragment rule | [MUST] follow `courseware-format.md` source-fragment rule | [SHOULD] follow `courseware-format.md` when fragments clarify optional content |
+| Complete demonstration for procedural topics | [MUST] follow `courseware-format.md` complete-demonstration rule | [MUST] follow `courseware-format.md` complete-demonstration rule | [SHOULD] follow `courseware-format.md` when optional topic teaches an operation or answer pattern |
+| First-use concept introduction | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule |
 | Learner-profile adaptation | [SHOULD] when profile has relevant facts | [MUST] when profile has relevant known languages, weak prereqs, or constraints | [SHOULD] |
-| Mode-specific depth coverage | [MUST] module + section prose-size guard and structural coverage from Phase 0 | [MUST] module + section prose-size guard and structural coverage from Phase 0 | [MUST] module + section prose-size guard and structural coverage from Phase 0 |
+| Mode-specific depth coverage | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation |
 | No AI writing traces | [MUST] | [MUST] | [MUST] |
 
 **Exam module quality gate:** In exam mode, also check:
 
-- Does the module clearly separate high-priority "must master" content from
-  low-priority recognition content?
-- Are all final-review or syllabus named points assigned to a module and covered
-  in the section body?
-- Does each high-priority point include explanation plus exam handling, not just
-  a definition?
-- Are non-priority concepts compressed or removed instead of stealing space from
-  tested points?
-- Does the learner know what to write, calculate, query, design, or judge in an
-  answer?
-- Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics
-  include worked steps?
+- Does the module clearly separate high-priority "must master" content from low-priority recognition content?
+- Are all final-review or syllabus named points assigned to a module and covered in the section body?
+- Does each high-priority point include explanation plus exam handling, not just a definition?
+- Are non-priority concepts compressed or removed instead of stealing space from tested points?
+- Does the learner know what to write, calculate, query, design, or judge in an answer?
+- Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps?
+- Could the learner answer the tested item after reading only this section, even if they never opened the original review deck?
+
+**Length diagnostic protocol:** After generation, optionally run `scripts/check-course-depth.py` on the generated course or module. It counts non-symbol characters in Markdown content. Treat short sections as strong signals to expand missing teaching. Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant.
 
 **Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
@@ -345,14 +251,10 @@ Before outputting any module, check against this tiered checklist.
 
 - Runnable code must actually run before claiming it works.
 - Non-runnable technical content must be checked against official docs/source.
-- Do not write execution/verification caveats into `README.md`, `syllabus.md`,
-  module `content.md`, or section `content.md`; report them to the user outside
-  the course files.
+- Do not write execution/verification caveats into `README.md`, `syllabus.md`, module `content.md`, or section `content.md`; report them to the user outside the course files.
 - General or academic claims need source cross-checks.
 - Exam-prep content must align with the syllabus or provided materials.
-- Material-driven and research-driven courses must preserve important source
-  points through the source-to-section map. If content was compressed or omitted,
-  the reason must come from confirmed scope, not from convenience.
+- Material-driven and research-driven courses must preserve important source points through the source-to-section map. If content was compressed or omitted, the reason must come from confirmed scope, not from convenience.
 - Courseware structure must be checked against this file, `courseware-format.md`, and the selected language guide. Do not rely on a separate validation script as the primary quality mechanism.
 
 ## Step 4: File Output
@@ -377,8 +279,7 @@ Module 00 creates the root structure and course contract. After the user confirm
 └── ...
 ```
 
-Default course content must stay on the path that Phase 3 and the local viewer
-actually read. Side artifacts and exports follow `courseware-format.md`.
+Default course content must stay on the path that Phase 3 and the local viewer actually read. Side artifacts and exports follow `courseware-format.md`.
 
 ## Generation Rules
 
@@ -386,14 +287,14 @@ actually read. Side artifacts and exports follow `courseware-format.md`.
 2. Put learner-facing questions in the relevant module or section `content.md`; use `study-*` blocks for questions that should be saved or should reveal reference content only after the learner submits.
 3. Do not create side files by default; terminology, links, interview/exam practice, review items, and exports follow `courseware-format.md`.
 4. Generate or update `domain-tree.json` when `meta.json.skill_tree_enabled=true`. Nodes must mirror the confirmed syllabus. RPG fields are included by default when `meta.json.rpg_enabled=true`.
-5. Depth per mode comes from `phase-0-anchoring.md` Q1. Use the selected mode's module/section prose bands together with structural coverage and split rules. Code examples and diagrams are not constrained by prose length; include them whenever they help understanding.
+5. Depth per mode comes from `phase-0-anchoring.md` Q1. Generate first for structural coverage and teaching completeness; use module/section prose bands only as post-generation diagnostics. Code examples, source fragments, images, tables, formulas, and diagrams are not constrained by prose length; include them whenever they help understanding.
 6. Before offering to start Module 01, self-check every generated file against the natural learning-loop requirements, quality gate, and `courseware-format.md`.
 
 ## Ownership Map
 
 | Concern | Source of truth |
 | --- | --- |
-| Module 00, syllabus, course files, quality gate, course-size guard | this file |
+| Module 00, syllabus, course files, quality gate, course structure guard, length diagnostics | this file |
 | Shared Markdown, diagram, image, code, and `study-*` courseware rules | `courseware-format.md` |
 | Chinese explanation style and natural chapter/section rules | `chinese-tutorial-guide.md` |
 | English explanation style and natural chapter/section rules | `english-tutorial-guide.md` |

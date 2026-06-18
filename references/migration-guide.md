@@ -84,8 +84,7 @@ test ! -f .learning-profile/review-schedule.json
 
 ## 从 schema_version 1、2 或 3 升级到 4
 
-如果已经没有旧 `progress.json` / `review-schedule.json`，但状态文件还是
-`schema_version: 1`、`schema_version: 2` 或 `schema_version: 3`，仍然运行同一个脚本：
+如果已经没有旧 `progress.json` / `review-schedule.json`，但状态文件还是 `schema_version: 1`、`schema_version: 2` 或 `schema_version: 3`，仍然运行同一个脚本：
 
 ```bash
 python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profile

@@ -8,25 +8,17 @@
 
 ## Research Iron Law
 
-No course generation without research first. Do not rely on memory alone for
-non-trivial courses. If the topic is tiny, niche, material-driven, or exam-scoped,
-use fewer sources only with a clear note about what is missing.
+No course generation without research first. Do not rely on memory alone for non-trivial courses. If the topic is tiny, niche, material-driven, or exam-scoped, use fewer sources only with a clear note about what is missing.
 
-Phase 1 is for building or revising a course, not for ordinary continuation.
-If the user says "继续学习" and the course already has README/syllabus/module
-content, stay in Phase 3 and use the local course files as the source of truth.
-Only do targeted external lookup when local content is missing, the user asks
-for latest/API/version details, or a runnable/API claim needs verification.
+Phase 1 is for building or revising a course, not for ordinary continuation. If the user says "继续学习" and the course already has README/syllabus/module content, stay in Phase 3 and use the local course files as the source of truth. Only do targeted external lookup when local content is missing, the user asks for latest/API/version details, or a runnable/API claim needs verification.
 
 ### Step 0: Material-Driven Mode Check
 
-If the user provided materials in Phase 0 (syllabus, textbook, exam outline, past
-papers), enter **material-driven research mode**:
+If the user provided materials in Phase 0 (syllabus, textbook, exam outline, past papers), enter **material-driven research mode**:
 
 **Primary source** = the user's materials. The material defines the scope.
 
-**Research scope is constrained to the material topics.** Do NOT add topics outside
-the syllabus. The goal is "只学要考的" — only what's tested.
+**Research scope is constrained to the material topics.** Do NOT add topics outside the syllabus. The goal is "只学要考的" — only what's tested.
 
 **Research tasks (material-driven):**
 1. Analyze the material for topic list, ordering, depth, priority language, and exam format
@@ -38,6 +30,7 @@ the syllabus. The goal is "只学要考的" — only what's tested.
 3. For exam mode, extract an explicit **named exam point list** from final-review decks, syllabi, past papers, or teacher-marked "重点/掌握/必考" notes. Keep the original wording and source location when available.
 4. Extract key concepts and their relationships from the material → Knowledge DAG
 5. Map material chapters to learning modules
+6. Preserve high-quality teaching fragments from the material: original examples, diagrams, screenshots, tables, formulas, long explanatory paragraphs, classroom wording, problem statements, and worked solutions. These fragments are the raw material for Phase 2 lessons, not optional citations.
 
 **Source count**: 1 primary (user's material) + 1-2 supplementary. Flag what's missing.
 
@@ -45,14 +38,12 @@ the syllabus. The goal is "只学要考的" — only what's tested.
 
 ### Source Priority (Standard Research)
 
-Adapt sources to topic type. Default target: 3 quality sources (see Quality Rules below
-for screening criteria). Material-driven, niche topics, or exam-prep scenarios may use
-fewer — flag what's missing.
+Adapt sources to topic type. Default target: 3 quality sources (see Quality Rules below for screening criteria). Material-driven, niche topics, or exam-prep scenarios may use fewer — flag what's missing.
 
 **For tech/programming topics**（默认）:
 1. **官方文档** — Always first. Use available documentation or web fetch tools. Note version, changelog, API.
 2. **优质源码** — Read core modules on GitHub. Extract architecture patterns, key designs.
-3. **优质教程/课程** — Choose by course language and source quality. Chinese output can use GitHub high-star Chinese repos, 掘金/CSDN/知乎 high bookmarks, 极客时间目录; English output can use official tutorials, MDN, Microsoft Learn, freeCodeCamp, The Odin Project, university course notes, and reputable engineering blogs.
+3. **优质教程/课程** — Choose by course language and source quality. Chinese output can use mature long-form courses such as Rust 语言圣经、现代 C++ 教程、动手学深度学习、极客兔兔专题、GitHub high-star Chinese repos, 掘金/CSDN/知乎 high bookmarks, 极客时间目录; English output can use official tutorials, MDN, Microsoft Learn, freeCodeCamp, The Odin Project, university course notes, and reputable engineering blogs.
 4. **补充**: arXiv, interview banks, standards documents, issue discussions
 
 **For general/academic topics**（如学历史、学经济学、学心理学）:
@@ -61,17 +52,11 @@ fewer — flag what's missing.
 3. **学术综述/入门论文** — arXiv or CNKI survey papers for the field
 4. **补充**: 得到/极客时间相关专栏目录, Wikipedia knowledge structure, professional association resources
 
-**Source count:** Default target: 3 quality sources. Accept fewer when justified:
-material-driven, niche topics, or exam prep where the syllabus IS the scope — but explicitly
-note what's missing. For Chinese courses, include quality Chinese sources when available;
-if none exists, say so and use English sources explained in natural Chinese. For English
-courses, do not force Chinese sources unless they are primary for the topic. Never pad with
-low-quality sources to hit a quota.
+**Source count:** Default target: 3 quality sources. Accept fewer when justified: material-driven, niche topics, or exam prep where the syllabus IS the scope — but explicitly note what's missing. For Chinese courses, include quality Chinese sources when available; if none exists, say so and use English sources explained in natural Chinese. For English courses, do not force Chinese sources unless they are primary for the topic. Never pad with low-quality sources to hit a quota.
 
 ### Parallel Research Dispatch
 
-If your platform supports subagents: dispatch in parallel. If not: research sequentially
-and clearly label the order. Never claim you dispatched subagents when you didn't.
+If your platform supports subagents: dispatch in parallel. If not: research sequentially and clearly label the order. Never claim you dispatched subagents when you didn't.
 
 Adapt dispatches to topic type: select sources by **quality**, not by tool name.
 
@@ -82,14 +67,9 @@ Adapt dispatches to topic type: select sources by **quality**, not by tool name.
 | Academic subject | Standard textbook / top university syllabus | Survey papers (arXiv/CNKI), quality learning resources in the course language |
 | Exam prep | User's syllabus/past papers | Textbook, exam prep guides |
 
-**Source count:** Target 3 quality sources. If user provides materials, they count as
-the primary source — then 1-2 supplements suffice.
+**Source count:** Target 3 quality sources. If user provides materials, they count as the primary source — then 1-2 supplements suffice.
 
-**Language-source rule:** Match supporting sources to the course language when quality permits.
-For Chinese courses, include at least 1 quality Chinese source when available; if none exists,
-say so and explain English sources in natural Chinese. For English courses, prioritize strong
-English sources and use non-English sources only when they are authoritative for the topic.
-Never force low-quality sources just to meet a language quota.
+**Language-source rule:** Match supporting sources to the course language when quality permits. For Chinese courses, include at least 1 quality Chinese source when available; if none exists, say so and explain English sources in natural Chinese. For English courses, prioritize strong English sources and use non-English sources only when they are authoritative for the topic. Never force low-quality sources just to meet a language quota.
 
 ### What to Extract
 
@@ -101,9 +81,12 @@ For each source, extract:
 | Prerequisites (what must be learned first) | → DAG edges (requires relation) |
 | Difficulty estimate (1-10 scale per concept) | → initial D value for spaced repetition |
 | Real pitfalls and misconceptions | → Inline warnings or learner-facing misconception notes, only when source-backed or practice-backed |
-| "Golden example" per concept | → Best teaching example |
+| Complete teaching example per concept/procedure | → Best runnable or guided example, including input/data/schema, expected result, and why each step matters |
+| Failure or counterexample | → Common wrong answer, error symptom, invalid case, or misconception the learner must recognize |
+| High-quality source fragment | → Original wording, paragraph, diagram, table, image, formula, problem statement, or worked solution worth preserving or adapting |
 | Version-specific notes | → Version comparison tables |
-| Interview / exam question patterns | → Module-local `study-input`, `study-choice`, or `study-truefalse` practice with scoring points |
+| Interview / exam question patterns | → Module-local `study-input`, `study-choice`, or `study-truefalse` practice with scoring points and reference answers |
+| Source exercises and worked solutions | → Adapted practice, answer rubrics, or step-by-step solution notes |
 | Learning time estimates | → Module scheduling |
 | Diagrams, screenshots, visual examples | → course images or text diagram choices |
 
@@ -117,7 +100,12 @@ For each source, extract:
 | Grading criteria / 评分标准 | → what to emphasize in answers |
 | Topic weight in exam | → module priority (high-weight topics first) |
 | Priority labels such as 重点掌握/理解/了解 | → separate full teaching from one-sentence recognition notes |
+| Source examples, classroom examples, diagrams, exercises, and sample answers | → reuse or adapt into section bodies; if a high-priority point lacks an example, create a minimal worked example grounded in the source concept |
 | **Diagrams & visuals** | **→ collect quality existing images for reuse. Note URL + description. Prioritize: architecture diagrams, flowcharts, comparison tables, data visualizations.** |
+
+For code, SQL, formula, query, design, or procedure topics, the research summary must preserve enough raw teaching material to write a self-contained lesson: the concrete task, full example, sample data or inputs, expected output or failure, and at least one learner exercise. Do not extract only headings or keywords; that forces Phase 2 to write shallow summaries.
+
+High-quality source fragments should be copied into the research notes with source location. If the source is user-provided, public-domain, permissively licensed, or explicitly allowed by the user, preserve longer original passages or images when they teach better than a paraphrase. For other external sources, preserve the structure, example data, formula, diagram description, and short quotes, then rewrite the lesson in the course voice with attribution.
 
 ### Output: Research Summary
 
@@ -218,7 +206,5 @@ Ask: "这个范围和结构符合你的预期吗？需要增加/删除什么？"
 
 - MUST cite specific URLs or identifiers, not generic references
 - MUST note version/year of sources used
-- **Source quality screening:** Prioritize official docs, textbooks, course syllabi, active
-  repos with ≥1k stars (for popular topics; stars are a signal, not a threshold), peer-reviewed papers.
-  Avoid unsourced articles, outdated versions without warnings, and AI-generated slop.
+- **Source quality screening:** Prioritize official docs, textbooks, course syllabi, active repos with ≥1k stars (for popular topics; stars are a signal, not a threshold), peer-reviewed papers. Avoid unsourced articles, outdated versions without warnings, and AI-generated slop.
 - For conflicting sources, flag both with attribution and let user decide if scope is affected

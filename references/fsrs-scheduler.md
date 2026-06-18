@@ -6,8 +6,7 @@
 
 ## Storage: Per-Course concepts.json
 
-Each course has its own `{learning_root}/.learning-profile/courses/{course-slug}/concepts.json`.
-This enables independent review schedules and multi-course concurrent learning.
+Each course has its own `{learning_root}/.learning-profile/courses/{course-slug}/concepts.json`. This enables independent review schedules and multi-course concurrent learning.
 
 ```json
 {
@@ -40,8 +39,7 @@ This enables independent review schedules and multi-course concurrent learning.
 - `needs_relearning` — lapsed (R < 0.7 and lapses >= 3), needs re-teaching
 - `retired` — no longer relevant (topic removed from course)
 
-**Note:** `target_retention` is not stored in concepts.json. It lives in `params.json`
-to avoid duplication. When computing R, read `target_retention` from `params.json`.
+**Note:** `target_retention` is not stored in concepts.json. It lives in `params.json` to avoid duplication. When computing R, read `target_retention` from `params.json`.
 
 ## State Variables
 
@@ -55,8 +53,7 @@ to avoid duplication. When computing R, read `target_retention` from `params.jso
 
 ### Retrievability
 
-This is a **simplified implementation** of the FSRS forgetting curve, not the
-full FSRS scheduler. For production use, consider integrating the fsrs-rs library.
+This is a **simplified implementation** of the FSRS forgetting curve, not the full FSRS scheduler. For production use, consider integrating the fsrs-rs library.
 
 ```
 R = (1 + FACTOR * t / S) ^ DECAY
@@ -107,9 +104,7 @@ next_review = today + S' days
 
 ## Review Session Protocol
 
-This file owns the scheduling algorithm and storage fields. Load
-`phase-4-consolidation.md` for the learner-facing review session flow, daily
-session-start check, and progress bulletin text.
+This file owns the scheduling algorithm and storage fields. Load `phase-4-consolidation.md` for the learner-facing review session flow, daily session-start check, and progress bulletin text.
 
 Algorithm-side rules:
 
@@ -120,16 +115,13 @@ Algorithm-side rules:
 
 ## Interleaving Strategy
 
-The first formal learning session of the day check and quick-review pacing are
-defined in `phase-4-consolidation.md`.
+The first formal learning session of the day check and quick-review pacing are defined in `phase-4-consolidation.md`.
 
 Priority within review: lowest R first → highest D first → fewest reviews.
 
 ## Same-Session vs. Review Boundary
 
-In-session active recall and self-tests (Phase 3) are **teaching checks** — they
-do NOT go into concepts.json. Only concepts from completed modules with ≥1 day
-since first exposure are added. New items get `next_review` ≥ tomorrow.
+In-session active recall and self-tests (Phase 3) are **teaching checks** — they do NOT go into concepts.json. Only concepts from completed modules with ≥1 day since first exposure are added. New items get `next_review` ≥ tomorrow.
 
 ## What NOT to Do
 

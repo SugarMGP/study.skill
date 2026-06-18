@@ -66,8 +66,7 @@
 | learner_profile.materials_summary | string/null | — | null | 用户提供材料的摘要 |
 | learner_profile.updated_at | ISO 8601/null | — | null | 学习者画像最后更新时间 |
 
-`learner_profile` 只保存用户明确给出的事实或从材料中能直接确认的信息。
-不清楚就保持空值，不要脑补。
+`learner_profile` 只保存用户明确给出的事实或从材料中能直接确认的信息。不清楚就保持空值，不要脑补。
 
 ---
 
@@ -143,10 +142,7 @@
 | last_pace_feedback_at | ISO 8601 | — | null | — | 反馈时间 |
 | adaptive_history | array | ✅ | [] | — | 节奏/深度反馈历史记录 |
 
-`params.json` 只保存运行期会被脚本或学习流程消费的参数。课程模式、显示名和
-已确认路线放在 `meta.json` 与课程文件中；课程规模、正文长度和题量是
-`phase-0-anchoring.md` / `phase-2-generation.md` 的生成规则，不再持久化到
-`params.json`。
+`params.json` 只保存运行期会被脚本或学习流程消费的参数。课程模式、显示名和已确认路线放在 `meta.json` 与课程文件中；课程规模、正文长度和题量是 `phase-0-anchoring.md` / `phase-2-generation.md` 的生成规则，不再持久化到 `params.json`。
 
 **模式默认值：**
 
@@ -225,9 +221,7 @@
 
 ## domain-tree.json（技能树）
 
-默认生成。结构参考 `references/skill-tree.md`。当 `meta.json.skill_tree_enabled=false`
-时可以不展示、不更新；当 `meta.json.rpg_enabled=false` 时保留普通进度，但不展示
-等级、XP、称号、成就、任务等娱乐元素。
+默认生成。结构参考 `references/skill-tree.md`。当 `meta.json.skill_tree_enabled=false` 时可以不展示、不更新；当 `meta.json.rpg_enabled=false` 时保留普通进度，但不展示等级、XP、称号、成就、任务等娱乐元素。
 
 ```json
 {
@@ -269,9 +263,7 @@
 
 ## learning-record.json（课程级学习记录）
 
-由本地播放器写入。它记录学习者实际看过哪些页面、提交了哪些题、留下哪些问题、
-以及播放器自动记录的页面完成事件。它不是掌握度结论；agent 必须读取记录、判断证据，再更新
-`meta.json`、`domain-tree.json`、`concepts.json` 或 XP。
+由本地播放器写入。它记录学习者实际看过哪些页面、提交了哪些题、留下哪些问题、以及播放器自动记录的页面完成事件。它不是掌握度结论；agent 必须读取记录、判断证据，再更新 `meta.json`、`domain-tree.json`、`concepts.json` 或 XP。
 
 ```json
 {
@@ -352,8 +344,7 @@
 | legacy_checkpoints | array | ✅ | [] | 旧版 `study-checkpoint` 兼容记录 |
 | completions | array | ✅ | [] | 播放器自动记录的页面完成事件 |
 
-`exercises` 只保存原始作答、参考内容和 `mastery_tags`。不要保存
-`correct`、`passed`、`score` 这类终态字段；判断职责在 agent。
+`exercises` 只保存原始作答、参考内容和 `mastery_tags`。不要保存 `correct`、`passed`、`score` 这类终态字段；判断职责在 agent。
 
 ---
 
@@ -370,15 +361,13 @@
 python {skill_dir}/scripts/write-state.py <state-file.json> < <new-content.json>
 ```
 
-Windows PowerShell 写包含中文的 JSON 时，优先写入 UTF-8 临时文件，再用
-`--input-file` 读取，避免管道编码问题：
+Windows PowerShell 写包含中文的 JSON 时，优先写入 UTF-8 临时文件，再用 `--input-file` 读取，避免管道编码问题：
 
 ```powershell
 python {skill_dir}\scripts\write-state.py <state-file.json> --input-file <new-content.json>
 ```
 
-不要把包含中文的 JSON 直接通过 PowerShell 管道传给 Python。写入失败时保留
-真实失败状态，不要伪造成功。
+不要把包含中文的 JSON 直接通过 PowerShell 管道传给 Python。写入失败时保留真实失败状态，不要伪造成功。
 
 复习评分更新优先使用专用脚本：
 
@@ -386,8 +375,7 @@ python {skill_dir}\scripts\write-state.py <state-file.json> --input-file <new-co
 python {skill_dir}/scripts/record-review.py <course-state-dir> <concept-id> <rating>
 ```
 
-`<course-state-dir>` 是 `.learning-profile/courses/{course-slug}` 这一层目录；
-`<rating>` 取值为 1、2、3、4，分别对应“完全忘了、记得一点、记得大部分、轻松想起”。
+`<course-state-dir>` 是 `.learning-profile/courses/{course-slug}` 这一层目录； `<rating>` 取值为 1、2、3、4，分别对应“完全忘了、记得一点、记得大部分、轻松想起”。
 
 ```bash
 # 示例原子写入
@@ -401,8 +389,7 @@ mv <state-file.json>.tmp <state-file.json>
 
 ## 文件损坏处理
 
-当 JSON 解析失败时，停止当前写入并保留原文件。不要静默覆盖、重建或伪造状态。
-需要恢复时，由 agent 根据 `.bak` 和当前文件内容单独处理。
+当 JSON 解析失败时，停止当前写入并保留原文件。不要静默覆盖、重建或伪造状态。需要恢复时，由 agent 根据 `.bak` 和当前文件内容单独处理。
 
 ---
 
@@ -415,5 +402,4 @@ mv <state-file.json>.tmp <state-file.json>
 2026-06-09                    # 仅日期（用于 next_review）
 ```
 
-`next_review` 字段可以只用日期（无需精确到时间）。
-其他时间戳建议带时区。
+`next_review` 字段可以只用日期（无需精确到时间）。其他时间戳建议带时区。

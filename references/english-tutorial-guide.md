@@ -37,39 +37,29 @@ Layer 3: Critical extension (30%) -> competing views, applications, current deba
 
 ## Natural Chapter Shape
 
-Do not force every lesson into the same heading template. Keep the learning
-loop, but let the headings fit the subject.
+Do not force every lesson into the same heading template. Keep the learning loop, but let the headings fit the subject.
 
-A chapter maps to a collapsible module. The module-level `content.md` is a short
-preface:
+A chapter maps to a collapsible module. The module-level `content.md` is a short preface:
 
 - the core problem this chapter solves
 - prerequisites and any small refresher the chapter will provide
-- the section list and what each section is for; file layout and navigation
-  rules come from `courseware-format.md`.
+- the section list and what each section is for; file layout and navigation rules come from `courseware-format.md`.
 - what the learner should be able to judge, explain, or do by the end
 
-The actual lesson body lives in section files. Section split, merge, and
-navigation-link rules come from `courseware-format.md`. This guide only controls
-English prose: each section should read like a complete lesson, not a thin
-outline.
+The actual lesson body lives in section files. Section split, merge, and navigation-link rules come from `courseware-format.md`. This guide only controls English prose: each section should read like a complete lesson, not a thin outline.
 
 A section should naturally include:
 
 - a concrete problem, symptom, task, or surprising observation before terms
 - plain-language intuition before precise terminology
+- first-use concept introductions according to `courseware-format.md`
 - a small worked example before realistic scale
 - a decision rule or boundary: when to use it, when not to, and what to compare it with
 - a real misconception or failure symptom near the relevant concept, only when useful
-- one active check or practice task when the learner should answer; exercise
-  block rules come from `courseware-format.md`
+- one active check or practice task when the learner should answer; exercise block rules come from `courseware-format.md`
 - a concise recap when it helps organize the section
 
-Course generation is not source compression. First bridge and rewrite the source
-material: add transitions, prerequisites, plain-language explanations, and small
-examples before dense terms, diagrams, formulas, code, or claims. Omit or shrink
-content only when the confirmed goal, time budget, exam scope, pretest evidence,
-or explicit user instruction justifies it.
+English lessons must apply the shared teaching completeness rules in `courseware-format.md`: teach the source material as a self-contained lesson, introduce new concepts on first use, preserve strong source fragments when allowed, and use complete demonstrations for procedural topics. This guide only controls the English prose shape.
 
 ## English Style Rules
 
@@ -89,6 +79,8 @@ Weak:
 
 Introduce the idea first, then name the term.
 
+Follow `courseware-format.md` for first-use concept introductions. In English prose, put the plain-language idea before the formal term.
+
 Good:
 
 > A closure is a function that keeps access to the variables around it. The formal term is lexical closure.
@@ -106,7 +98,7 @@ Each guided example should have:
 - the expected result
 - one sentence explaining what changed
 
-Do not ask the learner to copy a large final program without intermediate checks.
+Do not ask the learner to copy a large final program without intermediate checks. For code, SQL, formulas, queries, or procedures, use the complete demonstration rule from `courseware-format.md`; keep each step small enough that the learner can see what changed.
 
 ### 4. Prefer active voice and second person
 
@@ -129,18 +121,14 @@ State what the learner needs before the chapter starts: prior concepts, installe
 For technical courses:
 
 - list language/tool versions when they affect behavior
-- include dependencies and setup commands only when the learner is expected to
-  run the code
+- include dependencies and setup commands only when the learner is expected to run the code
 - show expected output
 - run code before claiming it works
-- if code was not executed, say so in the chat handoff or completion note, not
-  inside learner-facing course files
+- if code was not executed, say so in the chat handoff or completion note, not inside learner-facing course files
 
 ### 7. Place source links where they help
 
-Put short official or authoritative links next to the concept they clarify.
-Exact link placement, course-level source lists, and resource appendices are
-owned by `courseware-format.md`.
+Put short official or authoritative links next to the concept they clarify. Exact link placement, course-level source lists, and resource appendices are owned by `courseware-format.md`.
 
 Good:
 
@@ -163,33 +151,21 @@ Use explicit facts from `learner_profile` to choose examples and analogies:
 - analogy preferences
 - teaching constraints
 
-If a Java developer is learning Python generators, compare the idea to lazy
-iteration only as far as the comparison helps. State where it stops matching.
-Do not force an analogy into every section.
+If a Java developer is learning Python generators, compare the idea to lazy iteration only as far as the comparison helps. State where it stops matching. Do not force an analogy into every section.
 
 ### 9. Use checks, not long quizzes
 
-Use one small question after a concept. Pick the block by question type:
-`study-choice` for selection, `study-truefalse` for misconceptions, and
-`study-input` for short answers, explanations, scenario analysis, interview
-answers, or exam-style written work. Near the end of a chapter, use a small set
-of ordinary question blocks instead of a separate checkpoint block. Save only
-useful evidence with `study-*` blocks from `courseware-format.md`.
+Use one small question after a concept. Pick the block by question type: `study-choice` for selection, `study-truefalse` for misconceptions, and `study-input` for short answers, explanations, scenario analysis, interview answers, or exam-style written work. Near the end of a chapter, use a small set of ordinary question blocks instead of a separate checkpoint block. Save only useful evidence with `study-*` blocks from `courseware-format.md`.
 
-### 9.5 Avoid orphan side artifacts
+### 9.5 Present terms and practice in the lesson
 
-Do not turn terms, question banks, flashcards, or resources into orphan side
-materials. The default file policy is owned by `courseware-format.md`; this
-guide only controls how those items should appear in English prose.
+The default file policy is owned by `courseware-format.md`; this guide only controls how terms, question banks, flashcards, and resources should appear in English prose.
 
 Use these replacements:
 
-- Define terms when they first appear. If a chapter has many terms, add a short
-  chapter-local “Term check”.
-- Put interview, exam, and end-of-chapter practice inside the relevant section
-  as `study-choice`, `study-truefalse`, or `study-input`.
-- Add spaced-review items to `concepts.json` during Phase 3 after the learner has
-  encountered the concept; do not pre-generate cards for unseen content.
+- If a chapter has many terms, add a short chapter-local “Term check” without turning the lesson into a glossary.
+- Put interview, exam, and end-of-chapter practice inside the relevant section as `study-choice`, `study-truefalse`, or `study-input`.
+- Add spaced-review items to `concepts.json` during Phase 3 after the learner has encountered the concept; do not pre-generate cards for unseen content.
 
 ### 10. Keep optional depth out of the main path
 
@@ -212,7 +188,7 @@ Avoid vague warnings such as “be careful with complexity.” Do not invent mis
 - Do not front-load history, taxonomy, or theory before the learner has a task.
 - Do not turn the chapter into API reference. Link to reference material instead.
 - Do not hide prerequisites or expected outputs.
-- Do not put generator/runtime caveats in the lesson body, such as “not run
-  locally”, “package not installed”, or “verification status”.
+- Do not violate the first-use concept rule in `courseware-format.md`.
+- Do not put generator/runtime caveats in the lesson body, such as “not run locally”, “package not installed”, or “verification status”.
 - Do not force repeated slogan headings such as “The idea in one minute”.
 - Do not add decorative diagrams or exercises that do not help the chapter goal.

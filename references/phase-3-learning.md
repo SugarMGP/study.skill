@@ -15,10 +15,7 @@ This file is the source of truth for live teaching and continuation. It covers:
 - how to teach, practice, give feedback, and decide mastery
 - how to use viewer evidence for mastery decisions and state writes
 
-It does not cover platform automations, scheduled reminders, hooks, push
-notifications, or thread wakeups. Review checks happen when a learning session
-starts. Exact local viewer startup, supported syntax, learning-record fields,
-and chat handoff text live in `learning-viewer.md`.
+It does not cover platform automations, scheduled reminders, hooks, push notifications, or thread wakeups. Review checks happen when a learning session starts. Exact local viewer startup, supported syntax, learning-record fields, and chat handoff text live in `learning-viewer.md`.
 
 ## The Iron Law Of Teaching
 
@@ -26,29 +23,22 @@ and chat handoff text live in `learning-viewer.md`.
 DON'T JUMP TO THE ANSWER. GUIDE THE DISCOVERY FIRST.
 ```
 
-Before revealing a solution, try guided discovery first: hints, smaller
-questions, partial examples, or a worked example with reasoning. For beginners,
-time pressure, or a direct "给我完整例子" request, a worked example can come
-earlier, but never give only a bare final answer.
+Before revealing a solution, try guided discovery first: hints, smaller questions, partial examples, or a worked example with reasoning. For beginners, time pressure, or a direct "给我完整例子" request, a worked example can come earlier, but never give only a bare final answer.
 
 ## Session Start Protocol
 
 At the start of each formal learning session:
 
 1. If old `.learning-profile/progress.json` or `review-schedule.json` exists, stop and migrate first.
-2. Read `.learning-profile/profile.json` and the active course `meta.json`,
-   `params.json`, `concepts.json`, and `domain-tree.json`.
-3. Read local course content: `README.md`, `syllabus.md` if present, current
-   module `content.md`, and current section `content.md` when a section is open.
-4. Show exact course/module/section, current skill-tree node, and one short RPG
-   line when enabled.
+2. Read `.learning-profile/profile.json` and the active course `meta.json`, `params.json`, `concepts.json`, and `domain-tree.json`.
+3. Read local course content: `README.md`, `syllabus.md` if present, current module `content.md`, and current section `content.md` when a section is open.
+4. Show exact course/module/section, current skill-tree node, and one short RPG line when enabled.
 
 At the first formal learning session of each day only:
 
 1. Run `{skill_dir}/scripts/check-reviews.py {learning_root}/.learning-profile`.
 2. If the skill script is missing, stop and repair the skill installation before continuing.
-3. If due reviews exist, show one compact line and ask whether to spend 2-5
-   minutes reviewing. If the user does not choose review, continue the main lesson.
+3. If due reviews exist, show one compact line and ask whether to spend 2-5 minutes reviewing. If the user does not choose review, continue the main lesson.
 
 Opening format:
 
@@ -61,28 +51,20 @@ Opening format:
 
 If no overdue items exist, omit the review line.
 
-If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`,
-follow `skill-tree.md` for the one-time RPG preference question and state write.
+If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`, follow `skill-tree.md` for the one-time RPG preference question and state write.
 
 ## Existing Course Continuation
 
 When the user says "继续学习", "继续", "下一节", or similar, and course files exist:
 
 1. Load `references/learning-viewer.md`.
-2. Follow `learning-viewer.md` for startup mode, fallback conditions, and the
-   short handoff message.
-3. If the viewer starts successfully, make the viewer the primary learning
-   surface. Do not continue with the full Core Teaching Loop in chat for the
-   same lesson.
-4. While the viewer is open, answer targeted questions from the learner, but do
-   not re-teach the whole section unless the learner asks for a chat explanation
-   or the viewer is unusable.
-5. Fall back to chat teaching only with a concrete reason, then continue from
-   the current module or section `content.md`.
+2. Follow `learning-viewer.md` for startup mode, fallback conditions, and the short handoff message.
+3. If the viewer starts successfully, make the viewer the primary learning surface. Do not continue with the full Core Teaching Loop in chat for the same lesson.
+4. While the viewer is open, answer targeted questions from the learner, but do not re-teach the whole section unless the learner asks for a chat explanation or the viewer is unusable.
+5. Fall back to chat teaching only with a concrete reason, then continue from the current module or section `content.md`.
 6. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
 7. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
-8. External docs/source lookup is allowed only when local content is missing,
-   the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
+8. External docs/source lookup is allowed only when local content is missing, the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
 
 ## Core Teaching Loop
 
@@ -95,9 +77,7 @@ Teach one main concept at a time:
 5. After 2-3 new concepts, ask one mixed question that combines old and new ideas.
 6. End with a small self-test made of ordinary question blocks before moving modules.
 
-For Chinese courses, follow the style in `chinese-tutorial-guide.md`. For English courses,
-follow `english-tutorial-guide.md`. Do not switch languages unless the learner asks for it
-or the course explicitly uses bilingual terminology.
+For Chinese courses, follow the style in `chinese-tutorial-guide.md`. For English courses, follow `english-tutorial-guide.md`. Do not switch languages unless the learner asks for it or the course explicitly uses bilingual terminology.
 
 Target a 75-85% exercise success rate:
 
@@ -117,8 +97,7 @@ Target a 75-85% exercise success rate:
 | 3rd wrong | Connect to an earlier concept or example |
 | Still stuck | Give a worked example with reasoning, then a variant exercise |
 
-Do not turn this into a rigid ritual when the learner simply needs a clear
-demonstration. The goal is productive struggle, not frustration.
+Do not turn this into a rigid ritual when the learner simply needs a clear demonstration. The goal is productive struggle, not frustration.
 
 ## Mastery Gate
 
@@ -132,8 +111,7 @@ Before marking a module `mastered` or adding it to `completed_modules`, require 
 
 In speedrun mode: Foundation >=75%, Core >=60%, Enrichment optional.
 
-`params.json.require_mastery_before_advance` controls whether failing the gate
-blocks the next module. It does not let the agent fake completion:
+`params.json.require_mastery_before_advance` controls whether failing the gate blocks the next module. It does not let the agent fake completion:
 
 - If true, failing the gate blocks module completion and next-module advancement.
 - If false, the user may continue, but the current module stays `in_progress` or `needs_practice`.
@@ -144,38 +122,25 @@ blocks the next module. It does not let the agent fake completion:
 
 When the local viewer is used and the learner comes back after reading and submitting exercises:
 
-1. Follow `learning-viewer.md` to read the current course `learning-record.json`,
-   validate the record source, answer learner questions, and locate the latest
-   completed page.
-2. Evaluate the matching exercise evidence against the current module's mastery
-   gate. Use `mastery_tags` to identify recall, apply/analyze, explain,
-   interview, or exam evidence. For old courses, also read `legacy_checkpoints`
-   if present.
-3. Use review records only for session summary; `record-review.py` already
-   updates `concepts.json`.
-4. If evidence is enough, update `meta.json`, `domain-tree.json`, XP,
-   achievements, and concepts.
-5. If evidence is not enough, keep the node `in_progress` and write what
-   evidence is missing.
+1. Follow `learning-viewer.md` to read the current course `learning-record.json`, validate the record source, answer learner questions, and locate the latest completed page.
+2. Evaluate the matching exercise evidence against the current module's mastery gate. Use `mastery_tags` to identify recall, apply/analyze, explain, interview, or exam evidence. For old courses, also read `legacy_checkpoints` if present.
+3. Use review records only for session summary; `record-review.py` already updates `concepts.json`.
+4. If evidence is enough, update `meta.json`, `domain-tree.json`, XP, achievements, and concepts.
+5. If evidence is not enough, keep the node `in_progress` and write what evidence is missing.
 
-The viewer stores reading and answer evidence, not correctness. Page completion
-is not mastery.
+The viewer stores reading and answer evidence, not correctness. Page completion is not mastery.
 
 ## State Updates
 
-Before writing state, generate complete updated JSON in memory, re-read the
-target file, then write through `{skill_dir}/scripts/write-state.py`. If the
-script is missing, stop and repair the skill installation before continuing.
+Before writing state, generate complete updated JSON in memory, re-read the target file, then write through `{skill_dir}/scripts/write-state.py`. If the script is missing, stop and repair the skill installation before continuing.
 
 Update:
 
 1. `concepts.json`
    - add new concepts only after real exposure
-   - derive review `question`/`answer` from the concept just taught, the
-     learner's submitted `study-*` answer, or the module's worked example
+   - derive review `question`/`answer` from the concept just taught, the learner's submitted `study-*` answer, or the module's worked example
    - set `next_review` no earlier than tomorrow for new items
-   - keep one clear retrieval prompt per concept; do not import unseen
-     flashcards, static glossary terms, or whole interview/exam question banks
+   - keep one clear retrieval prompt per concept; do not import unseen flashcards, static glossary terms, or whole interview/exam question banks
    - keep R computed, not stored
 2. `meta.json`
    - update `current_module`, `completed_modules`, `last_session`, `total_sessions`, `streak_days`
@@ -186,8 +151,7 @@ Update:
    - grant XP only for real learning evidence
 4. `params.json`
    - update immediately when the user says "太快/太慢/太浅/太深/跟不上"
-   - write `last_pace_feedback`, `last_pace_feedback_at`, and append an
-     `adaptive_history` entry with the trigger and the next teaching adjustment
+   - write `last_pace_feedback`, `last_pace_feedback_at`, and append an `adaptive_history` entry with the trigger and the next teaching adjustment
    - do not invent numeric tuning fields just to make the feedback look automated
 
 ## Pace Feedback

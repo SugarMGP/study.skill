@@ -11,24 +11,17 @@ Before asking any questions, determine if the user's topic is vague or specific.
 
 ### VAGUE TOPIC → Generate Skill Tree First
 
-**Triggers**: any topic that is a FIELD not a specific subject, such as "学AI",
-"学心理学", "学摄影", "学英语", "学投资", "学历史", "学前端".
+**Triggers**: any topic that is a FIELD not a specific subject, such as "学AI", "学心理学", "学摄影", "学英语", "学投资", "学历史", "学前端".
 
-**Action**: Load `references/skill-tree.md`. Generate a domain skill tree using
-the 3-tier structure, node status icons, and default RPG layer unless the user
-has opted out. Present with guide text: "这就是 {领域} 的技能树。你现在站在哪？想往哪个方向走？"
+**Action**: Load `references/skill-tree.md`. Generate a domain skill tree using the 3-tier structure, node status icons, and default RPG layer unless the user has opted out. Present with guide text: "这就是 {领域} 的技能树。你现在站在哪？想往哪个方向走？"
 
 If user picks a node that is still too broad (e.g., "AI" → picks "机器学习" → still broad), zoom in one more level.
 
 ### SPECIFIC TOPIC → Initialize Course-Local Tree Then Q1
 
-**Triggers**: concrete topics such as "学 React Hooks", "学 PostgreSQL 索引",
-"学水彩入门", "学微积分极限", "学英语口语发音".
+**Triggers**: concrete topics such as "学 React Hooks", "学 PostgreSQL 索引", "学水彩入门", "学微积分极限", "学英语口语发音".
 
-**Action**: Do not skip the skill-tree feature. Initialize `domain-tree.json`
-with defaults after route confirmation, but leave `nodes` empty until Module 00
-and the syllabus are confirmed. If the user explicitly wants a preview before
-that, show only a small "待生成" course tree, not invented module nodes.
+**Action**: Do not skip the skill-tree feature. Initialize `domain-tree.json` with defaults after route confirmation, but leave `nodes` empty until Module 00 and the syllabus are confirmed. If the user explicitly wants a preview before that, show only a small "待生成" course tree, not invented module nodes.
 
 ### EDGE: User says "随便看看" / "有什么推荐"
 
@@ -38,38 +31,26 @@ Generate a skill tree for a popular matching domain, show hot paths (⭐ recomme
 
 ## Anchoring Iron Law
 
-No teaching without anchoring first. If the user has not confirmed a learning goal,
-mode, baseline, materials/time constraints, and storage path, you have not earned
-the right to teach. For explicitly tiny requests, confirm the narrow scope in one
-sentence and proceed; the rule prevents sloppiness, not speed.
+No teaching without anchoring first. If the user has not confirmed a learning goal, mode, baseline, materials/time constraints, and storage path, you have not earned the right to teach. For explicitly tiny requests, confirm the narrow scope in one sentence and proceed; the rule prevents sloppiness, not speed.
 
 ## Units and Course Size
 
-- **一小节 (Section)**: one main question or concept, stored as its own
-  `{module}/{section}/content.md`. This is the primary reading page in the
-  local viewer.
-- **一模块 (Module)**: a collapsible chapter. It has a short preface in
-  `{module}/content.md` and usually 2-7 section pages below it.
-- **一门课 (Course)**: usually no more than 12 modules and 60 section pages.
-  Split larger topics into a course series.
+- **一小节 (Section)**: one main question or concept, stored as its own `{module}/{section}/content.md`. This is the primary reading page in the local viewer.
+- **一模块 (Module)**: a collapsible chapter. It has a short preface in `{module}/content.md` and usually 2-7 section pages below it.
+- **一门课 (Course)**: usually no more than 12 modules and 60 section pages. Split larger topics into a course series.
 
-**Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions
-in one message. Use user's answers to skip questions that are already answered.
+**Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions in one message. Use user's answers to skip questions that are already answered.
 
-**Lite mode（用户选 Quick Start / 速成 / 时间紧张时）:** Batch Q1+Q2+Q3 in one message.
-Q4 follows separately. Don't repeat information the user already provided.
+**Lite mode（用户选 Quick Start / 速成 / 时间紧张时）:** Batch Q1+Q2+Q3 in one message. Q4 follows separately. Don't repeat information the user already provided.
 
 If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node = their scope anchor).
 
 ### Default Skill Tree and RPG Policy
 
-Load `references/skill-tree.md` for the full default policy, opt-out wording,
-RPG behavior, and state integration. Phase 0 only owns when to initialize the
-tree:
+Load `references/skill-tree.md` for the full default policy, opt-out wording, RPG behavior, and state integration. Phase 0 only owns when to initialize the tree:
 
 - broad topic: generate a domain exploration tree before Q1.
-- specific topic: initialize an empty course-local tree after route confirmation;
-  fill nodes only after Module 00 and syllabus are confirmed.
+- specific topic: initialize an empty course-local tree after route confirmation; fill nodes only after Module 00 and syllabus are confirmed.
 - user opts out: write the `meta.json` flags exactly as `skill-tree.md` requires.
 
 ### Quick Start Minimum Loop
@@ -85,8 +66,7 @@ Lite mode relaxes question batching and source count only. Module content qualit
 
 ### Q1: Scope — "想学到什么程度？"
 
-Present these to the user — keep it short, no internal details. Remove day estimates
-（每个人速度不同，无法预测）:
+Present these to the user — keep it short, no internal details. Remove day estimates （每个人速度不同，无法预测）:
 
 - 🏃 **速成导览** — 快速上手，能干活。适合紧急换技术栈。
 - 📚 **系统精讲** — 从原理到实战全覆盖。适合深入掌握。
@@ -97,34 +77,18 @@ If user's intent is unclear: "是工作需要快速上手，还是系统学？�
 
 #### Agent Depth Rules (NOT shown to user)
 
-These are internal quality constraints. Do NOT mention word counts or exercise counts
-to the user — apply them silently when generating content.
+These are internal quality constraints. Do NOT mention word counts or exercise counts to the user — apply them silently when generating content.
 
-The selected mode's prose band is the executable size guard for the total
-learner-facing prose inside one module, counting the module preface plus all
-section pages. It is not a fixed template target and is not persisted as a
-runtime parameter. A module is acceptable only when it also satisfies the
-selected mode's structural coverage. Time is only a rough planning aid because
-reading speed, coding speed, and prior knowledge vary widely.
+The selected mode's prose band is a post-generation diagnostic, not a generation cap. Generate enough learner-facing explanation, examples, transitions, diagrams, code, worked solutions, and practice first. After generation, use the band only to notice suspiciously thin or unusually verbose modules. A module is acceptable only when it satisfies the selected mode's structural coverage and teaches the source material clearly. Time is only a rough planning aid because reading speed, coding speed, and prior knowledge vary widely.
 
 Counting rules:
 
-- Chinese target counts learner-facing prose roughly. Code blocks, Mermaid,
-  tables, images, and machine-readable `study-*` metadata do not count as prose,
-  though their explanation does.
-- English target counts learner-facing prose words. For mixed technical text,
-  treat 1 English word as roughly 1.5-2 Chinese characters when choosing a
-  comparable depth.
-- Do not pad a module just to hit the target. If the structural coverage is
-  complete and the learner's goal is narrow, shorter is acceptable.
-- Section pages should be substantial enough to teach, not just outline. If a
-  section is shorter than roughly 600 Chinese characters / 350 English words,
-  merge it only with a neighbor that shares the same learner question, worked
-  example, decision rule, and practice evidence; otherwise keep it separate or
-  expand it with explanation. If it exceeds roughly 2200 Chinese characters /
-  1300 English words, split it.
-- If the total module content would exceed the upper band by more than about
-  25%, split it into another module before writing.
+- Chinese target counts learner-facing prose roughly. Code blocks, Mermaid, tables, images, and machine-readable `study-*` metadata do not count as prose, though their explanation does.
+- English target counts learner-facing prose words. For mixed technical text, treat 1 English word as roughly 1.5-2 Chinese characters when choosing a comparable depth.
+- Do not pad a module just to hit the target. If the structural coverage is complete and the learner's goal is narrow, shorter is acceptable.
+- Section pages should be substantial enough to teach, not just outline. As a soft diagnostic, a normal section below roughly 1000 Chinese non-symbol characters / 600 English words is suspicious unless the section is a narrow recognition note, setup page, or recap. Do not merge unrelated content just to reach a number; expand with missing explanation, transitions, examples, worked steps, source excerpts, diagrams, or practice.
+- If a section is very long, split it only when the learner question, worked example, prerequisite, procedure, or practice type changes. Do not cut useful examples just because a diagnostic band was exceeded.
+- If the total module content exceeds the upper band, first consider whether the extra material is redundant. If it is not redundant, keep it or split the module; do not compress required teaching into a summary.
 
 | Mode | 目标正文规模/模块 | 小节规模建议 | 结构覆盖/模块 | 粗略学习负荷 | 解释深度 |
 |------|------------------|----------------|----------------|--------------|----------|
@@ -133,17 +97,11 @@ Counting rules:
 | 面试冲刺 | 中文 2200-4500 字；英文 1200-2600 words | 2-4 节，每节中文 800-1800 字 / 英文 450-1000 words | 1 个高频考点簇；2-4 个追问；1 套回答评分标准；2-3 个面试型 `study-input` / `study-choice` | 中等；以输出答案为目标 | 用场景题组织回答要点、追问方向、反例和判断标准 |
 | 考试备考 | 中文 3500-7000 字；英文 2000-4200 words | 3-6 节，每节中文 900-1900 字 / 英文 550-1150 words | 对齐考纲/材料；1-2 个完整例题；3-6 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲清定义、推导、题型、分值权重和易混点；不考的不展开 |
 
-Code examples and diagrams are not constrained by prose length. Include them
-whenever they reduce cognitive load or make the learner's answer checkable.
+Code examples, diagrams, images, tables, formulas, and source excerpts are not constrained by prose length. Include them whenever they reduce cognitive load or make the learner's answer checkable.
 
 #### After Mode Selection: Prepare Runtime Params
 
-Once the user chooses a mode, keep the mode defaults as pending course state.
-Do not write files yet unless `{learning_root}` and `{course-slug}` are already known.
-After Q4 and route confirmation, create `{learning_root}/.learning-profile/courses/{course-slug}/params.json`
-with the runtime defaults below. Course size, prose depth, section split rules,
-and exercise density stay in this reference as generation rules; do not persist
-them into `params.json`.
+Once the user chooses a mode, keep the mode defaults as pending course state. Do not write files yet unless `{learning_root}` and `{course-slug}` are already known. After Q4 and route confirmation, create `{learning_root}/.learning-profile/courses/{course-slug}/params.json` with the runtime defaults below. Course size, prose depth, section split rules, and exercise density stay in this reference as generation rules; do not persist them into `params.json`.
 
 ```json
 {
@@ -201,10 +159,8 @@ Options:
 - 🟡 有相关经验：了解类似技术，或有编程基础
 - 🔴 熟练但想深入：已经在用，想理解底层原理和最佳实践
 
-If user selects 🟡 or 🔴, offer a pretest:
-"要不要做个快速摸底？（3-5 题，2 分钟）这样我可以跳过你已经会的，不浪费时间。"
-- If user accepts: generate 3-5 questions covering the topic's core concepts.
-  Questions should test application, not trivia. Skip modules where user scores ≥85%.
+If user selects 🟡 or 🔴, offer a pretest: "要不要做个快速摸底？（3-5 题，2 分钟）这样我可以跳过你已经会的，不浪费时间。"
+- If user accepts: generate 3-5 questions covering the topic's core concepts. Questions should test application, not trivia. Skip modules where user scores ≥85%.
 - If user declines: proceed with self-reported level.
 
 Implications:
@@ -214,24 +170,18 @@ Implications:
 
 ### Q3: Time — "每天能投入多少时间？总共预计学多久？"
 
-Daily: 15 分钟 / 30 分钟 / 1 小时 / 2 小时+
-Total: 3 天 / 1 周 / 2 周 / 1 个月 / 不限
+Daily: 15 分钟 / 30 分钟 / 1 小时 / 2 小时+ Total: 3 天 / 1 周 / 2 周 / 1 个月 / 不限
 
 Implications:
-- 15min/day → shorter learning sessions and earlier splits; reduce optional
-  scope before reducing explanation depth for selected content
+- 15min/day → shorter learning sessions and earlier splits; reduce optional scope before reducing explanation depth for selected content
 - 2h/day → full Gagné Nine Events cycle per session, deeper dives
-- Short total → fewer modules and fewer optional branches; selected essentials
-  still need explanation, examples, and checks
+- Short total → fewer modules and fewer optional branches; selected essentials still need explanation, examples, and checks
 
 ### Q4: Location — "学习目录放哪里？"
 
-This is the `{learning_root}` — a base directory that will contain ALL your
-learning data. Structure: `{learning_root}/.learning-profile/` (state) +
-`{learning_root}/courses/{course-slug}/` (course files).
+This is the `{learning_root}` — a base directory that will contain ALL your learning data. Structure: `{learning_root}/.learning-profile/` (state) + `{learning_root}/courses/{course-slug}/` (course files).
 
-Default: `{user_home}/learning` if not specified.
-Never overwrite existing content.
+Default: `{user_home}/learning` if not specified. Never overwrite existing content.
 
 ### Gate: 学习路线图预览
 
@@ -261,13 +211,8 @@ Ask: "这个路线 OK 吗？需要调整哪里？" — **Wait for user confirmat
 After confirmation:
 1. Initialize `{learning_root}/.learning-profile/` if missing.
 2. Create the course directory under `.learning-profile/courses/{course-slug}/`.
-3. Update `profile.json.learner_profile` with durable facts from anchoring:
-   baseline, goals, known languages or skills, weak prerequisites, preferred
-   analogies, teaching constraints, and material summary. Do not keep these only
-   in chat context.
-4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`,
-   an empty `concepts.json`, and an empty `learning-record.json` using the
-   schema in `state-schema.md`.
+3. Update `profile.json.learner_profile` with durable facts from anchoring: baseline, goals, known languages or skills, weak prerequisites, preferred analogies, teaching constraints, and material summary. Do not keep these only in chat context.
+4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`, an empty `concepts.json`, and an empty `learning-record.json` using the schema in `state-schema.md`.
 5. Use `{skill_dir}/scripts/write-state.py`; never overwrite existing state without reading it first.
 
 Example durable profile fields:
@@ -288,9 +233,7 @@ Example durable profile fields:
 }
 ```
 
-Later teaching must respect these fields. For example, if Python is a weak
-prerequisite but excluded from the main path, explain only the necessary syntax
-and return to the current topic.
+Later teaching must respect these fields. For example, if Python is a weak prerequisite but excluded from the main path, explain only the necessary syntax and return to the current topic.
 
 ## Edge Cases
 
