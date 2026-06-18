@@ -162,7 +162,11 @@ html, body { height: 100%; background: var(--viewer-bg); color: var(--viewer-tex
 .markdown-body th { background: var(--viewer-bg); font-weight: 600; }
 .markdown-body img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
 .markdown-body ul, .markdown-body ol { padding-left: 24px; margin: 8px 0; }
-.markdown-body li { margin: 4px 0; }
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
+.markdown-body li { margin: 4px 0; display: list-item; }
+.markdown-body ul > li { list-style-type: disc; }
+.markdown-body ol > li { list-style-type: decimal; }
 .markdown-body hr { border: none; border-top: 1px solid var(--viewer-border); margin: 24px 0; }
 .markdown-body .layui-code { margin: 16px 0; }
 .diagram-container { margin: 16px 0; text-align: center; overflow-x: auto; }
