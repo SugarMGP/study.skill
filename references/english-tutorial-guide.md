@@ -124,7 +124,7 @@ For technical courses:
 - include dependencies and setup commands only when the learner is expected to run the code
 - show expected output
 - run code before claiming it works
-- if code was not executed, say so in the chat handoff or completion note, not inside learner-facing course files
+- follow `courseware-format.md` for the boundary between learner-facing setup and generator-side verification notes
 
 ### 7. Place source links where they help
 
@@ -155,7 +155,7 @@ If a Java developer is learning Python generators, compare the idea to lazy iter
 
 ### 9. Use checks, not long quizzes
 
-Use one small question after a concept. Pick the block by question type: `study-choice` for selection, `study-truefalse` for misconceptions, and `study-input` for short answers, explanations, scenario analysis, interview answers, or exam-style written work. Near the end of a chapter, use a small set of ordinary question blocks instead of a separate checkpoint block. Save only useful evidence with `study-*` blocks from `courseware-format.md`.
+Use one small question after a concept. Choose the exact `study-*` block type and fields from `courseware-format.md`; this guide only controls the English wording. The prompt should name the task, evidence, constraints, and expected reasoning shape. Near the end of a chapter, use a small set of ordinary question blocks instead of a separate checkpoint block.
 
 ### 9.5 Present terms and practice in the lesson
 
@@ -164,7 +164,7 @@ The default file policy is owned by `courseware-format.md`; this guide only cont
 Use these replacements:
 
 - If a chapter has many terms, add a short chapter-local “Term check” without turning the lesson into a glossary.
-- Put interview, exam, and end-of-chapter practice inside the relevant section as `study-choice`, `study-truefalse`, or `study-input`.
+- Put interview, exam, and end-of-chapter practice inside the relevant section using the saveable exercise blocks defined in `courseware-format.md`.
 - Add spaced-review items to `concepts.json` during Phase 3 after the learner has encountered the concept; do not pre-generate cards for unseen content.
 
 ### 10. Keep optional depth out of the main path
@@ -188,7 +188,7 @@ Avoid vague warnings such as “be careful with complexity.” Do not invent mis
 - Do not front-load history, taxonomy, or theory before the learner has a task.
 - Do not turn the chapter into API reference. Link to reference material instead.
 - Do not hide prerequisites or expected outputs.
-- Do not violate the first-use concept rule in `courseware-format.md`.
-- Do not put generator/runtime caveats in the lesson body, such as “not run locally”, “package not installed”, or “verification status”.
+- Do not turn shared courseware rules from `courseware-format.md` into a separate English-only rule set.
+- Do not let generator-side process notes leak into the English lesson body.
 - Do not force repeated slogan headings such as “The idea in one minute”.
 - Do not add decorative diagrams or exercises that do not help the chapter goal.

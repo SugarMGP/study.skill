@@ -36,7 +36,7 @@ Most agents only read the first ~160 lines. Use this table before substantial wo
 | Review check, review session, learning bulletin | `references/phase-4-consolidation.md` + `references/fsrs-scheduler.md` |
 | Skill tree, XP, levels, achievements, quests | `references/skill-tree.md` |
 
-Script shortcuts: run the scripts from this skill directory, not from the learning directory. Use `{skill_dir}/scripts/check-reviews.py` for due reviews, `{skill_dir}/scripts/record-review.py` for review ratings, `{skill_dir}/scripts/write-state.py` for JSON state writes, and `{skill_dir}/scripts/migrate-profile.py` for old state migration. Use `{skill_dir}/scripts/check-course-depth.py` only as an advisory post-generation length diagnostic; never as a hard course validator.
+Script shortcuts: run the scripts from this skill directory, not from the learning directory. Use `{skill_dir}/scripts/check-reviews.py` for due reviews, `{skill_dir}/scripts/record-review.py` for review ratings, `{skill_dir}/scripts/write-state.py` for JSON state writes, and `{skill_dir}/scripts/migrate-profile.py` for old state migration. Use `{skill_dir}/scripts/check-course-depth.py` only as an advisory post-generation depth and risk diagnostic; never as a hard course validator.
 
 ## Core Contract
 
@@ -81,7 +81,7 @@ Before answering any learning request:
 3. Ask enough to confirm scope, materials, baseline, time, and storage path.
 4. After route confirmation, initialize state from `state-schema.md` without overwriting existing courses.
 5. Load `phase-1-research.md`; use real sources before generation.
-6. Load `phase-2-generation.md`; generate Module 00 first, wait for confirmation, then generate the remaining modules within the course structure guard and use length diagnostics only after generation.
+6. Load `phase-2-generation.md`; generate Module 00 first, wait for confirmation, then generate the remaining modules within the course structure guard, run the blocking learner-perspective full-course review, and use diagnostics only after generation.
 
 ### Existing Course
 
@@ -124,6 +124,7 @@ Before answering any learning request:
 | "Every chapter needs the same heading template." | Keep the learning loop, not fixed headings. Do not force phrases such as "先记住一句话". |
 | "快速备考 means I should make every point short." | Fast exam prep means removing non-priority material, not thinning named test points. |
 | "The learner wants more detail, so I should patch the original section." | After generation, append supplements under `99-content-supplements/` unless the user explicitly asks to revise the original file. |
+| "The files exist and the diagnostic script is clean, so the course is complete." | Generation completion requires the Phase 2 learner-perspective full-course review; scripts are only clues. |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |
 
 ## Motivation

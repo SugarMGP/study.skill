@@ -26,7 +26,7 @@ Do not start writing `README.md`, `syllabus.md`, module `content.md`, or section
 
 This file is the source of truth for course generation: file layout, Module 00, module generation order, quality gate, course-size diagnostics, verification rules, and generation sequence.
 
-It does not define diagram syntax, image rules, or `study-*` block schemas. Those live in `courseware-format.md`. It does not define live teaching or mastery decisions. Those live in `phase-3-learning.md`.
+It does not define diagram syntax, source-artifact handling, pure-practice rules, or `study-*` block schemas. Those live in `courseware-format.md`. It does not define live teaching or mastery decisions. Those live in `phase-3-learning.md`.
 
 Load `learning-viewer.md` only when exact player-supported syntax, viewer startup, or learning records are needed.
 
@@ -40,7 +40,7 @@ After the course generation phase is complete, treat the main course as frozen u
 
 Do not force a repeated heading template. Keep the learning loop instead: goal -> prerequisite -> concrete entry point -> explanation -> example/case/code -> decision rule -> practice -> recap. Headings should fit the topic and language. Do not require slogans such as "先记住一句话" or "The idea in one minute".
 
-Generation must apply the shared teaching completeness rules in `courseware-format.md`: self-contained lessons, source-to-courseware bridging, first-use concept introduction, section pass standard, complete demonstrations for procedural topics, image/source-question explanation, exercise progression, and narrow section merge rules. Phase 2 decides sequence and scope; do not redefine those shared rules here.
+Generation must apply the shared teaching completeness rules in `courseware-format.md`: self-contained lessons, material-driven course rules, pure-question practice section rules, source-to-courseware bridging, first-use concept introduction, section pass standard, complete demonstrations for procedural topics, image/source-question explanation, exercise progression, and narrow section merge rules. Phase 2 decides sequence and scope; do not redefine those shared rules here.
 
 Before telling the user the course is ready, compare the generated files with this reference and fix missing learning-loop requirements directly in the files.
 
@@ -65,7 +65,7 @@ Every module should contain:
 
 Course files are for learners. Do not include design notes, generation rationale, tool choices, internal field names, or agent self-evaluation unless they are part of the hidden machine-readable exercise block format defined in `courseware-format.md`.
 
-Do not include agent/runtime verification notes in learner-facing files. Forbidden phrases include "验证状态", "本机当前没有安装", "未执行验证", "code was not executed", "not installed locally", or equivalent statements. Learners do not need to see the generator's environment. Put that information in the chat summary if it matters.
+Course files must follow the runtime-note isolation rule in `courseware-format.md`: generator environment limits and verification caveats belong in the chat handoff, not in learner-facing lessons.
 
 ## Learner Profile Adaptation
 
@@ -158,12 +158,14 @@ For each module:
 - Write a module preface in `{module}/content.md`; keep it short and navigational. Follow `courseware-format.md` for section list and link rules.
 - Write each teachable unit as `{module}/{section}/content.md`.
 - Before writing section bodies, create a source-to-section map: each important material point, researched concept, worked example, procedure, API behavior, theorem, diagram, or question form must be assigned to exactly one section or deliberately marked as omitted with a reason grounded in the confirmed scope.
+- For material-driven courses, extend the map with source role and source order: each PPT/lecture/textbook unit must be marked as concept explanation, formula, code, figure/table, worked example, exercise, summary, or transition. Preserve the original teaching order unless a scoped reason requires splitting or merging.
 - Apply `courseware-format.md` for concept introductions, source fragments, complete demonstrations, section split/merge, diagrams, media, code examples, and saveable practice.
 - Follow the selected language guide's learner-facing prose rules.
 - Check mode-specific depth rules from `phase-0-anchoring.md`.
 - Generate the lesson at the depth the source and learner need. Do not limit the first draft by the selected mode's prose band. The mode band in `phase-0-anchoring.md` is a post-generation diagnostic: if the finished module is far below it, expand missing explanation/examples/practice; if far above it, consider trimming redundant wording or splitting the module, but do not remove required examples, diagrams, worked solutions, source fragments, or interactive questions only to satisfy a number.
 - Apply `learner_profile` adaptations from this file before writing examples and explanations.
 - For novice learners, weak prerequisites, or Tier 1 modules, start from a small concrete example in the relevant section before introducing abstract terms, formulas, real-scale systems, or official API detail.
+- If a planned section is a pure-question practice section, do not apply the normal teaching-loop template to that section. Follow `courseware-format.md` pure-question rules exactly: `answer` and `explanation` may stay inside `study-*` blocks for post-submit reveal, but visible prose outside the blocks must remain question-only.
 
 The four modes must produce visibly different files:
 
@@ -205,6 +207,8 @@ Depth is measured by both prose size and learning activity coverage:
 - activity coverage: every module must include answerable practice through `study-*` blocks when answers should be saved or revealed after submission.
 - evidence coverage: interview and exam modes must include scoring criteria, answer rubrics, or worked solution steps; system mode must include why/how, boundaries, and transfer checks.
 - exam priority coverage: exam mode must separate "重点掌握" from "了解"; high priority points get explanation plus exam handling, while low priority points stay short.
+- answerability coverage: for every teaching section, ask whether a learner who did not attend the original class can complete at least one same-type task after reading this section. If not, the section needs more concept explanation, symbol/code walkthrough, worked example, decision boundary, or targeted practice.
+- material fidelity coverage: material-driven courses must preserve source order, source examples, formulas, figures, code, exercises, and teacher-marked emphasis unless the confirmed scope explicitly omits them.
 
 ## Step 3: Quality Gate
 
@@ -219,7 +223,7 @@ Before outputting any module, check against this tiered checklist.
 | Language-specific natural writing rules | [MUST] | [MUST] | [MUST] |
 | Problem entry -> concept explanation -> minimum complete example/source item -> step-by-step breakdown -> decision boundary -> practice -> recap | [MUST] | [MUST] | [MUST] |
 | Diagram or equivalent visual structure | [SHOULD] if structure is complex; else table/examples OK | [MUST] when content involves flow/architecture/hierarchy/contrast/dependency; else table/examples OK | [SHOULD] |
-| Interactive practice | [MUST] 1-2 learner-answerable questions across the module; use `study-choice`, `study-truefalse`, or `study-input` when answer should be saved or unlocked after submit | [MUST] 3-6 learner-answerable questions across section pages, covering recall + apply/analyze/explain evidence through `mastery_tags` | [SHOULD] 1-2 learner-answerable questions |
+| Interactive practice | [MUST] 1-2 learner-answerable questions across the module; use `courseware-format.md` exercise blocks when answers should be saved or unlocked after submit | [MUST] 3-6 learner-answerable questions across section pages, covering recall + apply/analyze/explain evidence through `mastery_tags` | [SHOULD] 1-2 learner-answerable questions |
 | Concrete continuation action | [SHOULD] only if it names a real action, variant, self-test, or next module bridge | [SHOULD] only if it names a real action, variant, self-test, or next module bridge | [OPTIONAL] |
 | Source citations | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
 | Inline authoritative links | [SHOULD] for APIs/core concepts | [MUST] for official API/library concepts and important primary sources | [SHOULD] |
@@ -234,7 +238,19 @@ Before outputting any module, check against this tiered checklist.
 | First-use concept introduction | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule |
 | Learner-profile adaptation | [SHOULD] when profile has relevant facts | [MUST] when profile has relevant known languages, weak prereqs, or constraints | [SHOULD] |
 | Mode-specific depth coverage | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation |
+| Answerability gate | [MUST] learner can explain, do, judge, or answer one same-type task without opening the source material | [MUST] learner can complete the section's target task or answer form with worked support | [MUST] optional content still states what capability it gives |
+| No extraction or template traces | [MUST] no source extraction labels, no repeated generic scaffold, no batch-reused filler | [MUST] no source extraction labels, no repeated generic scaffold, no batch-reused filler | [MUST] no source extraction labels, no repeated generic scaffold, no batch-reused filler |
 | No AI writing traces | [MUST] | [MUST] | [MUST] |
+
+**Material-driven quality gate:** When the course is based on PPT, lecture notes, textbook chapters, exam outlines, past papers, or teacher materials, apply the material-driven rules in `courseware-format.md` and also check the generation result as a whole:
+
+- Does the module order preserve the source order and teaching emphasis, instead of turning the course into a generic topic outline?
+- Does every source formula explain each symbol and when the formula is used?
+- Does every source code sample explain the input, execution path, output or failure mode, and what the learner should notice?
+- Does every source example, figure, table, or exercise become a taught example, a readable artifact, or a scoped omission with a reason?
+- Are image-only formulas, code, diagrams, tables, and questions embedded as local screenshots when they could not be extracted reliably, with source position and reading focus noted? Only mark source-image review when the screenshot itself could not be obtained.
+- Are extraction traces absent from learner-facing files, unless the user explicitly requested page-by-page source notes?
+- If a section is marked as pure practice, does it contain only title, question text, needed data tables, code snippets, and `study-*` blocks whose answers or explanations stay inside the post-submit reference panel?
 
 **Exam module quality gate:** In exam mode, also check:
 
@@ -246,7 +262,11 @@ Before outputting any module, check against this tiered checklist.
 - Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps?
 - Could the learner answer the tested item after reading only this section, even if they never opened the original review deck?
 
-**Length diagnostic protocol:** After generation, optionally run `scripts/check-course-depth.py` on the generated course or module. It counts non-symbol characters in Markdown content. Treat short sections as strong signals to inspect missing learning-chain pieces from `courseware-format.md`: complete example, step breakdown, figure/source-question explanation, common error, decision boundary, or exercise progression. Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant.
+**Blocking learner-perspective review:** After the whole course is generated and before saying it is ready, run a full-course review from the learner's point of view. Prefer a subagent when the platform supports subagents: ask it to act as a learner matching the user's stated baseline, or as a learner who has never studied the course if no baseline is known. Give it the generated course files and, for material-driven courses, the source outline or extracted material notes. Ask it to answer: can this learner follow the order, understand each section without opening hidden source material, and complete same-type exercises or exam questions? If subagents are unavailable, the current agent must perform the same review directly, module by module.
+
+This review is blocking. If it finds material-order drift, extraction traces, pure-practice contamination, repeated template scaffolds, missing formula/code/example walkthroughs, or sections that do not reach answerability depth, revise the course files and re-run the review. Do not replace this step with a script report.
+
+**Diagnostic protocol:** After generation, optionally run `scripts/check-course-depth.py` on the generated course or module. It reports non-symbol character counts and advisory scan findings for extraction traces, pure-practice contamination, and repeated template-like lines. Treat short sections as strong signals to inspect missing learning-chain pieces from `courseware-format.md`: complete example, step breakdown, figure/source-question explanation, common error, decision boundary, or exercise progression. Treat flagged phrases as prompts for human review and rewrite when the finding is real. Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant, and a clean report does not replace the quality gate or the blocking learner-perspective review.
 
 **Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
@@ -305,7 +325,7 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 | Concern | Source of truth |
 | --- | --- |
 | Module 00, syllabus, course files, quality gate, course structure guard, length diagnostics | this file |
-| Shared Markdown, diagram, image, code, and `study-*` courseware rules | `courseware-format.md` |
+| Shared courseware structure, Markdown/media/code syntax, source-artifact handling, pure-practice rules, and `study-*` block schemas | `courseware-format.md` |
 | Chinese explanation style and natural chapter/section rules | `chinese-tutorial-guide.md` |
 | English explanation style and natural chapter/section rules | `english-tutorial-guide.md` |
 | Exact viewer startup, supported runtime syntax, learning record behavior | `learning-viewer.md` |

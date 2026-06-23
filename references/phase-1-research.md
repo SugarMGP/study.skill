@@ -14,11 +14,11 @@ Phase 1 is for building or revising a course, not for ordinary continuation. If 
 
 ### Step 0: Material-Driven Mode Check
 
-If the user provided materials in Phase 0 (syllabus, textbook, exam outline, past papers), enter **material-driven research mode**:
+If the user provided materials in Phase 0 (PPT, lecture notes, syllabus, textbook, exam outline, past papers, assignments, or classroom notes), enter **material-driven research mode**:
 
 **Primary source** = the user's materials. The material defines the scope.
 
-**Research scope is constrained to the material topics.** Do NOT add topics outside the syllabus. The goal is "只学要考的" — only what's tested.
+**Research scope is constrained to the user's material and confirmed goal.** Do not add an outside topic just because it belongs to the generic subject. For exam mode, this becomes "只学要考的": final-review decks, exam outlines, teacher-marked重点, and past papers decide priority.
 
 **Research tasks (material-driven):**
 1. Analyze the material for topic list, ordering, depth, priority language, and exam format
@@ -31,6 +31,7 @@ If the user provided materials in Phase 0 (syllabus, textbook, exam outline, pas
 4. Extract key concepts and their relationships from the material → Knowledge DAG
 5. Map material chapters to learning modules
 6. Preserve high-quality teaching fragments from the material: original examples, diagrams, screenshots, tables, formulas, long explanatory paragraphs, classroom wording, problem statements, and worked solutions. These fragments are the raw material for Phase 2 lessons, not optional citations.
+7. When a formula, code sample, chart, table, question stem, or key data only exists in an image, preserve the source page or crop screenshot plus its source location and reading focus. Phase 2 should embed that artifact when reliable text extraction is not possible.
 
 **Source count**: 1 primary (user's material) + 1-2 supplementary. Flag what's missing.
 
@@ -67,9 +68,7 @@ Adapt dispatches to topic type: select sources by **quality**, not by tool name.
 | Academic subject | Standard textbook / top university syllabus | Survey papers (arXiv/CNKI), quality learning resources in the course language |
 | Exam prep | User's syllabus/past papers | Textbook, exam prep guides |
 
-**Source count:** Target 3 quality sources. If user provides materials, they count as the primary source — then 1-2 supplements suffice.
-
-**Language-source rule:** Match supporting sources to the course language when quality permits. For Chinese courses, include at least 1 quality Chinese source when available; if none exists, say so and explain English sources in natural Chinese. For English courses, prioritize strong English sources and use non-English sources only when they are authoritative for the topic. Never force low-quality sources just to meet a language quota.
+Use the source-count and language-source rules from the source-priority section above. Do not repeat research just to fill dispatch slots.
 
 ### What to Extract
 
