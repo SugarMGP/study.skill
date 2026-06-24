@@ -6,7 +6,9 @@ Usage:
   python scripts/write-state.py path/to/file.json --input-file new-content.json
 
 The script validates JSON, writes to .tmp, verifies the written JSON, backs up
-the existing file to .bak, then replaces the target.
+the existing file to .bak, then atomically replaces the target. This prevents
+partial writes and corrupted state files. Always use this script instead of
+writing JSON directly (echo, write_to_file, etc.) for state persistence.
 """
 
 import argparse

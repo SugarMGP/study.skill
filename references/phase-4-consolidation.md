@@ -1,8 +1,6 @@
 # Phase 4: 巩固（Consolidation & Review）
 
-> Based on: Spaced Repetition (间隔重复) +
-> FSRS (Free Spaced Repetition Scheduler / 自由间隔重复调度算法) +
-> Anki due-count-as-reminder pattern (到期数即提醒)
+> Based on spaced repetition and FSRS scheduling principles.
 
 ## Scope
 
@@ -42,7 +40,7 @@ If the user chooses a full review, group by course:
 
 Use this when the user wants to continue learning but accepts a short warm-up.
 
-- Review 1-3 items, or 2-5 minutes.
+- Review up to 3 items, stopping at 5 minutes max.
 - Prioritize lowest R (记忆可提取率) first, then highest D (难度), then fewest reviews.
 - After quick review, return to the current module.
 
@@ -116,16 +114,10 @@ When user says "进度", "快报", "技能树", "review", or "复习", expand to
 
 ## Streak Logic
 
-- Learning day = completed >=1 meaningful learning section, completed >=1 module, or completed >=1 review session.
+- Learning day = completed >=1 section where the learner submitted at least one exercise answer, or completed >=1 review session.
 - Streak = consecutive calendar days with >=1 learning day.
-- Gap resets to 1 after the next learning day. Do not guilt the learner.
+- Gap resets to 1 after the next learning day.
 
-## Encouraging Notes
+## Tone
 
-Use concrete progress:
-
-- Streak milestone: "连续 7 天，已经完成 {completed} 个模块，复习 {review_count} 次。"
-- Module completion: "模块完成，你现在能 {capability}。"
-- Return after gap: "上次是 {days} 天前，我们从 {concept} 接上。"
-- All caught up: "今天没有到期复习，直接轻装上阵。"
-- Struggling: "这个确实难。先抓住 {key_insight}，其他慢慢补。"
+Use concrete progress statements, not empty praise. Refer to `SKILL.md` Motivation section for tone guidance.

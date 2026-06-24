@@ -1,10 +1,6 @@
 # Phase 2: 生成（Course Generation）
 
-> Based on: Backward Design Stage 3 (Wiggins & McTighe, 2005) +
-> Gagné's Nine Events (Gagné, 1965) +
-> Bloom's Taxonomy Revised (Anderson & Krathwohl, 2001) +
-> Diataxis tutorials, Microsoft Learn, freeCodeCamp, The Odin Project +
-> Chinese tutorial conventions (ai-agents-from-zero, rust-course, 极客时间)
+> Based on instructional design principles, documentation frameworks, and tutorial conventions.
 
 ## Prerequisites
 
@@ -30,7 +26,7 @@ It does not define diagram syntax, source-artifact handling, pure-practice rules
 
 Load `learning-viewer.md` only when exact player-supported syntax, viewer startup, or learning records are needed.
 
-## Completion Iron Law
+## Completion Rule
 
 Do not claim a course, module, code example, or exercise is complete until the relevant quality gate has been checked. If runnable code was not executed, say so in your chat handoff or internal completion note, not inside learner-facing course files.
 
@@ -50,7 +46,7 @@ Generate real, runnable courses. Do not dump links or generic outlines.
 
 Every module should contain:
 
-- clear learning objectives
+- learning objectives stated as learner-observable outcomes (e.g., "you can write...", "you can judge when...")
 - a short preface in `{module}/content.md`: previous-module bridge when relevant, core problem, prerequisites, section map, why the section order matters, and end capability
 - section pages under `{module}/{section}/content.md`; section split and merge rules come from `courseware-format.md`
 - beginner-facing entry points before definitions in foundation sections
@@ -60,7 +56,7 @@ Every module should contain:
 - active recall or transfer practice
 - decision criteria
 - real pitfalls or misconceptions when the topic has source-backed or practice-backed ones
-- concise recap and a concrete continuation action when useful
+- concise recap; a concrete continuation action only when the next module builds on this one
 - source notes for non-trivial claims, code, images, diagrams, and data; link placement and export rules come from `courseware-format.md`
 
 Course files are for learners. Do not include design notes, generation rationale, tool choices, internal field names, or agent self-evaluation unless they are part of the hidden machine-readable exercise block format defined in `courseware-format.md`.
@@ -71,12 +67,12 @@ Course files must follow the runtime-note isolation rule in `courseware-format.m
 
 Use `profile.json.learner_profile` as a teaching aid, not as a place to invent facts. Apply only explicit profile data:
 
-- `known_languages`: use brief transfer analogies when they reduce cognitive load. Example: if the learner knows Java and is learning Python decorators, compare decorator syntax to wrapping a method with an annotation-like idea, then explain where the analogy breaks.
+- `known_languages`: use brief transfer analogies when the learner_profile lists a known_language or analogy_preference that maps to the concept. Example: if the learner knows Java and is learning Python decorators, compare decorator syntax to wrapping a method with an annotation-like idea, then explain where the analogy breaks.
 - `weak_prereqs`: insert compact prerequisite refreshers before the concept that depends on them; do not turn the module into a different course.
 - `analogy_preferences`: choose examples from the learner's familiar domain, such as backend, systems, math, design, or writing.
 - `teaching_constraints`: obey exclusions and preferences explicitly. If the user said "不要把 Python 放进主线", use only the minimum Python syntax needed.
 
-Every analogy must include its boundary when the boundary matters. Do not force cross-language comparisons into every section; use them only where they shorten the path to understanding.
+Every analogy must state at least one way it breaks. Do not force cross-language comparisons into every section; use them only where the learner_profile has a matching known_language or analogy_preference.
 
 ## Source Link Routing
 
@@ -140,6 +136,13 @@ English prompt: `Does this outline look right? I can start writing the modules n
 
 After Module 00 is confirmed, generate `syllabus.md` and all remaining modules in one pass. The Module 00 outline is the contract. No per-module confirmation is needed unless the user pauses or asks to revise the outline.
 
+**Interleaved quality checkpoint:** Every 3 modules generated, pause internally to check the last 3 for generation fatigue (do not ask the user for confirmation; this is an agent-internal gate):
+- Exercise count per module is not dropping (>=80% of the first 3 modules' average).
+- No `study-*` answer field has regressed to template placeholders ("参考答案应包含…" etc.).
+- Module preface section descriptions are section-specific (not identical boilerplate repeated across all sections).
+- No new extraction traces or raw artifacts have appeared.
+If the checkpoint fails, fix the degraded modules before continuing to the next 3.
+
 `syllabus.md` minimum content:
 
 - module order, section titles, and learning objectives
@@ -155,9 +158,9 @@ The fixed `99-content-supplements` module is outside this structure guard. Do no
 
 For each module:
 
-- Write a module preface in `{module}/content.md`; keep it short and navigational. Follow `courseware-format.md` for section list and link rules.
+- Write a module preface in `{module}/content.md`; limit it to the core problem, section order rationale, and end capability (3 paragraphs max). Each section's description must state what that specific section teaches — do not repeat the same phrase across 3 or more sections (e.g. "按 PPT 对应页学习定义、公式、例题和解题方法" applied to every section). Follow `courseware-format.md` for section list and link rules.
 - Write each teachable unit as `{module}/{section}/content.md`.
-- Before writing section bodies, create a source-to-section map: each important material point, researched concept, worked example, procedure, API behavior, theorem, diagram, or question form must be assigned to exactly one section or deliberately marked as omitted with a reason grounded in the confirmed scope.
+- Before writing section bodies, map every Phase 1 extracted source item (concept, example, procedure, API, theorem, diagram, question form) to at least one section. If a source item is omitted, the reason must be grounded in the confirmed scope — do not let source content silently disappear through summarization.
 - For material-driven courses, extend the map with source role and source order: each PPT/lecture/textbook unit must be marked as concept explanation, formula, code, figure/table, worked example, exercise, summary, or transition. Preserve the original teaching order unless a scoped reason requires splitting or merging.
 - Apply `courseware-format.md` for concept introductions, source fragments, complete demonstrations, section split/merge, diagrams, media, code examples, and saveable practice.
 - Follow the selected language guide's learner-facing prose rules.
@@ -167,14 +170,6 @@ For each module:
 - For novice learners, weak prerequisites, or Tier 1 modules, start from a small concrete example in the relevant section before introducing abstract terms, formulas, real-scale systems, or official API detail.
 - If a planned section is a pure-question practice section, do not apply the normal teaching-loop template to that section. Follow `courseware-format.md` pure-question rules exactly: `answer` and `explanation` may stay inside `study-*` blocks for post-submit reveal, but visible prose outside the blocks must remain question-only.
 
-The four modes must produce visibly different files:
-
-- 速成导览 / Speedrun: short path, fewer branches, practical first example, no long theory detour.
-- 系统精讲 / Systematic: deeper why/how, concept contrasts, failure cases, diagrams, and mixed evidence through recall/apply/explain `mastery_tags`.
-- 面试冲刺 / Interview: one high-frequency topic at a time, scoring criteria, follow-up questions, source-backed misconceptions, runnable/code-outline practice when applicable.
-- 考试备考 / Exam: align to syllabus/materials, mark likely question forms, include worked solution steps and scoring points.
-
-Do not let every mode collapse into the same shallow tutorial with different labels.
 
 ### Exam Crash Course Depth Rule
 
@@ -188,11 +183,11 @@ Use this source hierarchy:
 
 For every item explicitly named by the final-review or exam-scope material, the generated section must include:
 
-- what it means in plain learner-facing language
+- what it means in learner-facing language following the style rules in chinese-tutorial-guide.md or english-tutorial-guide.md
 - why it matters for this exam
 - how it appears as a question form
 - one worked example, SQL/formula/procedure, diagram reading, or judgment rule when the item requires solving, designing, querying, calculating, or comparing
-- common confusion, scoring point, or answer keyword when the material or supplementary source supports it
+- common confusion, scoring point, or answer keyword if explicitly stated in the source material
 - one exam-tagged `study-*` exercise when the item is likely to be tested
 
 A section is too shallow if it only lists named concepts without showing how to answer exam questions about them. If one material chapter contains many named exam points, split by exam point cluster; do not pack the chapter into one summary section.
@@ -221,26 +216,27 @@ Before outputting any module, check against this tiered checklist.
 | Learning objectives | 2-3 at Understand/Apply | 3-5 at Apply/Analyze | 2-3 at Analyze/Evaluate |
 | Beginner entry before definitions | [MUST] concrete scene/problem + why it matters | [SHOULD] unless prior module already prepared it | [OPTIONAL] |
 | Language-specific natural writing rules | [MUST] | [MUST] | [MUST] |
-| Problem entry -> concept explanation -> minimum complete example/source item -> step-by-step breakdown -> decision boundary -> practice -> recap | [MUST] | [MUST] | [MUST] |
+| Problem entry -> concept explanation -> minimum complete example/source item -> step-by-step breakdown -> decision boundary -> practice -> recap | [MUST] keep the learning loop; simplify step-by-step breakdown when the concept has only one or two trivial steps | [MUST] | [MUST] |
 | Diagram or equivalent visual structure | [SHOULD] if structure is complex; else table/examples OK | [MUST] when content involves flow/architecture/hierarchy/contrast/dependency; else table/examples OK | [SHOULD] |
 | Interactive practice | [MUST] 1-2 learner-answerable questions across the module; use `courseware-format.md` exercise blocks when answers should be saved or unlocked after submit | [MUST] 3-6 learner-answerable questions across section pages, covering recall + apply/analyze/explain evidence through `mastery_tags` | [SHOULD] 1-2 learner-answerable questions |
-| Concrete continuation action | [SHOULD] only if it names a real action, variant, self-test, or next module bridge | [SHOULD] only if it names a real action, variant, self-test, or next module bridge | [OPTIONAL] |
 | Source citations | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
 | Inline authoritative links | [SHOULD] for APIs/core concepts | [MUST] for official API/library concepts and important primary sources | [SHOULD] |
 | Real pitfalls or misconceptions | [SHOULD] when source-backed or practice-backed; integrate near the relevant concept | [SHOULD] when source-backed or practice-backed; integrate near the relevant concept | [OPTIONAL] |
 | Interview/exam practice | [SHOULD] in interview/exam mode | [MUST] in interview mode | [SHOULD] |
 | Analogy or concrete mental model + decision criteria | [MUST] | [MUST] | [SHOULD] |
 | Source-to-section coverage | [MUST] important material points are taught or scoped out with reason | [MUST] every important researched/source point has a section home and enough explanation | [MUST] optional points are clearly marked as optional, not silently lost |
-| Source fragment use | [MUST] follow `courseware-format.md` source-fragment rule | [MUST] follow `courseware-format.md` source-fragment rule | [SHOULD] follow `courseware-format.md` when fragments clarify optional content |
-| Complete demonstration for procedural topics | [MUST] follow `courseware-format.md` complete-demonstration rule | [MUST] follow `courseware-format.md` complete-demonstration rule | [SHOULD] follow `courseware-format.md` when optional topic teaches an operation or answer pattern |
 | Image/source-question explanation | [MUST] explain how to read reused figures, tables, source questions, or code | [MUST] explain how each reused source artifact becomes understanding, answer, code, or judgment | [SHOULD] when source artifacts are included |
 | Exercise progression | [SHOULD] include recognition plus one apply/explain check for core items | [MUST] avoid single-point memory-only checks for core items; include apply/analyze/explain evidence | [SHOULD] |
-| First-use concept introduction | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule | [MUST] follow `courseware-format.md` first-use concept rule |
 | Learner-profile adaptation | [SHOULD] when profile has relevant facts | [MUST] when profile has relevant known languages, weak prereqs, or constraints | [SHOULD] |
-| Mode-specific depth coverage | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation | [MUST] structural coverage from Phase 0; length checked only after generation |
 | Answerability gate | [MUST] learner can explain, do, judge, or answer one same-type task without opening the source material | [MUST] learner can complete the section's target task or answer form with worked support | [MUST] optional content still states what capability it gives |
-| No extraction or template traces | [MUST] no source extraction labels, no repeated generic scaffold, no batch-reused filler | [MUST] no source extraction labels, no repeated generic scaffold, no batch-reused filler | [MUST] no source extraction labels, no repeated generic scaffold, no batch-reused filler |
-| No AI writing traces | [MUST] | [MUST] | [MUST] |
+
+Cross-tier rules (apply across all tiers where the context matches):
+
+- **Source fragment use**: [MUST] follow `courseware-format.md` source-fragment rule for Foundation/Core; [SHOULD] for Enrichment.
+- **Complete demonstration for procedural topics**: [MUST] follow `courseware-format.md` complete-demonstration rule for Foundation/Core; [SHOULD] for Enrichment.
+- **First-use concept introduction**: [MUST] follow `courseware-format.md` first-use concept rule for all tiers.
+- **Mode-specific depth coverage**: [MUST] structural coverage from Phase 0 for all tiers; length checked only after generation.
+- **No extraction, template, or AI writing traces**: [MUST] for all tiers. No source extraction labels, no repeated generic scaffold, no batch-reused filler, no AI-slop phrasing. See `chinese-tutorial-guide.md` and `english-tutorial-guide.md` Forbidden Patterns for the forbidden-phrase criteria.
 
 **Material-driven quality gate:** When the course is based on PPT, lecture notes, textbook chapters, exam outlines, past papers, or teacher materials, apply the material-driven rules in `courseware-format.md` and also check the generation result as a whole:
 
@@ -252,27 +248,51 @@ Before outputting any module, check against this tiered checklist.
 - Are extraction traces absent from learner-facing files, unless the user explicitly requested page-by-page source notes?
 - If a section is marked as pure practice, does it contain only title, question text, needed data tables, code snippets, and `study-*` blocks whose answers or explanations stay inside the post-submit reference panel?
 
+**Exam exercise density:** In exam mode, every named exam point listed in the syllabus must have at least one exam-tagged `study-*` exercise in its section. A section with zero exercises is incomplete regardless of prose quality.
+
 **Exam module quality gate:** In exam mode, also check:
 
 - Does the module clearly separate high-priority "must master" content from low-priority recognition content?
 - Are all final-review or syllabus named points assigned to a module and covered in the section body?
-- Does each high-priority point include explanation plus exam handling, not just a definition?
+- Does each high-priority point include at minimum: one worked example, one judgment rule, and one exam-tagged study-* exercise?
 - Are non-priority concepts compressed or removed instead of stealing space from tested points?
 - Does the learner know what to write, calculate, query, design, or judge in an answer?
 - Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps?
 - Could the learner answer the tested item after reading only this section, even if they never opened the original review deck?
 
-**Blocking learner-perspective review:** After the whole course is generated and before saying it is ready, run a full-course review from the learner's point of view. Prefer a subagent when the platform supports subagents: ask it to act as a learner matching the user's stated baseline, or as a learner who has never studied the course if no baseline is known. Give it the generated course files and, for material-driven courses, the source outline or extracted material notes. Ask it to answer: can this learner follow the order, understand each section without opening hidden source material, and complete same-type exercises or exam questions? If subagents are unavailable, the current agent must perform the same review directly, module by module.
+**Blocking learner-perspective review:** After the whole course is generated and before saying it is ready, run a full-course review from the learner's point of view. This review is blocking: course completion must not be claimed until every item below passes.
 
-This review is blocking. If it finds material-order drift, extraction traces, pure-practice contamination, repeated template scaffolds, missing formula/code/example walkthroughs, or sections that do not reach answerability depth, revise the course files and re-run the review. Do not replace this step with a script report.
+**Review method:** Prefer a subagent when the platform supports subagents. Ask it to act as a learner matching the user's stated baseline, or as a zero-baseline learner if no profile is known. Give it the generated course files and, for material-driven courses, the source outline or extracted material notes.
 
-**Diagnostic protocol:** After generation, optionally run `scripts/check-course-depth.py` on the generated course or module. It reports non-symbol character counts and advisory scan findings for extraction traces, pure-practice contamination, and repeated template-like lines. Treat short sections as strong signals to inspect missing learning-chain pieces from `courseware-format.md`: complete example, step breakdown, figure/source-question explanation, common error, decision boundary, or exercise progression. Treat flagged phrases as prompts for human review and rewrite when the finding is real. Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant, and a clean report does not replace the quality gate or the blocking learner-perspective review.
+**Subagent-unavailable protocol (self-review):** If subagents are unavailable, the current agent must perform a structured self-review. Self-review bias is real; use these steps to mitigate it:
+1. List every module and section file path.
+2. For each section, write one sentence: "After this section, the learner can _____" without opening the section file — test whether the section title and your memory of its content are enough to fill that blank concretely.
+3. Compare the generated course's concept list against the Phase 1 research key concepts. Flag every researched concept that has no section home.
+4. For material-driven courses, check each source unit (PPT page, textbook section, exam point) against the module outline. Mark whether it was taught, practiced, or omitted with scoped reason.
+5. Compile findings into a brief internal review note listing: total sections checked, sections with missing learning-loop pieces, source-content gaps, and extraction/template traces found.
+
+**Review checklist** — every generated course must pass all items. Mark each as PASS or FAIL with a brief note:
+
+1. **Order coherence**: Can a learner with the stated baseline follow the module and section order without confusion? Check that prerequisites are taught before they are needed.
+2. **Self-contained sections**: For every section, pick one concept/example/exercise. Can a learner understand it without opening external source material? If the answer depends on a figure or code only in the source, it must be embedded in the course file.
+3. **Concept introduction**: Does every section introduce new terms, symbols, or API names on first use? No unexplained jargon that appeared earlier without definition.
+4. **Complete demonstrations**: For every code, SQL, formula, or procedure section, is there a full worked example with input/output/explanation? No keyword-only or snippet-only teaching.
+5. **Exercise quality**: Do core-module exercises include at least one apply/analyze/explain question (not all recall-only)? Are answer/explanation fields inside `study-*` blocks (not visible before submit)?
+6. **Source coverage**: Are all Phase 1 researched important points taught in a section, or deliberately omitted with a scoped reason? Nothing should silently disappear.
+7. **Material fidelity** (material-driven courses only): Does the module order preserve the source materials' teaching order? Are source formulas, code, figures, tables, and teacher-marked emphasis points taught (not just mentioned)?
+8. **No extraction or template traces**: No "原课件页 N", "PPT 第X页", "原始内容整理", "本章对应 PPT", batch-reused paragraph scaffolds, raw script/code artifacts (e.g. `$(@{…})` PowerShell dumps), or AI-slop phrasing in learner-facing prose.
+9. **Pure-practice sections** (if any): Do they contain only question text + `study-*` blocks? No visible answers, hints, explanations, or learning advice outside the blocks.
+10. **Answerability**: For a randomly chosen section from each module, could a learner complete at least one same-type task without the source material?
+11. **No template/placeholder answers**: Every `study-*` answer field contains a concrete, learner-checkable answer. No meta-instructions like "参考答案应包含…", "参考思路", or agent-facing placeholder text. If an answer describes what a good answer *should* contain rather than providing it, the exercise is incomplete.
+12. **No slide-by-slide structure**: Section body is organized by concept, not by source page number. No headings like "原课件页 N", "Page X of PPT", or any per-page structural pattern with 5+ consecutive page-numbered headings. Content must be rearranged into concept-driven sections regardless of which source page the material came from.
+
+This review is blocking. If any item fails, revise the course files and re-run the review. Max 2 full retries. On the 3rd failure or time constraint, present the course with a flagged warning listing the remaining failures — never claim completion when items fail. Do not replace this step with a script report.
+
+**Diagnostic protocol:** After generation, run `scripts/check-course-depth.py` on the generated course or module. It reports non-symbol character counts and advisory scan findings for extraction traces, pure-practice contamination, and repeated template-like lines. Treat any section below the selected mode diagnostic band as requiring inspection for missing items from `courseware-format.md`: complete example, step breakdown, figure/source-question explanation, common error, decision boundary, or exercise progression. Treat every flagged phrase as requiring rewrite unless it is a verbatim quote from source material (with citation). Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant, and a clean report does not replace the quality gate or the blocking learner-perspective review.
 
 **Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
-**Bloom keywords:** Understand = describe/explain/summarize. Apply = implement/solve/modify/use. Analyze = compare/analyze/distinguish/classify. Evaluate = assess/judge/justify.
 
-**Max course size:** 60 section pages total. Split into a series if larger.
 
 ## Verification Rules
 
@@ -288,24 +308,7 @@ This review is blocking. If it finds material-order drift, extraction traces, pu
 
 Module 00 creates the root structure and course contract. After the user confirms Module 00, write all remaining module files in the same generation pass.
 
-```text
-{learning_root}/courses/{course-slug}/
-├── README.md              # Course overview (Module 00)
-├── syllabus.md             # Full syllabus with learning objectives per module
-├── 01-{module-name}/
-│   ├── content.md          # Module preface: problem, prerequisites, section map
-│   ├── 01-{section-name}/
-│   │   ├── content.md      # Section lesson body
-│   │   └── images/         # Optional local assets for this section
-│   └── 02-{section-name}/
-│       └── content.md
-├── 02-{module-name}/
-│   ├── content.md
-│   └── 01-{section-name}/
-│       └── content.md
-└── 99-content-supplements/
-    └── content.md          # Always-available supplement module
-```
+See `references/courseware-format.md` for the definitive course file structure. Key constraint: every course must include `README.md`, `syllabus.md`, `{module}/content.md` prefaces, `{module}/{section}/content.md` sections, and `99-content-supplements/content.md`.
 
 Default course content must stay on the path that Phase 3 and the local viewer actually read. Side artifacts and exports follow `courseware-format.md`.
 

@@ -1,8 +1,6 @@
 # Simplified Spaced Repetition (Based on FSRS Principles)
 
-> Source: inspired by FSRS (Ye et al., KDD 2022 / TKDE 2023)
-> This is a **simplified implementation** of the core concepts, not a full
-> FSRS engine. For production use, consider integrating the fsrs-rs library.
+> This is a simplified implementation of FSRS core concepts. It is not a full FSRS engine and does not require the fsrs-rs library.
 
 ## Storage: Per-Course concepts.json
 
@@ -37,7 +35,7 @@ Each course has its own `{learning_root}/.learning-profile/courses/{course-slug}
 - `learning` — actively being learned or reviewed
 - `mastered` — consistently recalled, low review frequency
 - `needs_relearning` — lapsed (R < 0.7 and lapses >= 3), needs re-teaching
-- `retired` — no longer relevant (topic removed from course)
+- `retired` — set by agent when a module is removed from the course scope and the concept is no longer needed
 
 **Note:** `target_retention` is not stored in concepts.json. It lives in `params.json` to avoid duplication. When computing R, read `target_retention` from `params.json`.
 
@@ -127,3 +125,23 @@ In-session active recall and self-tests (Phase 3) are **teaching checks** — th
 
 - Do NOT schedule reviews in the same session as first learning
 - Do NOT delete concepts — set status to "needs_relearning" instead
+
+
+## Concept Question Guidelines
+
+When writing `question` and `answer` fields in `concepts.json`, follow these rules:
+
+- **question**: Write a retrieval prompt that forces recall. It should name the concept and ask for the key judgment, step, rule, or behavior — not just ask for a definition. Good: "useState 返回什么？写 state 更新时 React 会做什么？" Bad: "什么是 useState？"
+- **answer**: Give the critical information in the course language. Keep it to 1-3 sentences. Include the judgment rule or key distinction when that is the point of the concept. If the concept is procedural (SQL, code, formula), include the minimal correct form.
+- **Language**: Use the course language. If the course is Chinese, the question/answer should be in Chinese (with code/API names in English as needed).
+- **Scope**: One Q/A pair per concept. Do not import the section's entire exercise bank. Pick the single most important retrieval point.
+
+Example (Chinese course, React Hooks topic):
+
+```json
+{
+  "id": "useState-basics",
+  "question": "useState 返回什么？调用 setState 后组件会发生什么？",
+  "answer": "返回 [state, setState] 数组。setState 触发组件重新渲染，新渲染中使用更新后的 state 值。"
+}
+```

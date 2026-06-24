@@ -1,10 +1,6 @@
 # Phase 3: 学习（Interactive Teaching）
 
-> Based on: Gagné's Nine Events (加涅九段教学法) +
-> Cognitive Apprenticeship (认知学徒制) +
-> Zone of Proximal Development (最近发展区) +
-> Socratic Cycle (苏格拉底式追问) +
-> Hint-over-Answer (先提示后答案)
+> Based on established teaching methodology: guided discovery, scaffolding, and active recall.
 
 ## Scope
 
@@ -17,17 +13,17 @@ This file is the source of truth for live teaching and continuation. It covers:
 
 It does not cover platform automations, scheduled reminders, hooks, push notifications, or thread wakeups. Review checks happen when a learning session starts. Exact local viewer startup, supported syntax, learning-record fields, and chat handoff text live in `learning-viewer.md`.
 
-## The Iron Law Of Teaching
+## Teaching Rule
 
 ```text
 DON'T JUMP TO THE ANSWER. GUIDE THE DISCOVERY FIRST.
 ```
 
-Before revealing a solution, try guided discovery first: hints, smaller questions, partial examples, or a worked example with reasoning. For beginners, time pressure, or a direct "给我完整例子" request, a worked example can come earlier, but never give only a bare final answer.
+Before revealing a solution, try guided discovery using the Hint Escalation table below. Skip directly to a worked example only when: the user explicitly asks for one ("给我完整例子"), is in speedrun mode, or has failed 3+ attempts on the same concept. Never give only a bare final answer.
 
 ## Session Start Protocol
 
-At the start of each formal learning session:
+At the start of each learning session (any turn where the user says "继续学习", "下一节", "开始学", or the agent begins teaching a new section):
 
 1. If old `.learning-profile/progress.json` or `review-schedule.json` exists, stop and migrate first.
 2. Read `.learning-profile/profile.json` and the active course `meta.json`, `params.json`, `concepts.json`, and `domain-tree.json`.
@@ -51,7 +47,7 @@ Opening format:
 
 If no overdue items exist, omit the review line.
 
-If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`, follow `skill-tree.md` for the one-time RPG preference question and state write.
+If `meta.json.rpg_enabled=true` and `meta.json.rpg_preference_asked=false`, ask the one-time RPG preference question before the first teaching session starts per `skill-tree.md`. ⛔ [BLOCKING] After asking, write the answer to `meta.json` immediately via `{skill_dir}/scripts/write-state.py`.
 
 ## Existing Course Continuation
 
@@ -107,7 +103,7 @@ Target a 75-85% exercise success rate:
 | 3rd wrong | Connect to an earlier concept or example |
 | Still stuck | Give a worked example with reasoning, then a variant exercise |
 
-Do not turn this into a rigid ritual when the learner simply needs a clear demonstration. The goal is productive struggle, not frustration.
+When the learner has failed 3+ attempts on the same concept, skip the remaining hint escalation steps and give a worked example directly. The goal is productive struggle, not frustration.
 
 ## Mastery Gate
 
@@ -163,10 +159,11 @@ Update:
    - update immediately when the user says "太快/太慢/太浅/太深/跟不上"
    - write `last_pace_feedback`, `last_pace_feedback_at`, and append an `adaptive_history` entry with the trigger and the next teaching adjustment
    - do not invent numeric tuning fields just to make the feedback look automated
-5. `learning-record.json`
-   - after answering `questions_for_llm`, remove answered questions and write the updated record back through `{skill_dir}/scripts/write-state.py`
-   - keep unanswered questions only when the agent explicitly did not answer them
-   - do not leave stale answered questions in the list; otherwise the next session will repeat the same answer
+ 5. `learning-record.json`
+    - after answering `questions_for_llm`, remove answered questions and write the updated record back through `{skill_dir}/scripts/write-state.py`
+    - ⛔ **If answered questions are not cleared, they will repeat in the next session.**
+    - keep unanswered questions only when the agent explicitly did not answer them
+    - write the updated list (or `[]` when all are resolved) back immediately
 
 ## Pace Feedback
 
@@ -177,7 +174,7 @@ Update:
 | 太浅了 | `last_pace_feedback="too_shallow"` | Add mechanism, boundary, trade-off, or harder transfer examples within the selected mode |
 | 太深了 / 听不懂 | `last_pace_feedback="too_deep"` | Return to concrete examples, reduce abstraction, and repair missing prerequisites before continuing |
 
-Reply briefly, then actually write `params.json`. Do not keep the adjustment only in chat. If the feedback really means the learner chose the wrong mode, ask whether to switch mode instead of silently changing hidden numeric knobs.
+⛔ **[BLOCKING] Write `params.json` now — do not defer.** After replying, immediately update `params.json` with `last_pace_feedback`, `last_pace_feedback_at`, and an `adaptive_history` entry via `{skill_dir}/scripts/write-state.py`. If the feedback contradicts the selected mode (e.g. "太浅了" in 速成 mode), ask whether to switch mode instead. Skipping this write causes the pace adjustment to be lost.
 
 ## Session End Summary
 

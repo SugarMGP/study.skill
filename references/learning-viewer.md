@@ -60,19 +60,11 @@ interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和 `scripts
 | 依赖图/DAG | fenced code block with language `graphviz` 或 `dot` | 知识依赖、图算法、系统依赖 |
 | 架构关系图 | fenced code block with language `d2` | 服务关系、模块关系 |
 | 数据图 | fenced code block with language `vega-lite` | 小型统计图、趋势、分布 |
-| 可保存练习 | `study-choice` / `study-truefalse` / `study-input` | 只保存原始作答，交给 LLM 判断；旧版 `study-recall` / `study-transfer` / `study-feynman` / `study-checkpoint` 仅兼容历史课程 |
+| 可保存练习 | `study-choice` / `study-truefalse` / `study-input` | 只保存原始作答，交给 LLM 判断。完整题型列表和写法见 `courseware-format.md`；旧版 `study-recall` / `study-transfer` / `study-feynman` / `study-checkpoint` 仅兼容历史课程 |
 
 课件生成时的图片、图表和练习块选择规则以 `courseware-format.md` 为准。播放器这里只说明能渲染和能保存什么。不要把设计目的、技术选型、内部字段说明写进用户能看到的课件。章节前言可以列出小节名称和学习顺序，但不要写到子小节文件的 Markdown 超链接；播放器不会把这些链接当作课程导航，正式导航来自左侧目录树。
 
-新课程可以使用层级目录：
-
-```text
-01-{module}/content.md                  # 章节前言
-01-{module}/01-{section}/content.md     # 小节正文
-01-{module}/02-{section}/content.md
-```
-
-点击章节时显示章节前言；点击展开的小节时显示对应小节正文。旧课程如果只有 `01-{module}/content.md`，播放器仍按整章内容显示。
+新课程使用 `模块/content.md + 模块/小节/content.md` 层级结构（完整文件树见 `courseware-format.md`）。播放器点击章节时显示章节前言，点击展开的小节时显示对应小节正文。旧课程如果只有 `01-{module}/content.md`，播放器仍按整章内容显示。
 
 PlantUML、Graphviz、D2、Vega-Lite 等非 Mermaid 图表通过 Kroki（文本图表渲染服务）渲染为 SVG；如果网络不可用，页面会显示真实错误。不要因此伪造图片已渲染成功。
 
@@ -120,7 +112,7 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 
 1. 读取当前课程的 `learning-record.json`，不要再从 `tmp/viewer-sessions/` 查最新文件。
 2. 先回答 `questions_for_llm`。
-3. 回答完成后，立即通过 `{skill_dir}/scripts/write-state.py` 写回 `learning-record.json`：把已回答的问题从 `questions_for_llm` 删除；如果全部回答完，写成空数组。不要等下次打开播放器再靠前端覆盖。
+3. 回答完成后，立即通过 `{skill_dir}/scripts/write-state.py` 写回 `learning-record.json`：把已回答的问题从 `questions_for_llm` 删除；如果全部回答完，写成空数组。⛔ 忘记清空会导致已回答问题在下一次会话中重复出现。不要等下次打开播放器再靠前端覆盖。
 4. 找到 `completions` 中最后一条记录，用其中的 `module`、`section` 和 `exercise_ids` 定位本次证据。
 5. 根据相关 `exercises` 的题型、作答和 `mastery_tags` 判断是否满足掌握度门槛；旧课程再兼容读取 `legacy_checkpoints`。
 6. 只有证据满足门槛时，才通过 `write-state.py` 更新 `meta.json`、`domain-tree.json` 和 XP。

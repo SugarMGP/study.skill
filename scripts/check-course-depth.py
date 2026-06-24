@@ -43,12 +43,14 @@ LONG_MODULE_CHARS: Final[int] = 12000
 CONTENT_FILE_NAME: Final[str] = "content.md"
 NON_SYMBOL_PATTERN: Final[re.Pattern[str]] = re.compile(r"[\w\u4e00-\u9fff]", re.UNICODE)
 FENCED_BLOCK_PATTERN: Final[re.Pattern[str]] = re.compile(r"```.*?```", re.DOTALL)
-EXTRACTION_TRACE_TERMS: Final[tuple[str, ...]] = tuple("PPT 第|PPT第|本页怎么学|原始内容整理|按页整理|抽取文本|抽取结果".split("|"))
-TEMPLATE_TRACE_TERMS: Final[tuple[str, ...]] = tuple("先把这一页归到|它要么是在给定义，要么是在给公式|不要单独背这一页|输入、输出、核心思想、时间复杂度|参考答案应包含".split("|"))
+EXTRACTION_TRACE_TERMS: Final[tuple[str, ...]] = tuple("PPT 第|PPT第|原课件页|本页怎么学|原始内容整理|按页整理|抽取文本|抽取结果|本章对应 PPT|按 PPT 对应页学习|$\\(@\\{".split("|"))
+TEMPLATE_TRACE_TERMS: Final[tuple[str, ...]] = tuple("先把这一页归到|它要么是在给定义，要么是在给公式|不要单独背这一页|输入、输出、核心思想、时间复杂度|参考答案应包含|参考思路|设计一道.*小规模手算题".split("|"))
 PURE_PRACTICE_PATH_MARKERS: Final[tuple[str, ...]] = ("chapter-practice", "pure-practice", "only-questions")
 PURE_PRACTICE_TITLE_MARKERS: Final[tuple[str, ...]] = tuple("纯题目|纯练习|只放题|章末练习|Chapter Practice".split("|"))
 PURE_PRACTICE_FORBIDDEN_TERMS: Final[tuple[str, ...]] = tuple("本小节|先自己|做完|回看|参考答案|提示|解析".split("|"))
 PURE_PRACTICE_FORBIDDEN_FIELDS: Final[tuple[str, ...]] = ("hints:",)
+ANSWER_PLACEHOLDER_TERMS: Final[tuple[str, ...]] = tuple("参考答案应包含|参考思路|评分重点是|评分重点不是".split("|"))
+SLIDE_HEADING_PATTERN: Final[re.Pattern[str]] = re.compile(r"^###\s*(原课件页|第\s*\d+\s*页|Page\s*\d+\s*of\s*PPT)", re.IGNORECASE)
 REPEATED_LINE_MIN_CHARS: Final[int] = 28
 REPEATED_LINE_MIN_COUNT: Final[int] = 3
 
@@ -233,6 +235,88 @@ def scan_markdown_risks(depths: list[MarkdownDepth]) -> list[ScanFinding]:
     return findings
 
 
+def scan_study_block_answers(depths: list[MarkdownDepth]) -> list[ScanFinding]:
+    """Scan study-* blocks for template placeholder answers."""
+    findings: list[ScanFinding] = []
+    for item in depths:
+        markdown = item.path.read_text(encoding="utf-8-sig")
+        in_study_block = False
+        for line_no, raw_line in enumerate(markdown.splitlines(), start=1):
+            stripped = raw_line.strip()
+            if stripped.startswith("```study"):
+                in_study_block = True
+                continue
+            if in_study_block and stripped == "```":
+                in_study_block = False
+                continue
+            if in_study_block and stripped.startswith("answer:"):
+                for term in ANSWER_PLACEHOLDER_TERMS:
+                    if term in stripped:
+                        findings.append(ScanFinding(
+                            path=item.path,
+                            line_no=line_no,
+                            category="template-answer",
+                            detail=f"study-* answer contains placeholder '{term}' instead of concrete answer",
+                        ))
+    return findings
+
+
+def scan_slide_structure(depths: list[MarkdownDepth]) -> list[ScanFinding]:
+    """Detect slide-by-slide content organization (5+ consecutive page-numbered headings)."""
+    findings: list[ScanFinding] = []
+    for item in depths:
+        markdown = item.path.read_text(encoding="utf-8-sig")
+        consecutive = 0
+        first_line = 0
+        for line_no, raw_line in enumerate(markdown.splitlines(), start=1):
+            if SLIDE_HEADING_PATTERN.match(raw_line.strip()):
+                if consecutive == 0:
+                    first_line = line_no
+                consecutive += 1
+            else:
+                if consecutive >= 5:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=first_line,
+                        category="slide-structure",
+                        detail=f"{consecutive} consecutive page-numbered headings; content may be per-slide dump instead of concept-organized",
+                    ))
+                consecutive = 0
+        if consecutive >= 5:
+            findings.append(ScanFinding(
+                path=item.path,
+                line_no=first_line,
+                category="slide-structure",
+                detail=f"{consecutive} consecutive page-numbered headings; content may be per-slide dump instead of concept-organized",
+            ))
+    return findings
+
+
+def count_exercises_by_module(depths: list[MarkdownDepth], root: Path) -> dict[str, int]:
+    """Count study-* blocks per module directory."""
+    from collections import defaultdict
+    counts: dict[str, int] = defaultdict(int)
+    for item in depths:
+        markdown = item.path.read_text(encoding="utf-8-sig")
+        study_count = markdown.count("```study")
+        if study_count > 0:
+            try:
+                rel = str(item.path.relative_to(root))
+            except ValueError:
+                rel = str(item.path)
+            parts = rel.replace("\\", "/").split("/")
+            if is_course_root(root):
+                module = parts[0] if parts else "root"
+            elif is_module_root(root):
+                module = root.name
+            elif len(parts) >= 2:
+                module = parts[-2] if item.path.name == "content.md" else parts[0]
+            else:
+                module = "root"
+            counts[module] += study_count
+    return dict(counts)
+
+
 def relative_display(path: Path, root: Path) -> str:
     """Format paths relative to the checked root when possible."""
     try:
@@ -276,6 +360,8 @@ def main() -> int:
 
     print()
     findings = scan_markdown_risks(depths)
+    findings += scan_study_block_answers(depths)
+    findings += scan_slide_structure(depths)
     print("Advisory risk scan:")
     if not findings:
         print("No extraction traces, pure-practice guidance leakage, or repeated lines found.")
@@ -288,6 +374,18 @@ def main() -> int:
 
     print()
     print("This report is advisory. It does not replace the blocking learner-perspective review.")
+
+    exercise_counts = count_exercises_by_module(depths, root)
+    if exercise_counts:
+        print()
+        print("Exercise count per module:")
+        for mod, cnt in sorted(exercise_counts.items()):
+            flag = "  <-- NO exercises" if cnt == 0 else ""
+            print(f"  {mod}: {cnt}{flag}")
+        zero_modules = [m for m, c in exercise_counts.items() if c == 0]
+        if zero_modules:
+            print(f"  WARNING: {len(zero_modules)} module(s) have zero exercises")
+
     return 0
 
 

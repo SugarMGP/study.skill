@@ -1,8 +1,6 @@
 # 技能树（Skill Tree）
 
-> Based on: Knowledge Space Theory (Doignon & Falmagne, 1985) +
-> human-skill-tree (24kchengYe, 550★) +
-> RPG progression mechanics (PoE/Diablo talent tree UX)
+> Based on human skill tree design patterns and RPG progression mechanics.
 
 ## Default Policy
 
@@ -46,7 +44,7 @@ If the user rejects the skill tree itself, set both flags to false:
 }
 ```
 
-Ask whether to keep RPG either before teaching starts or after the first teaching session. Ask once; after `rpg_preference_asked=true`, do not ask again unless the user brings it up. Store the answer in `meta.json`, not only in chat context.
+Ask whether to keep RPG before the first teaching session starts. Ask once; after `rpg_preference_asked=true`, do not ask again unless the user brings it up. Store the answer in `meta.json`, not only in chat context.
 
 Suggested wording:
 
@@ -57,6 +55,18 @@ Suggested wording:
 
 If the user keeps RPG, set `rpg_preference_asked=true` and leave `rpg_enabled=true`. If the user says no, set `rpg_enabled=false` and `rpg_preference_asked=true`.
 
+## Tier Naming Convention
+
+In this skill, three tiers use consistent names across all files:
+
+| Tier | Chinese | English | Usage |
+|------|---------|---------|-------|
+| Tier 1 | 基础层 | Foundation | intro/basics, prerequisite knowledge |
+| Tier 2 | 核心层 | Core | main content, the bulk of teaching |
+| Tier 3 | 进阶层 | Enrichment | advanced, optional, specialization |
+
+`chinese-tutorial-guide.md` may use "基础入门/核心能力/进阶实战" for course structure but these map to the same three tiers. When writing skill-tree nodes or quality gate checks, use the Chinese or English tier names from this table.
+
 ## Skill Tree Format
 
 Use indented bullet-style with emoji status markers. No box-drawing characters (╔══╗, ━━━) — these misalign across terminals and fonts. 3 tiers, 5-8 branches per tier.
@@ -66,11 +76,11 @@ Use indented bullet-style with emoji status markers. No box-drawing characters (
 
 > {一句话描述这个领域是干什么的}
 
-### 📚 {TIER_1_NAME} — [████████░░] 80%
+### 📚 {TIER_1_NAME} — 80%
 
 - ✅ {NODE_ID}: {Node Name} — 100%
   - 包含: {key topics}
-- 🔄 {NODE_ID}: {Node Name} — [██████░░] 60%
+- 🔄 {NODE_ID}: {Node Name} — 60%
   - {completed}/{total} 节
   - 包含: {key topics}
 - ⬜ {NODE_ID}: {Node Name} — 0%
@@ -78,18 +88,18 @@ Use indented bullet-style with emoji status markers. No box-drawing characters (
 - 🔒 {NODE_ID}: {Node Name} — 0%
   - 需要: {prerequisite_node} ✅
 
-### 🎯 {TIER_2_NAME} — [████░░░░] 40%
+### 🎯 {TIER_2_NAME} — 40%
 
 - 🔄 {NODE_ID}: {Node Name} — [████████] 80%
   - ✅ {sub_item}
-  - 🔄 {sub_item} — [████░░░░] 40%
+  - 🔄 {sub_item} — 40%
   - ⬜ {sub_item}
 - ⬜ {NODE_ID}: {Node Name} — 0%
   - 需要: {prereq} (40%+)
 - 🔒 {NODE_ID}: {Node Name} — 0%
   - 需要: {prereq_1} + {prereq_2}
 
-### 🚀 {TIER_3_NAME} — [░░░░░░░░] 0%
+### 🚀 {TIER_3_NAME} — 0%
 
 - 🔒 {NODE_ID}: {Node Name} — 0%
   - 需要: {prereq_list}
@@ -115,10 +125,13 @@ Use indented bullet-style with emoji status markers. No box-drawing characters (
 
 Course-local node status is part of teaching decisions:
 
-- Start from `in_progress`; if none exists, choose `available` / `unlockable` based on prerequisites and the syllabus order.
+- Node selection order:
+1. `in_progress` — continue the current node first.
+2. `available` — choose the first `available` node in syllabus order.
+3. `unlockable` — only if no `in_progress` or `available` nodes remain; choose the lowest-tier `unlockable` node by prerequisite chain.
 - Do not auto-enter `locked` nodes. If the learner insists, say which prerequisite is missing and keep the new node `in_progress`.
 - A node becomes `mastered` only after the Phase 3 Mastery Gate passes.
-- A few short answers may increase `progress`, but cannot mark a module complete.
+- Short answers may increase the node progress percentage but do not satisfy the mastery gate alone.
 - If evidence is missing, keep `status="in_progress"` and record the missing gate items in the node.
 
 ## Node Metadata
@@ -216,7 +229,7 @@ Always include the fixed supplement node when the course has `99-content-supplem
 - It stays `available` or `unlockable`, never `locked`, because learners may need remediation or extra practice at any time.
 - It is outside the main prerequisite chain and does not block course completion.
 - Do not grant mastery XP merely because the supplement node exists. Grant XP only for real learning evidence inside a supplement section, such as completed practice, accepted explanation, or reviewed mistakes.
-- When adding a new supplement section, update the node's `key_topics` or progress note if useful, but do not rewrite the main syllabus nodes.
+- When adding a new supplement section, update the node's `key_topics` if the supplement covers a distinct topic not already listed. Do not rewrite main syllabus nodes.
 
 ## Example: "我想学大模型" Domain Map
 
@@ -225,7 +238,7 @@ Always include the fixed supplement node when the course has `99-content-supplem
 
 > 从调用 API 到构建企业级 AI Agent 的完整技能体系
 
-### 📚 基础层 — [░░░░░░░░] 0%
+### 📚 基础层 — 0%
 
 - ⬜ llm-basics: 大模型认知与基础 — ★★☆☆☆ 预计 4h
   - Transformer原理 · Token与上下文 · API调用方式
@@ -234,7 +247,7 @@ Always include the fixed supplement node when the course has `99-content-supplem
 - ⬜ tools-env: 工具链与环境搭建 — ★☆☆☆☆ 预计 2h
   - Python环境 · API Key管理 · 常用SDK
 
-### 🎯 核心层（选择一个方向深入）— [░░░░░░░░] 0%
+### 🎯 核心层（选择一个方向深入）— 0%
 
 - ⬜ lowcode: 低代码Agent开发 — ★★☆☆☆ 预计 10h
   - 需要: llm-basics ✅, prompt-eng ✅
@@ -246,7 +259,7 @@ Always include the fixed supplement node when the course has `99-content-supplem
   - 需要: llm-basics ✅
   - LoRA · QLoRA · 数据集构建 · 评估
 
-### 🚀 进阶层 — [░░░░░░░░] 0%
+### 🚀 进阶层 — 0%
 
 - 🔒 rag-adv: 高级RAG架构 — ★★★★☆ 预计 12h
   - 需要: framework
@@ -285,7 +298,7 @@ When user picks a node (e.g., types `lowcode` or clicks on it):
 
 ## RPG Mechanics
 
-Keep RPG lightweight. It should make progress visible, not interrupt teaching. Do not turn every message into a game UI.
+Keep RPG lightweight. It should make progress visible, not interfere with teaching. Show RPG elements only in the 3 locations listed below.
 
 When `meta.json.rpg_enabled=true`, use RPG in exactly three places:
 
@@ -311,7 +324,7 @@ Wrong answers do not lose XP. Say the current node is still learning, then give 
 
 ### 等级系统（Level System）
 
-- 1 Level = 1000 XP
+- 1 Level = 500 XP
 - XP from the reward table above. Do not create separate per-message economies.
 - Level up on milestone: display ASCII celebration
 
@@ -328,7 +341,7 @@ Wrong answers do not lose XP. Say the current node is still learning, then give 
 - **Node quest**: the current mastery gate, e.g. "完成 1 个应用证据 + 1 个解释证据".
 - **Achievement quest**: streak or project milestone.
 
-Quests are display hints for the next useful action. They do not replace the course syllabus or mastery gate.
+Quests display the next mastery-gate or streak milestone from the current node state. They do not replace the course syllabus or mastery gate.
 
 ### 称号系统（Title System）
 

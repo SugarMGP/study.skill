@@ -1,9 +1,6 @@
 # Phase 0: 锚定（Analysis）
 
-> Based on: ADDIE Analysis phase (Florida State Univ, 1975) +
-> Backward Design Stage 1: Identify Desired Results (Wiggins & McTighe, 2005) +
-> Knowledge Space Theory (Doignon & Falmagne, 1985) +
-> Game skill tree UX (PoE/Diablo talent tree design)
+> Based on instructional design principles and skill tree UX patterns.
 
 ## Step 0: Topic Triage
 
@@ -29,7 +26,7 @@ Generate a skill tree for a popular matching domain, show hot paths (⭐ recomme
 
 ## Protocol
 
-## Anchoring Iron Law
+## Anchoring Rule
 
 No teaching without anchoring first. If the user has not confirmed a learning goal, mode, baseline, materials/time constraints, and storage path, you have not earned the right to teach. For explicitly tiny requests, confirm the narrow scope in one sentence and proceed; the rule prevents sloppiness, not speed.
 
@@ -37,11 +34,11 @@ No teaching without anchoring first. If the user has not confirmed a learning go
 
 - **一小节 (Section)**: one main question or concept, stored as its own `{module}/{section}/content.md`. This is the primary reading page in the local viewer.
 - **一模块 (Module)**: a collapsible chapter. It has a short preface in `{module}/content.md` and usually 2-7 section pages below it.
-- **一门课 (Course)**: usually no more than 12 modules and 60 section pages. Split larger topics into a course series.
+- **一门课 (Course)**: structure and size limits are defined in `references/phase-2-generation.md`. Split larger topics into a course series.
 
-**Full mode（默认）:** Ask questions **one at a time**. Never batch multiple questions in one message. Use user's answers to skip questions that are already answered.
+默认逐题问，一次一条。用户回答已经覆盖的问题时自动跳过，不再重复问。
 
-**Lite mode（用户选 Quick Start / 速成 / 时间紧张时）:** Batch Q1+Q2+Q3 in one message. Q4 follows separately. Don't repeat information the user already provided.
+**快速模式（用户选 Quick Start / 速成 / 时间紧张时）:** 把 Q1+Q2+Q3 打包成一条消息，Q4 再单独问。用户已经说过的信息不再重复问。
 
 If arriving from skill tree navigation, Q1 is pre-answered (user's chosen node = their scope anchor).
 
@@ -58,11 +55,11 @@ Load `references/skill-tree.md` for the full default policy, opt-out wording, RP
 Use this when the user explicitly wants speed over thoroughness:
 
 1. Batch the 3 essential questions in one message: topic, baseline, time/materials.
-2. Do Phase 1 Lite: 1-2 key sources and state what is missing.
+2. 轻量调研：1-2 个来源即可，标注缺失了什么。
 3. Generate Module 00 only; user can decide whether to continue.
 4. Preserve progress so the full flow can resume later.
 
-Lite mode relaxes question batching and source count only. Module content quality and mastery gates stay the same.
+快速模式放宽的只有提问打包和文章来源数量。模块内容质量和掌握度门槛不变。
 
 ### Q1: Scope — "想学到什么程度？"
 
@@ -79,16 +76,15 @@ If user's intent is unclear: "是工作需要快速上手，还是系统学？�
 
 These are internal quality constraints. Do NOT mention word counts or exercise counts to the user — apply them silently when generating content.
 
-The selected mode's prose band is a post-generation diagnostic, not a generation cap. Generate enough learner-facing explanation, examples, transitions, diagrams, code, worked solutions, and practice first. After generation, use the band only to notice suspiciously thin or unusually verbose modules. A module is acceptable only when it satisfies the selected mode's structural coverage and teaches the source material clearly. Time is only a rough planning aid because reading speed, coding speed, and prior knowledge vary widely.
+The selected mode's prose band is a post-generation diagnostic, not a generation cap. Generate learner-facing explanation, examples, transitions, diagrams, code, worked solutions, and practice first. After generation, use the band only to notice suspiciously thin or unusually verbose modules. A module is acceptable only when it satisfies the selected mode's structural coverage and teaches the source material clearly. Time is a planning aid, not a content-length constraint. Reading speed and prior knowledge vary widely; do not cut teaching to fit a time estimate.
 
-Counting rules:
+Prose length guidance:
 
-- Chinese target counts learner-facing prose roughly. Code blocks, Mermaid, tables, images, and machine-readable `study-*` metadata do not count as prose, though their explanation does.
-- English target counts learner-facing prose words. For mixed technical text, treat 1 English word as roughly 1.5-2 Chinese characters when choosing a comparable depth.
-- Do not pad a module just to hit the target. If the structural coverage is complete and the learner's goal is narrow, shorter is acceptable.
-- Section pages should be substantial enough to teach, not just outline. As a soft diagnostic, a normal section below roughly 1000 Chinese non-symbol characters / 600 English words is suspicious unless the section is a narrow recognition note, setup page, or recap. Do not merge unrelated content just to reach a number; expand with missing explanation, transitions, examples, worked steps, source excerpts, diagrams, or practice.
-- If a section is very long, split it only when the learner question, worked example, prerequisite, procedure, or practice type changes. Do not cut useful examples just because a diagnostic band was exceeded.
-- If the total module content exceeds the upper band, first consider whether the extra material is redundant. If it is not redundant, keep it or split the module; do not compress required teaching into a summary.
+- Code blocks, Mermaid, tables, images, and `study-*` metadata do not count as prose; their explanation does.
+- The mode-specific diagnostic bands in the table below are post-generation checks, not quotas. Generate for structural coverage first; use `scripts/check-course-depth.py` after generation to spot thin or unusually long modules.
+- If a section is diagnostically short, check for missing explanation, worked examples, transitions, or practice before adding filler.
+- If a section is very long, split only when the learner question, example, prerequisite, or practice type changes.
+- If a module exceeds the upper band, check for redundancy before trimming; do not cut teaching that satisfies structural-coverage requirements to fit a band.
 
 | Mode | 目标正文规模/模块 | 小节规模建议 | 结构覆盖/模块 | 粗略学习负荷 | 解释深度 |
 |------|------------------|----------------|----------------|--------------|----------|
@@ -115,20 +111,13 @@ Once the user chooses a mode, keep the mode defaults as pending course state. Do
 }
 ```
 
-Runtime defaults:
-
-| Mode | target_retention | require_mastery |
-|------|------------------|----------------|
-| 速成导览 | 0.85 | false |
-| 系统精讲 | 0.90 | true |
-| 面试冲刺 | 0.90 | false |
-| 考试备考 | 0.90 | true |
+Mode-specific runtime defaults (target_retention, require_mastery_before_advance) are defined in `references/state-schema.md`. Use those values when writing `params.json`.
 
 When user gives speed/depth feedback during Phase 3, update params.json immediately.
 
 ### Q1.5: Materials — "手头有现成材料吗？"
 
-Especially important for 考试备考 mode, but useful for any mode.
+Especially important for 考试备考 mode; applies to any mode.
 
 ```
 📎 有教学大纲、教材、考纲、课件、历年题吗？

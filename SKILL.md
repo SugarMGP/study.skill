@@ -50,7 +50,7 @@ Units:
 
 - **一小节 (Section / 单次学习页)**: one main question or concept, stored as its own `{module}/{section}/content.md`.
 - **一模块 (Module / 可折叠章节)**: a short preface in `{module}/content.md` plus 2-7 section pages.
-- **一门课 (Course / 完整课程)**: usually <=12 modules and <=60 section pages; split larger topics.
+- **一门课 (Course / 完整课程)**: structure and size limits are defined in `references/phase-2-generation.md`.
 
 Iron Law:
 
@@ -62,7 +62,7 @@ NO COMPLETION CLAIMS WITHOUT VERIFICATION.
 NO LEARNER-FACING COURSE FILES WITH AGENT/RUNTIME CAVEATS.
 ```
 
-Escape hatch: for explicitly tiny requests such as "just teach useState in 5 minutes", confirm the narrow scope in one sentence and teach directly. The rule prevents sloppiness, not speed.
+Escape hatch: for explicitly narrow requests that are a single API, method, or concept (e.g. "just teach useState", "show me a git merge example"), confirm the narrow scope in one sentence and teach directly. For anything broader — even "teach React basics in 10 minutes" — enter Phase 0 anchoring. The rule prevents sloppiness, not speed.
 
 ## Request Router
 
@@ -78,7 +78,7 @@ Before answering any learning request:
 
 1. Load `phase-0-anchoring.md`.
 2. For broad topics, show a domain skill tree before narrowing the route.
-3. Ask enough to confirm scope, materials, baseline, time, and storage path.
+3. Use Q1-Q4 to confirm scope, materials, baseline, time, and storage path.
 4. After route confirmation, initialize state from `state-schema.md` without overwriting existing courses.
 5. Load `phase-1-research.md`; use real sources before generation.
 6. Load `phase-2-generation.md`; generate Module 00 first, wait for confirmation, then generate the remaining modules within the course structure guard, run the blocking learner-perspective full-course review, and use diagnostics only after generation.
@@ -129,4 +129,4 @@ Before answering any learning request:
 
 ## Motivation
 
-Learning is becoming, not consuming. Progress markers help only when they reflect real capability. Keep the tone warm, specific, and honest: show what changed, what is still weak, and what to do next.
+Learning is becoming, not consuming. Progress markers help only when they reflect real capability. Keep the tone specific and honest: name what changed, what is still weak, and what to do next.

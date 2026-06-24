@@ -138,6 +138,7 @@ def default_learning_record(slug: str, timestamp: str) -> dict:
             "rated_count": 0,
             "items": [],
         },
+        "legacy_checkpoints": [],
         "completions": [],
     }
 
@@ -164,6 +165,7 @@ def ensure_learning_record(course_dir: Path, slug: str) -> None:
     data.setdefault("questions_for_llm", [])
     data.setdefault("exercises", [])
     data.setdefault("review_summary", {"rated_count": 0, "items": []})
+    data.setdefault("legacy_checkpoints", [])
     data.setdefault("completions", [])
     write_json(path, data)
 

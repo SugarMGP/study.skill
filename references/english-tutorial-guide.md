@@ -7,7 +7,7 @@ This file defines English prose, chapter structure, and learner-facing writing s
 
 ## Core Shape
 
-An English tutorial should feel like a guided lesson, not a reference page. It must help the learner do something meaningful, see progress early, and check understanding before moving on.
+An English tutorial is a guided lesson, not a reference page. It must help the learner do something meaningful, see progress early, and check understanding before moving on.
 
 Use this order:
 
@@ -53,11 +53,11 @@ A section should naturally include:
 - a concrete problem, symptom, task, or surprising observation before terms
 - plain-language intuition before precise terminology
 - first-use concept introductions according to `courseware-format.md`
-- a small worked example before realistic scale
+- a worked example with minimal data (2-5 items) before realistic scale
 - a decision rule or boundary: when to use it, when not to, and what to compare it with
-- a real misconception or failure symptom near the relevant concept, only when useful
+- a documented misconception near the relevant concept, only when found in Phase 1 research sources
 - one active check or practice task when the learner should answer; exercise block rules come from `courseware-format.md`
-- a concise recap when it helps organize the section
+- a concise recap at the end of every section
 
 English lessons must apply the shared teaching completeness rules in `courseware-format.md`: teach the source material as a self-contained lesson, introduce new concepts on first use, preserve strong source fragments when allowed, and use complete demonstrations for procedural topics. This guide only controls the English prose shape.
 
@@ -65,7 +65,7 @@ English lessons must apply the shared teaching completeness rules in `courseware
 
 ### 1. Write for the learner at study
 
-Use a friendly instructor voice. The learner should know exactly what to do next.
+Use second person ("you"), active voice, and concrete instructions. The learner should know exactly what to do next.
 
 Good:
 
@@ -93,7 +93,7 @@ Weak:
 
 Each guided example should have:
 
-- a short reason for the step
+- one sentence explaining what the step accomplishes
 - the exact action or code
 - the expected result
 - one sentence explaining what changed
@@ -138,8 +138,8 @@ Good:
 Rules:
 
 - Prefer official docs, standards, textbooks, papers, or source repositories.
-- Say why the link is useful in one sentence.
-- Do not dump broad link lists inside the lesson body.
+- Say what the link documents (parameter, API signature, spec detail) in one sentence.
+- Do not place more than one link per concept inside the lesson body; course-level link lists go in README.md or syllabus.md.
 
 ### 8. Use the learner profile when it reduces effort
 
@@ -151,11 +151,11 @@ Use explicit facts from `learner_profile` to choose examples and analogies:
 - analogy preferences
 - teaching constraints
 
-If a Java developer is learning Python generators, compare the idea to lazy iteration only as far as the comparison helps. State where it stops matching. Do not force an analogy into every section.
+If a Java developer is learning Python generators, compare one parallel (e.g., lazy iteration), then state one way the analogy breaks. Do not force an analogy into every section.
 
 ### 9. Use checks, not long quizzes
 
-Use one small question after a concept. Choose the exact `study-*` block type and fields from `courseware-format.md`; this guide only controls the English wording. The prompt should name the task, evidence, constraints, and expected reasoning shape. Near the end of a chapter, use a small set of ordinary question blocks instead of a separate checkpoint block.
+Use one study-* question after each concept. Choose the exact `study-*` block type and fields from `courseware-format.md`; this guide only controls the English wording. The prompt should name the task, evidence, constraints, and expected reasoning shape. Near the end of a chapter, use a small set of ordinary question blocks instead of a separate checkpoint block.
 
 ### 9.5 Present terms and practice in the lesson
 

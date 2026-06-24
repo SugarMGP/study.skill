@@ -1,16 +1,22 @@
 # Phase 1: 调研（Research）
 
-> Based on: course-builder quorum system (klausners) +
-> Knowledge Space Theory (Doignon & Falmagne, 1985) +
-> CSEAL MDP navigation (Liu et al., KDD 2019)
+> Based on course-builder design patterns and structured research methodology.
 
 ## Research Strategy
 
-## Research Iron Law
+## When To Enter Phase 1
 
-No course generation without research first. Do not rely on memory alone for non-trivial courses. If the topic is tiny, niche, material-driven, or exam-scoped, use fewer sources only with a clear note about what is missing.
+Phase 1 is for building a new course from scratch. Do not enter Phase 1 when:
 
-Phase 1 is for building or revising a course, not for ordinary continuation. If the user says "继续学习" and the course already has README/syllabus/module content, stay in Phase 3 and use the local course files as the source of truth. Only do targeted external lookup when local content is missing, the user asks for latest/API/version details, or a runnable/API claim needs verification.
+- The user says "继续学习" and a generated course exists — stay in Phase 3, use local course files.
+- The user asks to modify or supplement an existing course — stay in Phase 3, use `99-content-supplements/` or explicit revision per the main-course freeze rule.
+- The user asks a targeted question during learning — stay in Phase 3, answer from local content.
+
+Enter Phase 1 only when the user confirms a new learning goal through Phase 0 and the course does not yet exist.
+
+## Research Rule
+
+No course generation without research first. Do not rely on memory alone for non-trivial courses. If the topic is a single concept, niche, material-driven, or exam-scoped, use 1-2 quality sources only with a clear note about what is missing.
 
 ### Step 0: Material-Driven Mode Check
 
@@ -30,7 +36,7 @@ If the user provided materials in Phase 0 (PPT, lecture notes, syllabus, textboo
 3. For exam mode, extract an explicit **named exam point list** from final-review decks, syllabi, past papers, or teacher-marked "重点/掌握/必考" notes. Keep the original wording and source location when available.
 4. Extract key concepts and their relationships from the material → Knowledge DAG
 5. Map material chapters to learning modules
-6. Preserve high-quality teaching fragments from the material: original examples, diagrams, screenshots, tables, formulas, long explanatory paragraphs, classroom wording, problem statements, and worked solutions. These fragments are the raw material for Phase 2 lessons, not optional citations.
+6. Preserve source teaching fragments: original examples, diagrams, screenshots, tables, formulas, long explanatory paragraphs, classroom wording, problem statements, and worked solutions. These fragments are the raw material for Phase 2 lessons, not optional citations.
 7. When a formula, code sample, chart, table, question stem, or key data only exists in an image, preserve the source page or crop screenshot plus its source location and reading focus. Phase 2 should embed that artifact when reliable text extraction is not possible.
 
 **Source count**: 1 primary (user's material) + 1-2 supplementary. Flag what's missing.
@@ -53,7 +59,7 @@ Adapt sources to topic type. Default target: 3 quality sources (see Quality Rule
 3. **学术综述/入门论文** — arXiv or CNKI survey papers for the field
 4. **补充**: 得到/极客时间相关专栏目录, Wikipedia knowledge structure, professional association resources
 
-**Source count:** Default target: 3 quality sources. Accept fewer when justified: material-driven, niche topics, or exam prep where the syllabus IS the scope — but explicitly note what's missing. For Chinese courses, include quality Chinese sources when available; if none exists, say so and use English sources explained in natural Chinese. For English courses, do not force Chinese sources unless they are primary for the topic. Never pad with low-quality sources to hit a quota.
+**Source count:** Default target: 3 sources meeting the Quality Rules screening criteria below. Accept 1-2 sources when the topic is material-driven, narrow scope, or exam-scoped; note what is covered by which source. Never pad with sources that fail the Quality Rules screening criteria below.
 
 ### Parallel Research Dispatch
 
@@ -68,7 +74,7 @@ Adapt dispatches to topic type: select sources by **quality**, not by tool name.
 | Academic subject | Standard textbook / top university syllabus | Survey papers (arXiv/CNKI), quality learning resources in the course language |
 | Exam prep | User's syllabus/past papers | Textbook, exam prep guides |
 
-Use the source-count and language-source rules from the source-priority section above. Do not repeat research just to fill dispatch slots.
+Source count and language preferences are defined in the Source Priority section above. For Chinese courses, prefer Chinese sources when available; for English courses, prefer English sources — this is embedded in the source-type lists. Do not run additional dispatches solely to reach a source count; use the source-count rule above.
 
 ### What to Extract
 
@@ -82,7 +88,7 @@ For each source, extract:
 | Real pitfalls and misconceptions | → Inline warnings or learner-facing misconception notes, only when source-backed or practice-backed |
 | Complete teaching example per concept/procedure | → Best runnable or guided example, including input/data/schema, expected result, and why each step matters |
 | Failure or counterexample | → Common wrong answer, error symptom, invalid case, or misconception the learner must recognize |
-| High-quality source fragment | → Original wording, paragraph, diagram, table, image, formula, problem statement, or worked solution worth preserving or adapting |
+| Source fragment worth preserving | → Original wording, paragraph, diagram, table, image, formula, problem statement, or worked solution worth preserving or adapting |
 | Version-specific notes | → Version comparison tables |
 | Interview / exam question patterns | → Module-local `study-input`, `study-choice`, or `study-truefalse` practice with scoring points and reference answers |
 | Source exercises and worked solutions | → Adapted practice, answer rubrics, or step-by-step solution notes |
@@ -104,98 +110,47 @@ For each source, extract:
 
 For code, SQL, formula, query, design, or procedure topics, the research summary must preserve enough raw teaching material to write a self-contained lesson: the concrete task, full example, sample data or inputs, expected output or failure, and at least one learner exercise. Do not extract only headings or keywords; that forces Phase 2 to write shallow summaries.
 
-High-quality source fragments should be copied into the research notes with source location. If the source is user-provided, public-domain, permissively licensed, or explicitly allowed by the user, preserve longer original passages or images when they teach better than a paraphrase. For other external sources, preserve the structure, example data, formula, diagram description, and short quotes, then rewrite the lesson in the course voice with attribution.
+Source fragment worth preservings should be copied into the research notes with source location. If the source is user-provided, public-domain, permissively licensed, or explicitly allowed by the user, preserve longer original passages or images when they teach better than a paraphrase. For other external sources, preserve the structure, example data, formula, diagram description, and short quotes, then rewrite the lesson in the course voice with attribution.
 
 ### Output: Research Summary
 
 Present findings. Adapt the format to topic type.
 
-**For tech/programming topics:**
+Present findings in this format. Adapt the labels (📊信息来源, 🎯建议课程结构, 💡调研笔记) as needed for the topic type — the structure is the same regardless of whether the course is tech, academic, or material-driven.
+
+**Standard template:**
 
 ```
 🔍 调研结果：{topic}
 
 📊 信息来源：
-- 官方文档：{url} (v{version})
-- 源码分析：{repo} (key files: {file_list})
-- 优质教程/课程参考：{repo_or_course_list}
-- 可复用图表/截图：{url_or_path + what it explains}
+- ...（按来源类型列出）
 
-🧩 核心概念关系图：
-{concept_A} ──requires──→ {concept_B}
+🧩 核心知识结构 / 概念关系：
+- ...
 
-⚠ 常见误区与陷阱：
+⚠ 常见误区：
 - ...
 
 🎯 建议课程结构：
 模块一：... ({n} 小节，难度 ★★☆☆☆)
 模块二：... ({n} 小节，难度 ★★★☆☆)
-模块三：... ({n} 小节，难度 ★★★★☆)
-[模块四：面试高频考点 ({n} 小节)]
 
 💡 调研笔记：
-- {key insight 1}
-```
-
-**For general/academic topics:**
-
-```
-🔍 调研结果：{topic}
-
-📊 信息来源：
-- 权威教材/课程：{textbook_or_course_list}
-- 优质学习资料：{course_notes, columns, video_courses, book_lists}
-- 学术综述：{arxiv_or_cnki_papers}
-- 可复用图表/案例素材：{url_or_path + what it explains}
-
-🧩 核心知识结构：
-{concept_A} → {concept_B} → {concept_C}
-
-⚠ 常见误区与易混淆点：
 - ...
-
-🎯 建议课程结构：
-模块一：... ({n} 小节，难度 ★★☆☆☆)
-模块二：... ({n} 小节，难度 ★★★☆☆)
-模块三：... ({n} 小节，难度 ★★★★☆)
-
-💡 调研笔记：
-- {key insight 1}
 ```
 
-**For material-driven mode:**
 
-```
-🔍 调研结果：{topic} — 材料驱动
+**Material-driven mode additions:**
 
-📎 参考材料：
-- {material_type}: {summary}（{chapters_or_sections_covered}）
+When the course is material-driven, add these sections to the standard template above:
 
-📊 补充来源：
-- {supplementary_source_1}
-- {supplementary_source_2}
+- 📎 参考材料 section listing the user's provided materials.
+- 📋 考试信息 section (exam mode) with question types, weighted topics, and exam strategy.
+- 📋 核心概念与章节映射 section mapping source chapters to key concepts.
+- 💡 备考笔记 section with exam-specific priorities.
 
-📋 考试信息：
-- 题型：{question_types}
-- 重点章节：{weighted_topics}
-- 备考建议：{exam_strategy_tip}
-
-🧩 核心概念与章节映射：
-第X章 {chapter_name} → {key_concepts}
-第Y章 {chapter_name} → {key_concepts}
-
-⚠ 常见误区与失分点：
-- ...
-
-🎯 建议课程结构（对齐教材/考纲）：
-模块一：{chapter_range} ({n} 小节，难度 ★★☆☆☆)
-模块二：{chapter_range} ({n} 小节，难度 ★★★☆☆)
-模块三：{chapter_range} ({n} 小节，难度 ★★★★☆☆)
-
-💡 备考笔记：
-- 这些章节占分值最高，优先学
-- 这部分容易出大题，需要练习
-```
+The standard template's 📊信息来源, 🧩核心知识结构, ⚠常见误区, and 🎯建议课程结构 sections remain the same.
 
 ### Gate
 

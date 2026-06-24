@@ -129,11 +129,12 @@ study.skill/
 │   ├── courseware-format.md         # 通用课件格式：图表、图片、代码、练习块
 │   ├── chinese-tutorial-guide.md    # 中文教程写作规范
 │   ├── english-tutorial-guide.md    # 英文教程写作规范
-│   ├── fsrs-scheduler.md            # 简化间隔复习算法
+│   ├── fsrs-scheduler.md            # 间隔重复算法与存储格式
 │   ├── learning-viewer.md           # 本地课程播放器使用规则
 │   ├── migration-guide.md           # 旧学习状态迁移说明
 │   ├── state-schema.md              # 学习状态文件结构
-│   └── skill-tree.md                # 技能树和领域地图
+│   ├── skill-tree.md                # 技能树与轻量 RPG 进度
+│   └── diagram-examples.md          # 图表语法完整示例（Mermaid/PlantUML/Graphviz/Vega-Lite/D2）
 ├── viewer/
 │   ├── server.py                    # 本地课程播放器服务
 │   └── viewer.html                  # 本地课程播放器页面

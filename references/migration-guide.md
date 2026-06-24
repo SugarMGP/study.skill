@@ -113,3 +113,18 @@ python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profil
 5. 为每门课程创建 `.learning-profile/courses/{slug}/domain-tree.json`。
 6. 为每门课程创建 `.learning-profile/courses/{slug}/learning-record.json`，初始写空 `pages`、`exercises`、`questions_for_llm`、`review_summary` 和 `completions`。
 7. 验证新结构后，立即删除旧的 `progress.json` 和 `review-schedule.json`。
+
+
+## Troubleshooting
+
+### Scenario 1: Migration script is missing
+
+If `migrate-profile.py` is not found in the skill `scripts/` directory, the skill installation is incomplete. Tell the user: "The study skill installation is missing `scripts/migrate-profile.py`. Please reinstall the skill with `npx skills add SugarMGP/study.skill`." Do not hand-write state files as a workaround.
+
+### Scenario 2: JSON parse error during migration
+
+If any state file fails JSON parsing, stop migration. Read the file, report the parse error to the user, and ask whether to: (a) manually fix the JSON, (b) delete the corrupt file and lose that state, or (c) archive the old `.learning-profile/` directory and start fresh. Never silently overwrite corrupt state.
+
+### Scenario 3: Unknown schema_version (neither old nor v4)
+
+If state files exist with a `schema_version` that is neither 1/2/3/4 nor missing, the migration path is unknown. Archive the old `.learning-profile/` by renaming it to `.learning-profile.old-YYYYMMDD/`, then initialize fresh state. Tell the user what was archived and why.
