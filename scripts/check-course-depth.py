@@ -54,6 +54,22 @@ SLIDE_HEADING_PATTERN: Final[re.Pattern[str]] = re.compile(r"^###\s*(原课件�
 REPEATED_LINE_MIN_CHARS: Final[int] = 28
 REPEATED_LINE_MIN_COUNT: Final[int] = 3
 
+# AI writing slop term patterns — advisory only
+AI_SLOP_ZH_TERMS: Final[tuple[str, ...]] = tuple(
+    "至关重要|深入探讨|格局|织锦|充满活力|在当今.*的背景下|"
+    "随着.*的发展|人们越来越意识到|起到了.*的作用|为.*做出了贡献|"
+    "面临着.*的挑战|具有重要的.*意义|展现出|蕴含着|下面我们将|在本文中|让我们深入探讨|"
+    "我们来了解一下|继续加油|你已经很棒了|作为.*的证明".split("|")
+)
+AI_SLOP_EN_TERMS: Final[tuple[str, ...]] = tuple(
+    "showcase|tapestry[^a-z]|landscape[^a-z]|testament to|"
+    "underscore|pivotal|delve into|foster|interplay|intricate|garner|enduring|"
+    "vibrant|nestled|breathtaking|groundbreaking|renowned|stunning|seamless|"
+    "intuitive|powerful|additionally|^crucial|highlight|align.with|enhancing|"
+    "Here.s the thing|Let.s dive in|It.s not just|"
+    "The question isn.t|I hope this helps|Great question".split("|")
+)
+
 
 @dataclass(frozen=True, slots=True)
 class MarkdownDepth:
@@ -184,6 +200,26 @@ def scan_markdown_risks(depths: list[MarkdownDepth]) -> list[ScanFinding]:
                             line_no=line.line_no,
                             category="template-trace",
                             detail=f"contains '{term}'",
+                        ),
+                    )
+            for term in AI_SLOP_ZH_TERMS:
+                if re.search(term, line.text):
+                    findings.append(
+                        ScanFinding(
+                            path=item.path,
+                            line_no=line.line_no,
+                            category="ai-slop-zh",
+                            detail=f"contains AI writing pattern '{term}'",
+                        ),
+                    )
+            for term in AI_SLOP_EN_TERMS:
+                if re.search(term, line.text, re.IGNORECASE):
+                    findings.append(
+                        ScanFinding(
+                            path=item.path,
+                            line_no=line.line_no,
+                            category="ai-slop-en",
+                            detail=f"contains AI writing pattern '{term}'",
                         ),
                     )
             key = repeated_line_key(line.text)

@@ -10,6 +10,8 @@ Before entering this phase:
 - Phase 1 completed: user confirmed the research scope.
 - Read `profile.json.learner_profile` when available; use it to adapt examples, analogies, prerequisites, and explanations.
 - Load `references/courseware-format.md` for shared courseware rules.
+- Load `references/anti-ai-writing.md` for AI-writing prevention rules.
+- Load `references/teaching-patterns.md` for reusable teaching templates.
 - Load one language guide for learner-facing prose:
   - Chinese output: `references/chinese-tutorial-guide.md`
   - English output: `references/english-tutorial-guide.md`
@@ -58,6 +60,8 @@ Every module should contain:
 - real pitfalls or misconceptions when the topic has source-backed or practice-backed ones
 - concise recap; a concrete continuation action only when the next module builds on this one
 - source notes for non-trivial claims, code, images, diagrams, and data; link placement and export rules come from `courseware-format.md`
+- at least 2 applicable teaching patterns from `references/teaching-patterns.md` for Foundation modules, 3+ for Core modules, selected by concept type per the pattern applicability table
+- adherence to information density pace rules GC1-GC5 from `courseware-format.md`
 
 Course files are for learners. Do not include design notes, generation rationale, tool choices, internal field names, or agent self-evaluation unless they are part of the hidden machine-readable exercise block format defined in `courseware-format.md`.
 
@@ -138,9 +142,11 @@ After Module 00 is confirmed, generate `syllabus.md` and all remaining modules i
 
 **Interleaved quality checkpoint:** Every 3 modules generated, pause internally to check the last 3 for generation fatigue (do not ask the user for confirmation; this is an agent-internal gate):
 - Exercise count per module is not dropping (>=80% of the first 3 modules' average).
-- No `study-*` answer field has regressed to template placeholders ("参考答案应包含…" etc.).
+- No `study-*` answer field has regressed to template placeholders ("参考答案应包含..." etc.).
 - Module preface section descriptions are section-specific (not identical boilerplate repeated across all sections).
 - No new extraction traces or raw artifacts have appeared.
+- AI 写作抽检：随机抽 2-3 个小节，执行 `anti-ai-writing.md` §7 自检。要求 0 个无合理理由保留的 Tier 1 警惕词，≤1 个 Tier 2 警惕词。
+- 教科书压缩感抽检：随机抽 2-3 个小节，执行 `courseware-format.md` GC1-GC5 规则检查。连续 3 个概念块间质元素不足的，打回扩展。
 If the checkpoint fails, fix the degraded modules before continuing to the next 3.
 
 `syllabus.md` minimum content:
@@ -236,7 +242,9 @@ Cross-tier rules (apply across all tiers where the context matches):
 - **Complete demonstration for procedural topics**: [MUST] follow `courseware-format.md` complete-demonstration rule for Foundation/Core; [SHOULD] for Enrichment.
 - **First-use concept introduction**: [MUST] follow `courseware-format.md` first-use concept rule for all tiers.
 - **Mode-specific depth coverage**: [MUST] structural coverage from Phase 0 for all tiers; length checked only after generation.
-- **No extraction, template, or AI writing traces**: [MUST] for all tiers. No source extraction labels, no repeated generic scaffold, no batch-reused filler, no AI-slop phrasing. See `chinese-tutorial-guide.md` and `english-tutorial-guide.md` Forbidden Patterns for the forbidden-phrase criteria.
+- **No extraction, template, or AI writing traces**: [MUST] for all tiers. No source extraction labels, no repeated generic scaffold, no batch-reused filler, no AI-slop phrasing. See `anti-ai-writing.md` for the complete forbidden-pattern criteria; language guides reference it rather than maintaining independent lists.
+- **Anti-AI writing compliance**: [MUST] for Foundation/Core, [SHOULD] for Enrichment. 0 Tier 1 警惕词 without justified reason; ≤1 Tier 2 警惕词 per section. Agent must execute `anti-ai-writing.md` §7 self-check per section.
+- **Information density pace (anti-compression)**: [MUST] for Foundation/Core, [SHOULD] for Enrichment. All sections must satisfy `courseware-format.md` GC1-GC5 rules. Sections that read like compressed reference documents must be rewritten.
 
 **Material-driven quality gate:** When the course is based on PPT, lecture notes, textbook chapters, exam outlines, past papers, or teacher materials, apply the material-driven rules in `courseware-format.md` and also check the generation result as a whole:
 
@@ -280,11 +288,12 @@ Cross-tier rules (apply across all tiers where the context matches):
 5. **Exercise quality**: Do core-module exercises include at least one apply/analyze/explain question (not all recall-only)? Are answer/explanation fields inside `study-*` blocks (not visible before submit)?
 6. **Source coverage**: Are all Phase 1 researched important points taught in a section, or deliberately omitted with a scoped reason? Nothing should silently disappear.
 7. **Material fidelity** (material-driven courses only): Does the module order preserve the source materials' teaching order? Are source formulas, code, figures, tables, and teacher-marked emphasis points taught (not just mentioned)?
-8. **No extraction or template traces**: No "原课件页 N", "PPT 第X页", "原始内容整理", "本章对应 PPT", batch-reused paragraph scaffolds, raw script/code artifacts (e.g. `$(@{…})` PowerShell dumps), or AI-slop phrasing in learner-facing prose.
+8. **No extraction, template, or AI writing traces**: No "原课件页 N", "PPT 第X页", "原始内容整理", "本章对应 PPT", batch-reused paragraph scaffolds, raw script/code artifacts (e.g. `$(@{…})` PowerShell dumps), or AI-slop phrasing in learner-facing prose. Check against `anti-ai-writing.md`: no Tier 1 警惕词 without justified reason, no forbidden sentence patterns, no translation-ese, no chatbot artifacts.
 9. **Pure-practice sections** (if any): Do they contain only question text + `study-*` blocks? No visible answers, hints, explanations, or learning advice outside the blocks.
 10. **Answerability**: For a randomly chosen section from each module, could a learner complete at least one same-type task without the source material?
 11. **No template/placeholder answers**: Every `study-*` answer field contains a concrete, learner-checkable answer. No meta-instructions like "参考答案应包含…", "参考思路", or agent-facing placeholder text. If an answer describes what a good answer *should* contain rather than providing it, the exercise is incomplete.
 12. **No slide-by-slide structure**: Section body is organized by concept, not by source page number. No headings like "原课件页 N", "Page X of PPT", or any per-page structural pattern with 5+ consecutive page-numbered headings. Content must be rearranged into concept-driven sections regardless of which source page the material came from.
+13. **No textbook compression**: For a randomly chosen section from each module, read the first 200 words aloud — does it sound like someone teaching or like someone reading a dictionary? Apply `courseware-format.md` GC1-GC5 checks: concepts have breathing room (GC1), core concept clusters have complete demonstrations (GC2), formulas have numeric walkthroughs (GC3), sections have pacing markers (GC4), and teacher-voice markers are present (GC5). Sections that read like reference documents must be rewritten.
 
 This review is blocking. If any item fails, revise the course files and re-run the review. Max 2 full retries. On the 3rd failure or time constraint, present the course with a flagged warning listing the remaining failures — never claim completion when items fail. Do not replace this step with a script report.
 
@@ -328,9 +337,15 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 | Concern | Source of truth |
 | --- | --- |
 | Module 00, syllabus, course files, quality gate, course structure guard, length diagnostics | this file |
-| Shared courseware structure, Markdown/media/code syntax, source-artifact handling, pure-practice rules, and `study-*` block schemas | `courseware-format.md` |
+| Shared courseware structure, Markdown/media/code syntax, source-artifact handling, pure-practice rules, information density pace (GC1-GC5), and `study-*` block schemas | `courseware-format.md` |
 | Chinese explanation style and natural chapter/section rules | `chinese-tutorial-guide.md` |
 | English explanation style and natural chapter/section rules | `english-tutorial-guide.md` |
+| AI writing forbidden patterns, detection rules, self-check workflow | `anti-ai-writing.md` |
+| Reusable teaching structures (pain-first, progressive formalization, difficulty framing, etc.) | `teaching-patterns.md` |
 | Exact viewer startup, supported runtime syntax, learning record behavior | `learning-viewer.md` |
 | Live teaching and mastery decision | `phase-3-learning.md` |
 | Review scheduling and due-item checks | `phase-4-consolidation.md` + `fsrs-scheduler.md` |
+
+## New Course Applicability
+
+The teaching pattern expectations, anti-AI-writing compliance gates, and anti-compression (GC1-GC5) rules introduced in this reference apply to courses generated after these rules were added. Existing courses are not retroactively re-reviewed. Quality improvements for existing courses go through the `99-content-supplements/` path established in `courseware-format.md`. Error scenarios used in teaching-patterns Pattern 1 (Pain-First) and Pattern 5 (Error-Driven Teaching) during Phase 2 generation must come from Phase 1 research-collected materials; Phase 3 teaching may additionally use learner-observed errors.

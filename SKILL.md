@@ -28,6 +28,8 @@ Most agents only read the first ~160 lines. Use this table before substantial wo
 | Goal anchoring, mode choice, materials, baseline, time, storage path | `references/phase-0-anchoring.md` |
 | Research before new course generation | `references/phase-1-research.md` |
 | Course/module generation | `references/phase-2-generation.md`; it is the generation source of truth |
+| AI writing quality, forbidden vocabulary, anti-slop | `references/anti-ai-writing.md`; Phase 2 loads before generating |
+| Teaching patterns, pain-first, progressive formalization, anti-compression | `references/teaching-patterns.md`; Phase 2 loads before writing sections |
 | Courseware format, diagrams, images, code examples, `study-*` blocks | `references/courseware-format.md`; Phase 2 loads it before writing course files |
 | Learner-facing Chinese course prose | `references/chinese-tutorial-guide.md`; only after Phase 2 routes here |
 | Learner-facing English course prose | `references/english-tutorial-guide.md`; only after Phase 2 routes here |

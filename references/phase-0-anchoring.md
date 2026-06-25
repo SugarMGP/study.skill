@@ -172,6 +172,22 @@ This is the `{learning_root}` — a base directory that will contain ALL your le
 
 Default: `{user_home}/learning` if not specified. Never overwrite existing content.
 
+### Q4.5: Teaching Style (Optional)
+
+This question is optional. Ask only when `profile.json.learner_profile` has no `teaching_style` field and the course type is complex enough to benefit from style selection (systematic, interview prep, or theory-heavy courses). For simple API topics or speedrun modes, skip.
+
+```
+📝 我讲课时你喜欢什么风格？
+  • 实战优先：多代码、多例子、先跑通再深挖
+  • 原理优先：先讲清为什么、再动手
+  • 轻松一点：可以有比喻、段子和不那么正经的表达
+  • 严肃专业：保持正式、精确，不要花哨
+
+不选也行，我按课程的默认风格来。
+```
+
+Write selection to `profile.json.learner_profile.teaching_style`.
+
 ### Gate: 学习路线图预览
 
 After all questions answered, synthesize. Adapt format to mode:

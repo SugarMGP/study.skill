@@ -183,12 +183,11 @@ Avoid vague warnings such as “be careful with complexity.” Do not invent mis
 
 ## Forbidden Patterns
 
-- Do not write marketing copy: “unlock your potential”, “revolutionary”, “game-changing”.
-- Do not use AI filler: “delve into”, “in today's fast-paced world”, “seamlessly”, “robust and scalable” unless the words are technically necessary.
 - Do not front-load history, taxonomy, or theory before the learner has a task.
 - Do not turn the chapter into API reference. Link to reference material instead.
 - Do not hide prerequisites or expected outputs.
 - Do not turn shared courseware rules from `courseware-format.md` into a separate English-only rule set.
 - Do not let generator-side process notes leak into the English lesson body.
-- Do not force repeated slogan headings such as “The idea in one minute”.
+- Do not force repeated slogan headings such as "The idea in one minute".
 - Do not add decorative diagrams or exercises that do not help the chapter goal.
+- For AI writing patterns (buzzwords, sentence structures, forbidden phrases), see `references/anti-ai-writing.md`.

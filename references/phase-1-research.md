@@ -107,6 +107,8 @@ For each source, extract:
 | Priority labels such as 重点掌握/理解/了解 | → separate full teaching from one-sentence recognition notes |
 | Source examples, classroom examples, diagrams, exercises, and sample answers | → reuse or adapt into section bodies; if a high-priority point lacks an example, create a minimal worked example grounded in the source concept |
 | **Diagrams & visuals** | **→ collect quality existing images for reuse. Note URL + description. Prioritize: architecture diagrams, flowcharts, comparison tables, data visualizations.** |
+| High-quality teaching fragments | → Worth preserving phrases, analogies, diagrams, or worked explanations that explain something particularly well; Phase 2 may adapt these as reference for teaching style |
+| Common errors and failure examples | → **[CRITICAL]** Actively collect error/failure examples from source materials (official docs, textbooks, community FAQs), and source-backed misconceptions. These are the ONLY permitted source for error scenarios used in `teaching-patterns.md` Pattern 1 (Pain-First) and Pattern 5 (Error-Driven Teaching) during Phase 2 generation |
 
 For code, SQL, formula, query, design, or procedure topics, the research summary must preserve enough raw teaching material to write a self-contained lesson: the concrete task, full example, sample data or inputs, expected output or failure, and at least one learner exercise. Do not extract only headings or keywords; that forces Phase 2 to write shallow summaries.
 

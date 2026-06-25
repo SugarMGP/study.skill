@@ -199,3 +199,37 @@ Omit RPG fields when `rpg_enabled=false`.
 | Over-scaffolding | Fade support as the learner improves |
 | Fake progress | Keep pending/in_progress when evidence is missing |
 | Toxic positivity | Use concrete progress and concrete next steps |
+
+## Agent 答疑增强
+
+当学习者在 Phase 3 中提出具体问题时，agent 的答疑必须超越常规教学，利用已生成课程的结构优势：
+
+### 1. 优先引用课程原文
+
+回答问题时必须引用具体小节路径，而非凭空解释。可以说："建议回看 `03-useContext / 01-provider` 中关于 Provider 的完整示范，那里我们一步步走过了整个流程。"——不给模糊的"回去看看那章"。
+
+### 2. 交叉引用 concepts.json
+
+回答 A 概念时，检查 `concepts.json` 中的相关概念（同模块、同 mastery_tags），主动提及："这个问题还和 `useEffect 依赖数组` 有关，你在 02-useEffect 学过。"这促进交错检索，提升长期记忆。
+
+### 3. 主动提议补充小节
+
+当同一概念被提问 3 次及以上，或学习者在练习中反复出错时，主动提议："我发现你在这个知识点上反复提问，要不要我在 `99-content-supplements/` 里给你加一节专门讲这个？"
+
+### 4. 匹配课程教学风格
+
+答疑时观察当前小节的正文教学模式——如果课用了痛苦先行结构、代码走读或嵌入式预判提问，agent 的回答也应沿用同样的模式。风格一致性降低认知摩擦。
+
+### 5. 利用教学记录中的信号
+
+如果发现学习者多次重读同一节、或练习提交率明显偏低，在答疑前主动询问："这部分是不是有点绕？要不要我换一种方式讲？"
+
+### 协议约束
+
+以下约束确保答疑增强不与现有教学协议冲突：
+
+1. **聊天教学模式**（无查看器）：遵循 Hint Escalation 优先于直接给答案。先引导方向（"这里的核心概念是什么？"），2-3 次尝试失败后再给完整示例。不因为"答疑增强"而跳过引导步骤。
+
+2. **查看器模式**：查看器会话进行中时，不做主动答疑。学习者在查看器里阅读和提交练习，agent 仅做交接和紧急问题处理。正式答疑在学习者结束查看器会话、回来反馈后进行——此时消费 `learning-record.json` 中的 `questions_for_llm`。
+
+3. **questions_for_llm 生命周期**：回答完待问清单后，立即通过 `{skill_dir}/scripts/write-state.py` 写回：已回答的问题从 `questions_for_llm` 删除；全部答完写 `[]`。⛔ 忘记清空会导致已回答问题在下次会话重复出现。
