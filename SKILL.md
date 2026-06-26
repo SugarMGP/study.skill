@@ -70,7 +70,7 @@ Iron Law:
 NO TEACHING WITHOUT ANCHORING FIRST.
 NO GENERATION WITHOUT RESEARCH FIRST.
 NO STATE WRITE WITHOUT THE CURRENT SCHEMA.
-NO COMPLETION CLAIMS WITHOUT VERIFICATION.
+NO COMPLETION CLAIMS WITHOUT THE BLOCKING LEARNER-PERSPECTIVE FULL-COURSE REVIEW.
 NO LEARNER-FACING COURSE FILES WITH AGENT/RUNTIME CAVEATS.
 ```
 
@@ -93,17 +93,19 @@ Before answering any learning request:
 3. Use Q1-Q4 to confirm scope, materials, baseline, time, and storage path.
 4. After route confirmation, initialize state from `state-schema.md` without overwriting existing courses.
 5. Load `phase-1-research.md`; use real sources before generation.
-6. Load `phase-2-generation.md`; generate Module 00 first, wait for confirmation, then generate the remaining modules within the course structure guard, run the blocking learner-perspective full-course review, and use diagnostics only after generation.
+6. Load `phase-2-generation.md`; generate Module 00 first, wait for confirmation, then generate the remaining modules within the course structure guard.
+7. ⛔ **[BLOCKING]** Run the learner-perspective full-course review (phase-2-generation.md §Blocker: Learner-Perspective Review). Do not claim course completion until every review item passes. Use diagnostics only after this review.
 
 ### Existing Course
 
 1. Load `phase-3-learning.md` and `learning-viewer.md`.
-2. Prefer the local viewer in `interactive` mode when course files exist.
-3. If the viewer starts successfully, do not duplicate the lesson in chat. Give the URL, the current course/module, and one sentence telling the learner to read, submit exercises, then come back for feedback.
-4. Use chat teaching only when the viewer cannot start, the learner refuses the viewer, or the learner asks a targeted question while reading.
-5. When the learner returns, read the course `learning-record.json` before deciding progress, feedback, XP, or review items. If you answer `questions_for_llm`, clear the answered questions in `learning-record.json`.
-6. Persist pace/depth feedback immediately in `params.json`.
-7. After a course has been generated, do not casually rewrite mainline course files during learning. Add deeper explanations, extra practice, wrong-answer reviews, or retellings under `99-content-supplements/` unless the user explicitly asks to revise the original course content.
+2. ⛔ Read `meta.json.generation_status`. If it is `"generating"` or `"pending_review"`, the course is not ready for learning — return to Phase 2 and complete the blocking review first. Only `"complete"` courses enter Phase 3.
+3. Prefer the local viewer in `interactive` mode when course files exist.
+4. If the viewer starts successfully, do not duplicate the lesson in chat. Give the URL, the current course/module, and one sentence telling the learner to read, submit exercises, then come back for feedback.
+5. Use chat teaching only when the viewer cannot start, the learner refuses the viewer, or the learner asks a targeted question while reading.
+6. When the learner returns, read the course `learning-record.json` before deciding progress, feedback, XP, or review items. If you answer `questions_for_llm`, clear the answered questions in `learning-record.json`.
+7. Persist pace/depth feedback immediately in `params.json`.
+8. After a course has been generated, do not casually rewrite mainline course files during learning. Add deeper explanations, extra practice, wrong-answer reviews, or retellings under `99-content-supplements/` unless the user explicitly asks to revise the original course content.
 
 ### Review Or Progress Request
 
@@ -116,7 +118,8 @@ Before answering any learning request:
 - Current schema is defined only in `references/state-schema.md`.
 - Use the skill directory's `write-state.py` or the atomic write rule from `state-schema.md`.
 - JSON write failure is a real failure. Do not silently overwrite, rebuild, or fake success.
-- `meta.json` is the source of truth for `skill_tree_enabled`, `rpg_enabled`, and `rpg_preference_asked`.
+- `meta.json` is the source of truth for `skill_tree_enabled`, `rpg_enabled`, `rpg_preference_asked`, and `generation_status`.
+- `meta.json.generation_status` gates Phase 3 entry: `"generating"` and `"pending_review"` courses must not enter formal learning. Only `"complete"` allows Phase 3.
 - `params.json` owns pacing and review parameters such as `target_retention`.
 - `concepts.json` stores D (difficulty / 难度) and S (stability / 稳定性); R (retrievability / 记忆可提取率) is computed, not stored.
 
@@ -136,7 +139,10 @@ Before answering any learning request:
 | "Every chapter needs the same heading template." | Keep the learning loop, not fixed headings. Do not force phrases such as "先记住一句话". |
 | "快速备考 means I should make every point short." | Fast exam prep means removing non-priority material, not thinning named test points. |
 | "The learner wants more detail, so I should patch the original section." | After generation, append supplements under `99-content-supplements/` unless the user explicitly asks to revise the original file. |
-| "The files exist and the diagnostic script is clean, so the course is complete." | Generation completion requires the Phase 2 learner-perspective full-course review; scripts are only clues. |
+| "Everything is generated. Time to tell the user it's ready." | ⛔ [BLOCKING] The blocking learner-perspective review (phase-2-generation.md §Blocker) must pass all 13 items first. Files on disk ≠ course complete. |
+| "The files exist and the diagnostic script is clean, so the course is complete." | ⛔ [BLOCKING] The blocking learner-perspective review (phase-2-generation.md §Blocker) must pass all 13 items first. A clean script does not replace this review. Never claim completion with pending or failed review items. |
+| "Context was compressed; I'll continue from what I remember." | ⛔ [BLOCKING] Re-read SKILL.md and currently active references before continuing. Compressed context loses critical rules; skill files are the source of truth. |
+| "meta.json says generation_status: pending_review, but I remember doing the review." | ⛔ [BLOCKING] If generation_status is not "complete", the review is not done. Trust the persisted state over memory. Re-run the review. |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |
 
 ## Motivation

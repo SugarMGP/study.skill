@@ -1,6 +1,6 @@
 # 数据模型 Schema
 
-> schema_version: 4
+> schema_version: 5
 
 ## 目录结构
 
@@ -25,7 +25,7 @@
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "learner_id": "default",
   "created_at": "2026-06-09T10:00:00+08:00",
   "updated_at": "2026-06-09T10:00:00+08:00",
@@ -74,10 +74,11 @@
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "slug": "react-hooks",
   "name": "React Hooks 从零到一",
   "status": "active",
+  "generation_status": "generating",
   "mode": "system",
   "mode_label": "系统精讲",
   "current_module": "03-useContext",
@@ -97,7 +98,8 @@
 |------|------|:---:|--------|------|------|
 | slug | string | ✅ | — | — | 课程标识（目录名） |
 | name | string | ✅ | — | — | 课程显示名称 |
-| status | enum | ✅ | "active" | active/paused/completed/archived | 课程状态 |
+| status | enum | ✅ | "active" | active/paused/completed/archived | 课程学习状态 |
+| generation_status | enum | ✅ | "generating" | generating/pending_review/complete | 课程生成状态。agent 必须在对应阶段同步更新此字段 |
 | mode | enum | ✅ | — | speedrun/system/interview/exam | 学习模式 |
 | mode_label | string | ✅ | — | — | 模式显示名（用于展示，可按课程语言写） |
 | current_module | string | — | null | — | 当前正在学习的模块 |
@@ -117,13 +119,25 @@
 - `completed`：已完成全部模块，复习项仍在调度中
 - `archived`：已归档，不参与任何调度
 
+**generation_status 枚举说明（⛔ BLOCKING）：**
+- `generating`：课程初始化后（Phase 0 确认路线），写入此状态。表示模块正在生成中。
+- `pending_review`：所有模块已写入，但阻塞审查尚未通过。**此状态下禁止声称课程已完成，禁止进入 Phase 3 正式学习。** 上下文压缩后 agent 读取到此状态即知审查未完成。
+- `complete`：阻塞审查全部 13 项通过，课程生成完成。**只有在此状态下才能进入 Phase 3 学习。**
+
+状态流转：`generating` → `pending_review` → `complete`
+
+Agent 必须在以下时机通过 `write-state.py` 写入状态变更：
+- Phase 0 路线确认后 → 初始化为 `generating`
+- 全部模块生成完 → 写入 `pending_review`
+- 阻塞审查通过 → 写入 `complete`
+
 ---
 
 ## params.json（自适应参数）
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "target_retention": 0.90,
   "spacing_factor": 1.0,
   "require_mastery_before_advance": true,
@@ -168,7 +182,7 @@
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09T14:30:00+08:00",
   "concepts": [
@@ -227,7 +241,7 @@
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,
@@ -269,7 +283,7 @@
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "source": "study.skill.viewer",
   "course_slug": "react-hooks",
   "created_at": "2026-06-09T10:00:00+08:00",

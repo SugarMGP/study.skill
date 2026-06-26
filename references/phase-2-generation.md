@@ -30,9 +30,13 @@ Load `learning-viewer.md` only when exact player-supported syntax, viewer startu
 
 ## Completion Rule
 
-Do not claim a course, module, code example, or exercise is complete until the relevant quality gate has been checked. If runnable code was not executed, say so in your chat handoff or internal completion note, not inside learner-facing course files.
+⛔ **Do not claim a course is complete until the blocking learner-perspective full-course review (see Blocker section below) has been run and all 13 items pass.** The Quality Gate table is a per-module check during writing; the blocking review is the whole-course gate that comes after all modules are generated. Both are required. The diagnostic script (`check-course-depth.py`) provides clues only — a clean script output does not replace the review.
 
-After the course generation phase is complete, treat the main course as frozen unless the user explicitly asks to revise the original files. Later clarifications, deeper explanations, extra exercises, practice papers, retellings, and errata discussions go through the `99-content-supplements` workflow defined in `courseware-format.md`.
+**The `meta.json.generation_status` field is the persisted gate.** After all modules are written, write it to `"pending_review"`. Only after the blocking review passes every item, write it to `"complete"`. If context is compressed and you re-read `meta.json` and see `"pending_review"`, the review has not been done — do not proceed to Phase 3. If you see `"generating"`, writing is incomplete — continue from where you left off.
+
+If runnable code was not executed, say so in your chat handoff or internal completion note, not inside learner-facing course files.
+
+Once the blocking learner-perspective review has passed and the course generation phase is complete, treat the main course as frozen unless the user explicitly asks to revise the original files. Later clarifications, deeper explanations, extra exercises, practice papers, retellings, and errata discussions go through the `99-content-supplements` workflow defined in `courseware-format.md`.
 
 ## Natural Structure Rule
 
@@ -40,7 +44,7 @@ Do not force a repeated heading template. Keep the learning loop instead: goal -
 
 Generation must apply the shared teaching completeness rules in `courseware-format.md`: self-contained lessons, material-driven course rules, pure-question practice section rules, source-to-courseware bridging, first-use concept introduction, section pass standard, complete demonstrations for procedural topics, image/source-question explanation, exercise progression, and narrow section merge rules. Phase 2 decides sequence and scope; do not redefine those shared rules here.
 
-Before telling the user the course is ready, compare the generated files with this reference and fix missing learning-loop requirements directly in the files.
+Before telling the user the course is ready, run the blocking learner-perspective full-course review (see §Blocker above) and fix every FAIL item before proceeding.
 
 ## Output Standard
 
@@ -140,7 +144,7 @@ English prompt: `Does this outline look right? I can start writing the modules n
 
 After Module 00 is confirmed, generate `syllabus.md` and all remaining modules in one pass. The Module 00 outline is the contract. No per-module confirmation is needed unless the user pauses or asks to revise the outline.
 
-**Interleaved quality checkpoint:** Every 3 modules generated, pause internally to check the last 3 for generation fatigue (do not ask the user for confirmation; this is an agent-internal gate):
+⛔ **Interleaved quality checkpoint (MUST RUN every 3 modules):** Every 3 modules generated, pause internally to check the last 3 for generation fatigue (do not ask the user for confirmation; this is an agent-internal gate):
 - Exercise count per module is not dropping (>=80% of the first 3 modules' average).
 - No `study-*` answer field has regressed to template placeholders ("参考答案应包含..." etc.).
 - Module preface section descriptions are section-specific (not identical boilerplate repeated across all sections).
@@ -268,7 +272,11 @@ Cross-tier rules (apply across all tiers where the context matches):
 - Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps?
 - Could the learner answer the tested item after reading only this section, even if they never opened the original review deck?
 
-**Blocking learner-perspective review:** After the whole course is generated and before saying it is ready, run a full-course review from the learner's point of view. This review is blocking: course completion must not be claimed until every item below passes.
+### ⛔ [BLOCKING] Blocker: Learner-Perspective Review — MUST PASS before claiming course complete
+
+After the whole course is generated and before saying it is ready, run a full-course review from the learner's point of view. **This review is blocking: course completion must not be claimed until every item below passes. Do not tell the user the course is ready before this review passes. Do not let context compression conceal this gate — if unsure, re-read this section.**
+
+The Quality Gate table above is a per-module check done during writing. This is the whole-course gate done after writing. Both are required. The diagnostic script (`check-course-depth.py`) provides clues only — a clean script output does not replace this review.
 
 **Review method:** Prefer a subagent when the platform supports subagents. Ask it to act as a learner matching the user's stated baseline, or as a zero-baseline learner if no profile is known. Give it the generated course files and, for material-driven courses, the source outline or extracted material notes.
 
@@ -279,7 +287,7 @@ Cross-tier rules (apply across all tiers where the context matches):
 4. For material-driven courses, check each source unit (PPT page, textbook section, exam point) against the module outline. Mark whether it was taught, practiced, or omitted with scoped reason.
 5. Compile findings into a brief internal review note listing: total sections checked, sections with missing learning-loop pieces, source-content gaps, and extraction/template traces found.
 
-**Review checklist** — every generated course must pass all items. Mark each as PASS or FAIL with a brief note:
+**Review checklist** — every generated course must pass all 13 items. ⛔ Mark each as PASS or FAIL with a brief note:
 
 1. **Order coherence**: Can a learner with the stated baseline follow the module and section order without confusion? Check that prerequisites are taught before they are needed.
 2. **Self-contained sections**: For every section, pick one concept/example/exercise. Can a learner understand it without opening external source material? If the answer depends on a figure or code only in the source, it must be embedded in the course file.
@@ -329,8 +337,8 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 4. Do not create side files by default; terminology, links, interview/exam practice, review items, and exports follow `courseware-format.md`.
 5. Generate or update `domain-tree.json` when `meta.json.skill_tree_enabled=true`. Nodes must mirror the confirmed syllabus, and the `99-content-supplements` node must remain always available/unlocked. RPG fields are included by default when `meta.json.rpg_enabled=true`.
 6. Depth per mode comes from `phase-0-anchoring.md` Q1. Generate first for structural coverage and teaching completeness; use module/section prose bands only as post-generation diagnostics. Code examples, source fragments, images, tables, formulas, and diagrams are not constrained by prose length; include them whenever they help understanding.
-7. Before offering to start Module 01, self-check every generated file against the natural learning-loop requirements, quality gate, and `courseware-format.md`.
-8. Once this generation pass is handed off as complete, do not later edit mainline course files as a casual improvement. Use `99-content-supplements` for additions unless the user explicitly asks to revise original course content.
+7. ⛔ Before offering to start Module 01, run the blocking learner-perspective full-course review (§Blocker above). Self-check every generated file against the natural learning-loop requirements and `courseware-format.md` as part of this review. All 13 items must pass.
+8. Once this generation pass is handed off as complete (after the blocking review passes), do not later edit mainline course files as a casual improvement. Use `99-content-supplements` for additions unless the user explicitly asks to revise original course content.
 
 ## Ownership Map
 

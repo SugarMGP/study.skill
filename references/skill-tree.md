@@ -376,7 +376,7 @@ The skill tree state lives in `.learning-profile/courses/{course-slug}/domain-tr
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "course_slug": "llm-app-dev",
   "domain": "大模型应用开发",
   "enabled": true,

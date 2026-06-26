@@ -101,7 +101,7 @@ Once the user chooses a mode, keep the mode defaults as pending course state. Do
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "target_retention": 0.85,
   "spacing_factor": 1.0,
   "require_mastery_before_advance": false,
@@ -217,7 +217,7 @@ After confirmation:
 1. Initialize `{learning_root}/.learning-profile/` if missing.
 2. Create the course directory under `.learning-profile/courses/{course-slug}/`.
 3. Update `profile.json.learner_profile` with durable facts from anchoring: baseline, goals, known languages or skills, weak prerequisites, preferred analogies, teaching constraints, and material summary. Do not keep these only in chat context.
-4. Write `meta.json`, `params.json`, `domain-tree.json` with empty `nodes`, an empty `concepts.json`, and an empty `learning-record.json` using the schema in `state-schema.md`.
+4. Write `meta.json` with `generation_status: "generating"`, `params.json`, `domain-tree.json` with empty `nodes`, an empty `concepts.json`, and an empty `learning-record.json` using the schema in `state-schema.md`.
 5. Use `{skill_dir}/scripts/write-state.py`; never overwrite existing state without reading it first.
 
 Example durable profile fields:

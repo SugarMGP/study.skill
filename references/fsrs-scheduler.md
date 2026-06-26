@@ -8,7 +8,7 @@ Each course has its own `{learning_root}/.learning-profile/courses/{course-slug}
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "course_slug": "react-hooks",
   "last_review_session": "2026-06-09",
   "concepts": [

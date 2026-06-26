@@ -27,8 +27,9 @@ At the start of each learning session (any turn where the user says "继续学�
 
 1. If old `.learning-profile/progress.json` or `review-schedule.json` exists, stop and migrate first.
 2. Read `.learning-profile/profile.json` and the active course `meta.json`, `params.json`, `concepts.json`, and `domain-tree.json`.
-3. Read local course content: `README.md`, `syllabus.md` if present, current module `content.md`, and current section `content.md` when a section is open.
-4. Show exact course/module/section, current skill-tree node, and one short RPG line when enabled.
+3. ⛔ Verify `meta.json.generation_status == "complete"`. If `"generating"` or `"pending_review"`, the course is not ready for learning. Halt and return to Phase 2 — complete the blocking learner-perspective review per `phase-2-generation.md §Blocker` before proceeding to Phase 3.
+4. Read local course content: `README.md`, `syllabus.md` if present, current module `content.md`, and current section `content.md` when a section is open.
+5. Show exact course/module/section, current skill-tree node, and one short RPG line when enabled.
 
 At the first formal learning session of each day only:
 
@@ -230,6 +231,6 @@ Omit RPG fields when `rpg_enabled=false`.
 
 1. **聊天教学模式**（无查看器）：遵循 Hint Escalation 优先于直接给答案。先引导方向（"这里的核心概念是什么？"），2-3 次尝试失败后再给完整示例。不因为"答疑增强"而跳过引导步骤。
 
-2. **查看器模式**：查看器会话进行中时，不做主动答疑。学习者在查看器里阅读和提交练习，agent 仅做交接和紧急问题处理。正式答疑在学习者结束查看器会话、回来反馈后进行——此时消费 `learning-record.json` 中的 `questions_for_llm`。
+2. ⛔ **查看器模式**：查看器会话进行中时，不做主动答疑。学习者在查看器里阅读和提交练习，agent 仅做交接和紧急问题处理。正式答疑在学习者结束查看器会话、回来反馈后进行——此时消费 `learning-record.json` 中的 `questions_for_llm`。
 
 3. **questions_for_llm 生命周期**：回答完待问清单后，立即通过 `{skill_dir}/scripts/write-state.py` 写回：已回答的问题从 `questions_for_llm` 删除；全部答完写 `[]`。⛔ 忘记清空会导致已回答问题在下次会话重复出现。

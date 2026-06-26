@@ -1,7 +1,7 @@
-# 数据迁移指南：升级到 schema_version 4
+# 数据迁移指南：升级到 schema_version 5
 
 > 适用于：已有旧版 `.learning-profile/progress.json` / `.learning-profile/review-schedule.json`
-> 的用户，也适用于已经使用 schema_version 1、2 或 3 新目录结构的用户。
+> 的用户，也适用于已经使用 schema_version 1、2、3 或 4 新目录结构的用户。
 
 ## 变更概览
 
@@ -82,7 +82,7 @@ test ! -f .learning-profile/review-schedule.json
 
 迁移验证通过后，旧文件必须不存在。若还存在，先不要继续教学；重新运行迁移脚本或手动完成删除。
 
-## 从 schema_version 1、2 或 3 升级到 4
+## 从 schema_version 1、2 或 3 升级到 5
 
 如果已经没有旧 `progress.json` / `review-schedule.json`，但状态文件还是 `schema_version: 1`、`schema_version: 2` 或 `schema_version: 3`，仍然运行同一个脚本：
 
@@ -92,11 +92,11 @@ python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profil
 
 脚本会：
 
-1. 把 `profile.json` 升级到 `schema_version: 4`
+1. 把 `profile.json` 升级到 `schema_version: 5`
 2. 保留已有普通偏好，例如每日学习时长、反馈风格、纠错方式
 3. 删除 `profile.json.preferences` 里的平台自动化相关旧字段
 4. 补上空的 `learner_profile`
-5. 把已有课程状态文件的 `schema_version` 更新为 4
+5. 把已有课程状态文件的 `schema_version` 更新为 5
 6. 为每门课补上 `learning-record.json`
 7. 验证关键 JSON 文件能读取，且版本正确
 
@@ -106,7 +106,7 @@ python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profil
 
 如果脚本不适用，手动步骤：
 
-1. 创建 `.learning-profile/profile.json`，写入 `schema_version: 4`、全局偏好和 `learner_profile`。
+1. 创建 `.learning-profile/profile.json`，写入 `schema_version: 5`、全局偏好和 `learner_profile`。
 2. 为每门课程创建 `.learning-profile/courses/{slug}/meta.json`，默认写入 `skill_tree_enabled=true`、`rpg_enabled=true`、`rpg_preference_asked=false`。
 3. 为每门课程创建 `.learning-profile/courses/{slug}/params.json`，把 `target_retention` 放在这里。
 4. 为每门课程创建 `.learning-profile/courses/{slug}/concepts.json`，不要写 `target_retention` 或 R。
@@ -114,6 +114,27 @@ python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profil
 6. 为每门课程创建 `.learning-profile/courses/{slug}/learning-record.json`，初始写空 `pages`、`exercises`、`questions_for_llm`、`review_summary` 和 `completions`。
 7. 验证新结构后，立即删除旧的 `progress.json` 和 `review-schedule.json`。
 
+
+## 从 schema_version 4 升级到 5
+
+schema_version 5 的唯一变更：`meta.json` 新增 `generation_status` 字段。
+
+如果已有状态文件的 `schema_version` 为 4，运行迁移脚本即可：
+
+```bash
+python {skill_dir}/scripts/migrate-profile.py /path/to/learning/.learning-profile
+```
+
+脚本会：
+1. 把 `profile.json` 和所有课程状态文件的 `schema_version` 更新为 5
+2. 为每门课的 `meta.json` 补上 `generation_status`：
+   - 已有 `completed_modules` 的课程 → `generation_status: "complete"`（已学完=已生成完）
+   - 没有 `completed_modules` 但有 `current_module` 的课程 → `generation_status: "complete"`（正在学=已生成完）
+   - 其他情况 → `generation_status: "complete"`（safe default）
+
+### 手动迁移
+
+如果脚本不适用，手动为每门课的 `meta.json` 加上 `generation_status: "complete"`，并把 `schema_version` 改为 5。无其他字段需要改动。
 
 ## Troubleshooting
 
@@ -125,6 +146,6 @@ If `migrate-profile.py` is not found in the skill `scripts/` directory, the skil
 
 If any state file fails JSON parsing, stop migration. Read the file, report the parse error to the user, and ask whether to: (a) manually fix the JSON, (b) delete the corrupt file and lose that state, or (c) archive the old `.learning-profile/` directory and start fresh. Never silently overwrite corrupt state.
 
-### Scenario 3: Unknown schema_version (neither old nor v4)
+### Scenario 3: Unknown schema_version (neither old nor current v5)
 
-If state files exist with a `schema_version` that is neither 1/2/3/4 nor missing, the migration path is unknown. Archive the old `.learning-profile/` by renaming it to `.learning-profile.old-YYYYMMDD/`, then initialize fresh state. Tell the user what was archived and why.
+If state files exist with a `schema_version` that is neither 1/2/3/4/5 nor missing, the migration path is unknown. Archive the old `.learning-profile/` by renaming it to `.learning-profile.old-YYYYMMDD/`, then initialize fresh state. Tell the user what was archived and why.
