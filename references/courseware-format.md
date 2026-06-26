@@ -185,6 +185,7 @@
 - 图中首次出现的概念、缩写、符号或英文标签，要在同一个小节内图前或图后直接解释；不要让学习者靠猜图例理解核心概念。
 - 不加入与本小节学习目标无关的图片。
 - 文本图表代码块即可，不需要额外导出 PNG，除非目标平台经实际测试确实不能渲染文本图表。
+- ⛔ **禁止用纯文本/ASCII 画流程图、架构图、时序图或任何结构化图示。** 涉及流程、架构、层级、时序、状态转换、依赖关系时，必须使用 `mermaid` / `plantuml` / `graphviz` / `d2` / `vega-lite` 等可渲染图表格式。用 fenced code block + language tag 书写，播放器会自动渲染。普通文本框里的箭头、方框字符画（如 `┌──→`、`+---+`）不是图表——它们无法被阅读指引覆盖全部 5 点要求，也不满足质量门中的图表要求。
 
 Full syntax examples for Mermaid, PlantUML, Graphviz, D2, and Vega-Lite are in `references/diagram-examples.md`. Use those as reference when generating diagrams.
 

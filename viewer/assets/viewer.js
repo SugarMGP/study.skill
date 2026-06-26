@@ -522,8 +522,7 @@
   }
 
   function renderMarkdown(md) {
-    const raw = marked.parse(md);
-    return DOMPurify.sanitize(raw, { ADD_TAGS: ["svg", "path", "g", "circle", "line", "polyline", "polygon", "rect", "text", "tspan"], ADD_ATTR: ["viewBox", "d", "fill", "stroke", "transform"] });
+    return marked.parse(md);
   }
 
   function renderDiagramBlock(lang, code) {
