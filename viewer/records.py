@@ -7,7 +7,7 @@ from pathlib import Path
 from utils import load_json
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 RECORD_SOURCE = "study.skill.viewer"
 
 

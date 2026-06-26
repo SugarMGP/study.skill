@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate old study.skill learning state to schema_version 4.
+"""Migrate old study.skill learning state to schema_version 5.
 
 Usage:
   python scripts/migrate-profile.py [profile_dir]
@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")

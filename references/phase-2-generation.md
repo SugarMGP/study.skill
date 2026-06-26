@@ -180,41 +180,6 @@ For each module:
 - For novice learners, weak prerequisites, or Tier 1 modules, start from a small concrete example in the relevant section before introducing abstract terms, formulas, real-scale systems, or official API detail.
 - If a planned section is a pure-question practice section, do not apply the normal teaching-loop template to that section. Follow `courseware-format.md` pure-question rules exactly: `answer` and `explanation` may stay inside `study-*` blocks for post-submit reveal, but visible prose outside the blocks must remain question-only.
 
-
-### Exam Crash Course Depth Rule
-
-When mode is `exam`, do not treat "快速备考" or "crash course" as a request for short summaries. It means shorten the route by cutting non-priority material, while expanding the named exam points enough that the learner knows how to answer questions.
-
-Use this source hierarchy:
-
-1. Final-review deck, exam syllabus, past papers, or teacher-marked "重点/掌握/必考" items decide scope and priority.
-2. Chapter decks, textbook chapters, and lecture notes provide teaching order, original terms, examples, diagrams, and exercises.
-3. Non-exam chapters or concepts are omitted, or reduced to one-sentence recognition notes when they help choices or true/false questions.
-
-For every item explicitly named by the final-review or exam-scope material, the generated section must include:
-
-- what it means in learner-facing language following the style rules in chinese-tutorial-guide.md or english-tutorial-guide.md
-- why it matters for this exam
-- how it appears as a question form
-- one worked example, SQL/formula/procedure, diagram reading, or judgment rule when the item requires solving, designing, querying, calculating, or comparing
-- common confusion, scoring point, or answer keyword if explicitly stated in the source material
-- one exam-tagged `study-*` exercise when the item is likely to be tested
-
-A section is too shallow if it only lists named concepts without showing how to answer exam questions about them. If one material chapter contains many named exam points, split by exam point cluster; do not pack the chapter into one summary section.
-
-### Depth And Coverage Rule
-
-Depth is measured by both prose size and learning activity coverage:
-
-- prose size: learner-facing explanation is checked after generation against the selected mode's diagnostic bands in Phase 0. The bands are not hard caps and must not suppress useful teaching.
-- concept coverage: section split and merge rules come from `courseware-format.md`.
-- source coverage: important source or research items must be taught, bridged, practiced, or explicitly omitted for a scoped reason; they must not disappear through silent summarization.
-- activity coverage: every module must include answerable practice through `study-*` blocks when answers should be saved or revealed after submission.
-- evidence coverage: interview and exam modes must include scoring criteria, answer rubrics, or worked solution steps; system mode must include why/how, boundaries, and transfer checks.
-- exam priority coverage: exam mode must separate "重点掌握" from "了解"; high priority points get explanation plus exam handling, while low priority points stay short.
-- answerability coverage: for every teaching section, ask whether a learner who did not attend the original class can complete at least one same-type task after reading this section. If not, the section needs more concept explanation, symbol/code walkthrough, worked example, decision boundary, or targeted practice.
-- material fidelity coverage: material-driven courses must preserve source order, source examples, formulas, figures, code, exercises, and teacher-marked emphasis unless the confirmed scope explicitly omits them.
-
 ## Step 3: Quality Gate
 
 Before outputting any module, check against this tiered checklist.
@@ -260,17 +225,16 @@ Cross-tier rules (apply across all tiers where the context matches):
 - Are extraction traces absent from learner-facing files, unless the user explicitly requested page-by-page source notes?
 - If a section is marked as pure practice, does it contain only title, question text, needed data tables, code snippets, and `study-*` blocks whose answers or explanations stay inside the post-submit reference panel?
 
-**Exam exercise density:** In exam mode, every named exam point listed in the syllabus must have at least one exam-tagged `study-*` exercise in its section. A section with zero exercises is incomplete regardless of prose quality.
+**Exam module quality gate:** In exam mode, "快速备考" does not mean writing short summaries — it means shortening the route by cutting non-priority material while expanding named exam points enough that the learner can answer questions. Use this source hierarchy: (1) final-review deck, exam syllabus, past papers, teacher-marked "重点/掌握/必考" decide scope; (2) chapter decks, textbooks, lecture notes provide order and examples; (3) non-exam content is omitted or reduced to recognition notes.
 
-**Exam module quality gate:** In exam mode, also check:
-
-- Does the module clearly separate high-priority "must master" content from low-priority recognition content?
-- Are all final-review or syllabus named points assigned to a module and covered in the section body?
-- Does each high-priority point include at minimum: one worked example, one judgment rule, and one exam-tagged study-* exercise?
-- Are non-priority concepts compressed or removed instead of stealing space from tested points?
-- Does the learner know what to write, calculate, query, design, or judge in an answer?
-- Do calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps?
-- Could the learner answer the tested item after reading only this section, even if they never opened the original review deck?
+Check:
+- Every named exam point has at least one exam-tagged `study-*` exercise in its section. Zero exercises = incomplete regardless of prose quality.
+- Each high-priority named point includes in its section: learner-facing meaning, why it matters for the exam, its common question form, one worked example/judgment rule/worked steps, and an exam-tagged `study-*` exercise.
+- Module clearly separates high-priority "must master" from low-priority recognition content.
+- Non-priority concepts are compressed or removed instead of stealing space from tested points.
+- Calculation, design, SQL/query, proof, diagram-reading, or procedure topics include worked steps — the learner must know what to write, calculate, or judge in an answer, not just recognize terms.
+- The learner could answer the tested item after reading only this section, without the original review deck.
+- A section is too shallow if it only lists named concepts without showing how to answer exam questions about them.
 
 ### ⛔ [BLOCKING] Blocker: Learner-Perspective Review — MUST PASS before claiming course complete
 
@@ -309,17 +273,13 @@ This review is blocking. If any item fails, revise the course files and re-run t
 
 **Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
-
-
 ## Verification Rules
 
 - Runnable code must actually run before claiming it works.
 - Non-runnable technical content must be checked against official docs/source.
-- Do not write execution/verification caveats into `README.md`, `syllabus.md`, module `content.md`, or section `content.md`; report them to the user outside the course files.
-- General or academic claims need source cross-checks.
+- General or academic claims need source cross-checks against research materials.
+- Do not write execution/verification caveats into course files; report them to the user outside the course files.
 - Exam-prep content must align with the syllabus or provided materials.
-- Material-driven and research-driven courses must preserve important source points through the source-to-section map. If content was compressed or omitted, the reason must come from confirmed scope, not from convenience.
-- Courseware structure must be checked against this file, `courseware-format.md`, and the selected language guide. Do not rely on a separate validation script as the primary quality mechanism.
 
 ## Step 4: File Output
 
