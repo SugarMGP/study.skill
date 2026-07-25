@@ -45,6 +45,9 @@ def verify_migration(courses_dir: Path, slugs: set[str]) -> None:
             data = read_json(course_dir / filename)
             if data.get("schema_version") != SCHEMA_VERSION:
                 raise ValueError(f"migration verification failed: {course_dir / filename}")
+        meta = read_json(course_dir / "meta.json")
+        if meta.get("generation_status") not in {"generating", "pending_review", "complete"}:
+            raise ValueError(f"migration verification failed: {course_dir / 'meta.json'} generation_status")
 
 
 def default_preferences(existing=None) -> dict:
@@ -110,6 +113,8 @@ def upgrade_course_files(courses_dir: Path) -> None:
             if not data:
                 continue
             data["schema_version"] = SCHEMA_VERSION
+            if filename == "meta.json":
+                data.setdefault("generation_status", "complete")
             write_json(path, data)
         params_path = course_dir / "params.json"
         params = read_json(params_path)
@@ -343,6 +348,7 @@ def migrate(profile_dir: Path) -> int:
             "skill_tree_enabled": old_course.get("skill_tree_enabled", True),
             "rpg_enabled": old_course.get("rpg_enabled", True),
             "rpg_preference_asked": old_course.get("rpg_preference_asked", False),
+            "generation_status": "complete",
             "storage_path": old_course.get("storage_path", str(profile_dir.parent / "courses" / slug)),
             "created_at": old_course.get("created_at", timestamp),
         })

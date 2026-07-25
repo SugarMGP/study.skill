@@ -16,7 +16,7 @@ CREATED=()
 if [ ! -f "$PROFILE_FILE" ]; then
     cat > "$PROFILE_FILE" << EOF
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "learner_id": "default",
   "created_at": "$(date -Iseconds)",
   "updated_at": "$(date -Iseconds)",

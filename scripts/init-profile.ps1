@@ -19,7 +19,7 @@ $created = @()
 if (-not (Test-Path -LiteralPath $profileFile)) {
     $now = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
     $profileJson = [ordered]@{
-        schema_version = 4
+        schema_version = 5
         learner_id = "default"
         created_at = $now
         updated_at = $now

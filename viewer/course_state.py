@@ -102,6 +102,8 @@ def build_initial_state(
         "skill_tree_enabled": False,
         "rpg_enabled": False,
     })
+    if state["meta"].get("generation_status") != "complete":
+        raise PermissionError("course generation is not complete")
     state["params"] = load_json_if_exists(course_state_dir / "params.json", {})
     state["concepts"] = load_json_if_exists(course_state_dir / "concepts.json", {"concepts": []})
     state["domain_tree"] = load_json_if_exists(course_state_dir / "domain-tree.json", {"nodes": {}, "enabled": False})
