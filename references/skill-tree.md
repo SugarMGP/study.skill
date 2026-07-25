@@ -159,6 +159,12 @@ Course-local nodes should also carry the minimum teaching metadata needed for de
 | `mastery_gate` | Required evidence tags before `mastered` | `{"recall":2,"apply":1,"explain":1,"min_correct":0.85}` |
 | `missing_evidence` | Gate evidence still missing | `["apply", "explain"]` |
 
+`missing_evidence` 只保存尚缺的证据标签名，允许使用 `recall`、`apply`、`explain`、`debug`、`review` 以及课程明确采用的其他 `mastery_tags`。不要写成 `apply:1`、`recall:2`，也不要把 `prerequisite` 当成证据；次数要求只放在 `mastery_gate`，前置锁定只由 `prerequisites` 和 `soft_gate` 判断。
+
+播放器可以把旧课程中带次数后缀的证据标签转换成可读文案，但这只是历史内容的读取兼容，生成或状态写入仍必须使用上面的规范格式。
+
+播放器中的技能树必须把状态转成可执行的下一步，不能直接罗列 `missing_evidence` 标签。`available`、`recommended` 和 `in_progress` 节点指向具体的第一篇未完成内容；`locked` 节点显示尚缺的前置模块；只有模块内容已经读完但掌握门仍缺证据时，才按 `mastery_gate` 显示带次数的掌握挑战。此时不能让学习者返回已经提交并锁定的旧练习；interactive 播放器要把新增挑战请求写入 `questions_for_llm`，agent 消费后按主线冻结规则在“内容补充”中添加挑战并带学习者打开。补充模块始终提供直接打开入口。
+
 ## Generating a Domain Tree from Broad Topics
 
 ### Step 1: Identify the domain

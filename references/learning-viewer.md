@@ -1,6 +1,6 @@
 # 本地课程播放器
 
-已生成课程后，本地课程播放器是默认学习入口。播放器能打开时，先让学习者在播放器里阅读、提交练习；播放器会在学习进度变化时自动保存浏览、作答和页面完成记录。聊天只负责交接、答疑、会后反馈和正式状态写入。
+已生成课程后，本地课程播放器是默认学习入口。播放器能打开时，先让学习者在播放器里阅读、提交练习；播放器会自动保存浏览和作答，学习者点击“完成本次学习”后才保存页面完成记录。聊天只负责交接、答疑、会后反馈和正式状态写入。
 
 只有播放器无法启动、必需文件缺失，或用户明确拒绝打开播放器时，才退回聊天教学。退回时必须说明具体原因，并继续读取当前模块或小节的 `content.md`，不能重新调研或凭记忆复述课程。
 
@@ -33,7 +33,7 @@ interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和 `scripts
 
 - 查看课程目录、当前章节、可展开小节、技能树和学习状态。
 - 渲染 Markdown、代码块、图片、公式和常用文本图表。
-- 自动记录看过的章节/小节、已读完页面和待问问题。
+- 自动记录看过的章节/小节、作答和待问问题；页面完成记录只在学习者点击“完成本次学习”后保存。
 - 给当前课程的到期复习项打 1-4 分；这个评分只用于复习调度。
 - 保存选择题、判断题和开放作答题的原始作答。
 - 题目必须先提交作答，之后才自动展开参考答案或解析。
@@ -55,6 +55,7 @@ interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和 `scripts
 | 普通正文 | Markdown | 面向用户，不写内部设计说明 |
 | 本地图片 | `![说明](images/a.png)` | 相对路径按当前 `content.md` 所在目录解析 |
 | 外部图片 | `![说明](https://...)` | 可以直接加载；失败时显示原链接 |
+| 公式 | 见 `courseware-format.md` 的 Markdown 与媒体规则 | 公式写法由课件格式规范统一定义 |
 | 流程/时序/状态图 | fenced code block with language `mermaid` | 默认图表格式 |
 | UML 图 | fenced code block with language `plantuml` 或 `puml` | 类图、组件图、部署图、时序图 |
 | 依赖图/DAG | fenced code block with language `graphviz` 或 `dot` | 知识依赖、图算法、系统依赖 |
@@ -83,12 +84,16 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 | source | 固定为 `study.skill.viewer`，用于识别记录来源 |
 | course_slug | 课程目录名 |
 | current | 播放器最后停留的模块、小节和内容文件 |
-| pages | 用户看过哪些章节/小节、打开次数、最后打开时间和自动完成时间 |
+| pages | 用户看过哪些章节/小节、打开次数、最后打开时间和最近一次确认完成时间 |
 | questions_for_llm | 当前待问问题列表；agent 回答后必须清空已回答项 |
 | review_summary | 复习评分摘要；评分本身已通过 record-review.py 写入 concepts.json |
 | exercises | 选择题、判断题和开放作答题的原始作答 |
 | legacy_checkpoints | 旧版 `study-checkpoint` 兼容记录；新课程不用 |
-| completions | 播放器自动记录的页面完成历史事件 |
+| completions | 学习者点击“完成本次学习”后写入的页面完成历史事件 |
+
+播放器只用 `question_added`、`question_removed` 增量事件维护待问队列，服务端拒绝旧版整队列快照事件。这样即使 agent 在播放器仍打开时清空了已回答问题，后来新增问题也不会把旧问题重新写回来；仍打开旧版页面的学习者需要刷新后再提交问题。
+
+页面浏览事件必须携带本次页面会话的开始时间。服务端仍记录晚到事件的浏览次数，但只有不早于当前页面会话的事件可以更新 `current`，避免快速切页时回退到旧页面；缺少会话时间的旧版页面需要刷新后再继续。
 
 练习一律由教学 agent 判断。不要为这个固定行为新增 `judgement_policy`、`requires_llm_judgement` 之类的策略字段；也禁止在 `exercises`、`legacy_checkpoints` 里保存 `correct`、 `passed`、`self_assessed` 这类自评终态。
 
@@ -108,7 +113,7 @@ interactive 模式下，页面会把浏览、作答、复习评分摘要和页�
 
 ## 会话结束处理
 
-用户读完页面并提交本页练习后，播放器会自动写入完成事件。用户回来要求反馈时：
+用户读完页面、提交本页练习并点击“完成本次学习”后，播放器会写入完成事件。用户回来要求反馈时：
 
 1. 读取当前课程的 `learning-record.json`，不要再从 `tmp/viewer-sessions/` 查最新文件。
 2. 先回答 `questions_for_llm`。

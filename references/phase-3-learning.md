@@ -56,10 +56,10 @@ When the user says "继续学习", "继续", "下一节", or similar, and course
 
 1. Load `references/learning-viewer.md`.
 2. Follow `learning-viewer.md` for startup mode, fallback conditions, and the short handoff message.
-3. If the viewer starts successfully, make the viewer the primary learning surface. Do not continue with the full Core Teaching Loop in chat for the same lesson.
-4. While the viewer is open, answer targeted questions from the learner, but do not re-teach the whole section unless the learner asks for a chat explanation or the viewer is unusable.
-5. Fall back to chat teaching only with a concrete reason, then continue from the current module or section `content.md`.
-6. Choose the next node from `in_progress`, then `available` / `unlockable` in syllabus order.
+3. Choose the next node from `in_progress`, then `available` in syllabus order. Only when neither status exists, choose the first `unlockable` node by prerequisite chain. Find that node's first unfinished section, then start the viewer with explicit `--module` and `--section` arguments when the section exists; for a module-only course page, pass only `--module`. Do not rely on `learning-record.json.current`, which records the last page the viewer displayed and may still point to the just-completed section.
+4. If the viewer starts successfully, make the viewer the primary learning surface. Do not continue with the full Core Teaching Loop in chat for the same lesson.
+5. While the viewer is open, answer targeted questions from the learner, but do not re-teach the whole section unless the learner asks for a chat explanation or the viewer is unusable.
+6. Fall back to chat teaching only with a concrete reason, then continue from the current module or section `content.md`.
 7. Do not enter `locked` nodes automatically. If the learner insists, explain the missing prerequisite and mark the new node `in_progress`, not `mastered`.
 8. External docs/source lookup is allowed only when local content is missing, the user asks latest/API/version-specific details, or a runnable/API claim needs verification.
 

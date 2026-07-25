@@ -165,7 +165,11 @@ class ViewerHandler(SimpleHTTPRequestHandler):
             timestamp = now_iso()
             event = str(body.get("event") or "")
             record = load_learning_record(self.context.learning_record_path, self.context.course_slug)
-            record = merge_learning_record_event(record, event, payload, timestamp)
+            try:
+                record = merge_learning_record_event(record, event, payload, timestamp)
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, 400)
+                return
             write_learning_record(self.context.learning_record_path, record)
             self._send_json({"ok": True, "path": str(self.context.learning_record_path), "record": record})
         except Exception as exc:

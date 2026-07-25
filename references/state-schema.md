@@ -279,7 +279,7 @@ Agent 必须在以下时机通过 `write-state.py` 写入状态变更：
 
 ## learning-record.json（课程级学习记录）
 
-由本地播放器写入。它记录学习者实际看过哪些页面、提交了哪些题、留下哪些问题、以及播放器自动记录的页面完成事件。它不是掌握度结论；agent 必须读取记录、判断证据，再更新 `meta.json`、`domain-tree.json`、`concepts.json` 或 XP。
+由本地播放器写入。它记录学习者实际看过哪些页面、提交了哪些题、留下哪些问题，以及学习者点击“完成本次学习”后产生的页面完成事件。它不是掌握度结论；agent 必须读取记录、判断证据，再更新 `meta.json`、`domain-tree.json`、`concepts.json` 或 XP。
 
 ```json
 {
@@ -358,7 +358,7 @@ Agent 必须在以下时机通过 `write-state.py` 写入状态变更：
 | exercises | array | ✅ | [] | `study-*` 题目的原始作答证据 |
 | review_summary | object | ✅ | 空摘要 | 当前课程复习评分摘要；评分已经写入 `concepts.json` |
 | legacy_checkpoints | array | ✅ | [] | 旧版 `study-checkpoint` 兼容记录 |
-| completions | array | ✅ | [] | 播放器自动记录的页面完成事件 |
+| completions | array | ✅ | [] | 学习者点击“完成本次学习”后记录的页面完成事件 |
 
 `exercises` 只保存原始作答、参考内容和 `mastery_tags`。不要保存 `correct`、`passed`、`score` 这类终态字段；判断职责在 agent。
 

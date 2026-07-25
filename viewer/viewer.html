@@ -13,6 +13,7 @@
 <body class="layui-layout-body">
 <div class="layui-layout layui-layout-admin viewer-shell">
   <div class="layui-header viewer-header">
+    <button type="button" class="viewer-icon-btn viewer-nav-toggle" id="nav-toggle-btn" aria-label="打开课程目录" aria-controls="course-sidebar" aria-expanded="false" title="课程目录" onclick="toggleDrawer('nav')"><i class="layui-icon layui-icon-spread-left"></i></button>
     <div class="layui-logo viewer-logo">课程播放器</div>
     <div class="viewer-breadcrumb">
       <span class="layui-breadcrumb" lay-separator="/" id="breadcrumb">loading...</span>
@@ -20,11 +21,12 @@
     <div class="viewer-header-actions">
       <span class="layui-badge-rim viewer-hidden" id="rpg-status"></span>
       <span class="layui-badge layui-bg-orange viewer-hidden" id="review-badge"></span>
+      <button type="button" class="viewer-icon-btn viewer-panel-toggle" id="panel-toggle-btn" aria-label="打开学习面板" aria-controls="learning-sidebar" aria-expanded="false" title="学习面板" onclick="toggleDrawer('panel')"><i class="layui-icon layui-icon-more-vertical"></i></button>
       <button type="button" class="layui-btn layui-btn-primary layui-border layui-btn-sm" id="theme-btn" onclick="toggleTheme()">深色</button>
     </div>
   </div>
 
-  <div class="layui-side viewer-side">
+  <div class="layui-side viewer-side" id="course-sidebar" tabindex="-1">
     <div class="layui-side-scroll">
       <div class="viewer-side-title">课程目录</div>
       <ul class="layui-nav layui-nav-tree course-nav" id="nav-list" lay-filter="course-nav">
@@ -43,7 +45,7 @@
     </main>
   </div>
 
-  <aside class="viewer-aside">
+  <aside class="viewer-aside" id="learning-sidebar" tabindex="-1">
     <div class="layui-card viewer-card viewer-overview-card">
       <div class="layui-card-header">学习概览</div>
       <div class="layui-card-body" id="learning-overview"><div class="loading">加载中...</div></div>
@@ -67,13 +69,15 @@
       <div class="layui-card-body" id="review-panel"><div class="loading">加载中...</div></div>
     </div>
   </aside>
+  <button type="button" class="viewer-drawer-backdrop" id="drawer-backdrop" aria-label="关闭侧栏" onclick="closeDrawers()"></button>
 </div>
 
 <script src="https://unpkg.com/layui@2.13.7/dist/layui.js" onload="this.dataset.loaded='true'" onerror="window.__layuiLoadError=true"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="/assets/viewer.js"></script>

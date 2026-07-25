@@ -78,21 +78,40 @@ def merge_learning_record_event(record: dict, event: str, payload: dict, timesta
     section = payload.get("section")
     content_file = payload.get("content_file")
 
-    if module or section or content_file:
+    page_started_at = payload.get("started_at") if event == "page_view" else None
+    if event == "page_view" and not page_started_at:
+        raise ValueError("page_view requires started_at")
+    current_updated_at = (record.get("current") or {}).get("updated_at")
+    is_latest_page = event == "page_view" and (
+        not current_updated_at or (
+            datetime.fromisoformat(str(page_started_at).replace("Z", "+00:00"))
+            >= datetime.fromisoformat(str(current_updated_at).replace("Z", "+00:00"))
+        )
+    )
+    if event == "page_view" and is_latest_page and (module or section or content_file):
         record["current"] = {
             "module": module,
             "section": section,
             "content_file": content_file,
-            "updated_at": timestamp,
+            "updated_at": page_started_at or timestamp,
         }
 
     if event == "page_view":
         merge_page_view(record, payload, timestamp)
-    elif event == "questions_snapshot":
-        questions = payload.get("questions")
-        if not isinstance(questions, list):
-            raise ValueError("questions_snapshot requires questions list")
-        record["questions_for_llm"] = [str(item) for item in questions if str(item).strip()]
+    elif event == "question_added":
+        question = str(payload.get("question") or "").strip()
+        if not question:
+            raise ValueError("question_added requires question")
+        questions = record.setdefault("questions_for_llm", [])
+        if question not in questions:
+            questions.append(question)
+    elif event == "question_removed":
+        question = str(payload.get("question") or "").strip()
+        if not question:
+            raise ValueError("question_removed requires question")
+        record["questions_for_llm"] = [
+            item for item in record.setdefault("questions_for_llm", []) if item != question
+        ]
     elif event == "exercise_submitted":
         exercise = dict(payload.get("exercise") or {})
         if not exercise.get("id"):
@@ -156,7 +175,18 @@ def merge_completion(record: dict, payload: dict, timestamp: str) -> None:
         "exercise_ids": payload.get("exercise_ids", []),
         "review_rated_count": payload.get("review_rated_count", 0),
     }
-    record.setdefault("completions", []).append(completion)
+    completions = record.setdefault("completions", [])
+    existing_completion = next((item for item in completions if (
+        completion["started_at"]
+        and item.get("module") == completion["module"]
+        and item.get("section") == completion["section"]
+        and item.get("content_file") == completion["content_file"]
+        and item.get("started_at") == completion["started_at"]
+    )), None)
+    if existing_completion:
+        existing_completion.update(completion)
+    else:
+        completions.append(completion)
     for page in record.setdefault("pages", []):
         if (
             page.get("module") == completion["module"]

@@ -19,7 +19,6 @@ from http.server import HTTPServer
 from pathlib import Path
 
 from handler import ViewerContext, make_handler
-from records import SCHEMA_VERSION, load_learning_record, now_iso, write_learning_record
 from utils import validate_slug
 
 
@@ -72,16 +71,6 @@ def validate_paths(learning_root: Path, course_slug: str, viewer_dir: Path) -> N
             sys.exit(1)
 
 
-def prepare_learning_record(learning_record_path: Path, course_slug: str, mode: str) -> None:
-    if mode != "interactive":
-        return
-    timestamp = now_iso()
-    record = load_learning_record(learning_record_path, course_slug)
-    record["schema_version"] = SCHEMA_VERSION
-    record["updated_at"] = timestamp
-    write_learning_record(learning_record_path, record)
-
-
 def main() -> None:
     args = parse_args()
     viewer_dir = Path(__file__).resolve().parent
@@ -98,8 +87,6 @@ def main() -> None:
         print(f"  Expected in: {script_dir}", file=sys.stderr)
         print("  Reinstall or repair the study skill files before using interactive mode.", file=sys.stderr)
         sys.exit(1)
-
-    prepare_learning_record(learning_record_path, course_slug, args.mode)
 
     session_token = str(uuid.uuid4())
     context = ViewerContext(

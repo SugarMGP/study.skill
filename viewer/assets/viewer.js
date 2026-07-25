@@ -8,20 +8,52 @@
   let CHECKPOINTS = [];
   let TOKEN = "";
   let SESSION_STARTED_AT = new Date().toISOString();
-  let LAST_PAGE_KEY = "";
+  let SESSION_QUESTION_COUNT = 0;
+  let SESSION_REVIEW_RATED_COUNT = 0;
+  let SESSION_PENDING_REVIEW_COUNT = 0;
+  let PENDING_QUESTION_SAVE = Promise.resolve();
+  let PENDING_QUESTION_SAVE_SESSION = "";
+  let LAST_PAGE_SESSION_KEY = "";
+  let PAGE_VIEW_PENDING_SESSION = "";
+  let DRAWER_TRIGGER = null;
   const COMPLETED_PAGE_KEYS = new Set();
+  const SESSION_COMPLETED_PAGE_KEYS = new Set();
+  const SESSION_SUBMITTED_EXERCISE_IDS = new Set();
   const EXPANDED_MODULES = new Set();
+  const SUPPLEMENT_MODULE_ID = "99-content-supplements";
   let isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const DIAGRAM_LANGS = new Set([
     "plantuml", "puml", "graphviz", "dot", "d2", "vega-lite", "vegalite",
     "vega", "svgbob", "pikchr", "structurizr"
   ]);
+  const COURSE_MATH_DELIMITERS = [
+    { left: "$$", right: "$$", display: true },
+    { left: "\\[", right: "\\]", display: true },
+    { left: "\\(", right: "\\)", display: false }
+  ];
   const SKILL_TREE_STATUS = {
     mastered: { label: "已掌握", badge: "viewer-soft-badge is-success" },
     in_progress: { label: "进行中", badge: "viewer-soft-badge" },
     recommended: { label: "推荐", badge: "viewer-soft-badge" },
+    unlockable: { label: "可挑战", badge: "viewer-soft-badge" },
     available: { label: "可学习", badge: "viewer-soft-badge is-muted" },
     locked: { label: "未解锁", badge: "viewer-soft-badge is-muted" }
+  };
+  const EVIDENCE_LABELS = {
+    recall: "独立回忆",
+    apply: "独立应用",
+    explain: "自主解释",
+    debug: "纠错",
+    review: "延迟复习",
+    analyze: "分析与推理",
+    interview: "面试表达",
+    exam: "应试作答",
+    practice: "练习",
+    misconception: "易错点纠正"
+  };
+  const ACHIEVEMENT_LABELS = {
+    first_module: "首章通关",
+    foundation_complete: "基础层完成"
   };
 
   function tokenFromHash() {
@@ -73,15 +105,16 @@
     }
     if (token === TOKEN) return;
     TOKEN = token;
-    LAST_PAGE_KEY = "";
+    LAST_PAGE_SESSION_KEY = "";
     fetchInitialState(token);
   }
 
   async function fetchInitialState(token) {
     try {
       const resp = await fetch("/api/initial-state?token=" + encodeURIComponent(token));
-      if (!resp.ok) throw new Error("HTTP " + resp.status + ": " + resp.statusText);
-      STATE = await resp.json();
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || "HTTP " + resp.status + ": " + resp.statusText);
+      STATE = data;
       renderAll();
     } catch(e) {
       showError("加载初始状态失败: " + e.message);
@@ -213,6 +246,12 @@
       return;
     }
     hydrateLearningRecord();
+    SESSION_STARTED_AT = new Date().toISOString();
+    SESSION_QUESTION_COUNT = 0;
+    SESSION_REVIEW_RATED_COUNT = 0;
+    SESSION_PENDING_REVIEW_COUNT = 0;
+    PENDING_QUESTION_SAVE_SESSION = "";
+    SESSION_SUBMITTED_EXERCISE_IDS.clear();
     renderQuestions();
     renderBreadcrumb();
     renderRPG();
@@ -299,13 +338,13 @@
       const lockRowClass = isLocked ? " is-locked" : "";
       const lockLinkClass = isLocked ? " is-disabled" : "";
       const moduleAction = isLocked ? "showLockedModule()" : ("switchModule(" + escapeJsArgAttr(mod.id) + ")");
-      const progress = moduleProgress[mod.id] || { viewed: 0, total: 1, percent: 0 };
+      const progress = moduleProgress[mod.id] || { completed: 0, total: 1, percent: 0 };
       html += '<li class="' + cls + '" data-module-id="' + escapeAttr(mod.id) + '"><div class="module-row' + currentRowClass + lockRowClass + '"><a class="module-link' + lockLinkClass +
         '" href="javascript:;" onclick="' + moduleAction +
         '"><div class="module-main"><div class="module-head"><span class="status-dot ' + statusClass + '"></span><span class="module-title">' +
-        escapeHtml(label) + '</span></div><div class="module-progress" title="已看 ' + progress.viewed + '/' + progress.total +
+        escapeHtml(label) + '</span></div><div class="module-progress" title="已完成 ' + progress.completed + '/' + progress.total +
         '"><span class="module-progress-track"><span class="module-progress-fill" style="width:' + progress.percent +
-        '%"></span></span><span class="module-progress-text">' + progress.viewed + '/' + progress.total + "</span></div></div></a>";
+        '%"></span></span><span class="module-progress-text">' + progress.completed + '/' + progress.total + "</span></div></div></a>";
       if ((mod.sections || []).length > 0) {
         html += '<button type="button" class="module-toggle" aria-label="展开或收起小节"><i class="layui-icon layui-icon-down"></i></button>';
       }
@@ -354,6 +393,17 @@
     return pages;
   }
 
+  function mainCourseLearningPages() {
+    return expectedLearningPages().filter(page => page.module !== SUPPLEMENT_MODULE_ID);
+  }
+
+  function isCurrentLearningPage() {
+    const currentKey = pageKeyFromParts(STATE.current_module, STATE.current_section, STATE.current_content_file);
+    return expectedLearningPages().some(page =>
+      pageKeyFromParts(page.module, page.section, page.content_file) === currentKey
+    );
+  }
+
   function completedLearningPageKeys() {
     const pages = ((STATE.learning_record || {}).pages || []);
     const completedPages = new Set();
@@ -372,11 +422,11 @@
     for (const mod of STATE.modules || []) {
       const expected = expectedPagesForModule(mod);
       const total = Math.max(1, expected.length);
-      const viewed = expected.filter(page => completedPages.has(pageKeyFromParts(page.module, page.section, page.content_file))).length;
+      const completed = expected.filter(page => completedPages.has(pageKeyFromParts(page.module, page.section, page.content_file))).length;
       progress[mod.id] = {
-        viewed: viewed,
+        completed: completed,
         total: total,
-        percent: Math.round((viewed / total) * 100)
+        percent: Math.round((completed / total) * 100)
       };
     }
     return progress;
@@ -405,6 +455,111 @@
     return String(id || "").replace(/^\d{2}-/, "").replace(/-/g, " ");
   }
 
+  function skillTreeStatus(status) {
+    return SKILL_TREE_STATUS[status] || SKILL_TREE_STATUS.available;
+  }
+
+  function evidenceLabel(tag) {
+    return EVIDENCE_LABELS[tag] || labelFromId(tag) || "其他证据";
+  }
+
+  function learningPageTitle(mod, page) {
+    if (page.section) {
+      const section = (mod.sections || []).find(item => item.id === page.section);
+      if (section) return section.title || labelFromId(section.id);
+    }
+    return mod.name || labelFromId(mod.id);
+  }
+
+  function masteryChallengeLabel(tag, node) {
+    const gate = node.mastery_gate || {};
+    const parts = String(tag).split(":", 2);
+    const evidence = parts[0];
+    const legacyCount = Number(parts[1] || 0);
+    const count = Math.max(1, Number(gate[evidence] || legacyCount || 1));
+    const labels = {
+      recall: "不看资料完成 " + count + " 次回忆",
+      apply: "独立完成 " + count + " 道应用题",
+      explain: "用自己的话讲清 " + count + " 个核心概念",
+      debug: "纠正 " + count + " 个典型错误",
+      review: "完成 " + count + " 次延迟复习",
+      analyze: "完成 " + count + " 次分析推理",
+      interview: "完成 " + count + " 次面试表达",
+      exam: "完成 " + count + " 道应试题"
+    };
+    return labels[evidence] || "完成 " + count + " 次" + evidenceLabel(evidence);
+  }
+
+  function skillNodeNextStep(id, node, status) {
+    const treeNodes = ((STATE.domain_tree || {}).nodes) || {};
+    if (status === "mastered") return { kind: "complete", label: "掌握证据已通过" };
+    if (status === "locked") {
+      const prerequisites = (node.prerequisites || []).filter(item => (treeNodes[item] || {}).status !== "mastered");
+      const required = prerequisites.length > 0 ? prerequisites : (node.prerequisites || []);
+      const names = required.map(item => (treeNodes[item] || {}).name || labelFromId(item));
+      return {
+        kind: "note",
+        label: names.length > 0 ? "先完成「" + names.join("、") + "」后解锁" : "先完成前置模块后解锁"
+      };
+    }
+
+    const moduleId = node.module || id;
+    const mod = (STATE.modules || []).find(item => item.id === moduleId);
+    if (!mod) return { kind: "note", label: "课程模块尚未生成" };
+    const pages = expectedPagesForModule(mod);
+    if (pages.length === 0) return { kind: "note", label: "暂无可学习内容" };
+    if (id === SUPPLEMENT_MODULE_ID) {
+      return { kind: "navigate", label: "打开内容补充", page: pages[0] };
+    }
+
+    const completedPages = completedLearningPageKeys();
+    const unfinished = pages.find(page => !completedPages.has(pageKeyFromParts(page.module, page.section, page.content_file)));
+    if (unfinished) {
+      const verb = status === "in_progress" ? "继续" : (status === "unlockable" ? "挑战" : "开始");
+      return { kind: "navigate", label: verb + "「" + learningPageTitle(mod, unfinished) + "」", page: unfinished };
+    }
+
+    const missing = Array.isArray(node.missing_evidence) ? node.missing_evidence : [];
+    if (missing.length > 0) {
+      return {
+        kind: "challenge",
+        label: "申请掌握挑战",
+        detail: "掌握挑战：" + missing.map(tag => masteryChallengeLabel(tag, node)).join("、"),
+        node_name: node.name || mod.name || labelFromId(id)
+      };
+    }
+    return { kind: "note", label: "学习记录已齐，等待掌握度更新" };
+  }
+
+  function renderSkillNodeStep(step) {
+    if (step.kind === "complete") {
+      return '<div class="skill-map-note is-complete">' + escapeHtml(step.label) + "</div>";
+    }
+    if (step.kind === "note") {
+      return '<div class="skill-map-note">' + escapeHtml(step.label) + "</div>";
+    }
+    if (step.kind === "challenge") {
+      const detail = '<div class="skill-map-note">' + escapeHtml(step.detail) + "</div>";
+      if (STATE.server_mode !== "interactive") {
+        return detail + '<div class="skill-map-note">回到聊天后发起这项挑战</div>';
+      }
+      const action = "requestMasteryChallenge(" + escapeJsArgAttr(step.node_name) + "," + escapeJsArgAttr(step.detail) + ")";
+      return detail + '<button type="button" class="skill-map-next" onclick="' + action + '" aria-label="' + escapeAttr(step.label) + '">' +
+        '<span>' + escapeHtml(step.label) + '</span><i class="layui-icon layui-icon-right"></i></button>';
+    }
+    const page = step.page;
+    const action = page.section
+      ? "switchSection(" + escapeJsArgAttr(page.module) + "," + escapeJsArgAttr(page.section) + ")"
+      : "switchModule(" + escapeJsArgAttr(page.module) + ")";
+    return '<button type="button" class="skill-map-next" onclick="' + action + '" aria-label="' + escapeAttr(step.label) + '">' +
+      '<span>' + escapeHtml(step.label) + '</span><i class="layui-icon layui-icon-right"></i></button>';
+  }
+
+  function masteryChallengeQuestion(nodeName, detail) {
+    const requirement = String(detail || "").replace(/^掌握挑战：/, "");
+    return "请在内容补充中为「" + nodeName + "」添加掌握挑战：" + requirement + "，并带我开始。";
+  }
+
   function currentModuleLabel() {
     const modules = STATE.modules || [];
     const current = STATE.current_module || "";
@@ -414,23 +569,28 @@
 
   function renderSkillTree() {
     const tree = STATE.domain_tree || {};
-    if (!tree.enabled || !tree.nodes || Object.keys(tree.nodes).length === 0) return;
+    const meta = STATE.meta || {};
     const section = document.getElementById("skill-tree-section");
+    if (!meta.skill_tree_enabled || !tree.nodes || Object.keys(tree.nodes).length === 0) {
+      section.classList.add("viewer-hidden");
+      return;
+    }
     section.classList.remove("viewer-hidden");
     const el = document.getElementById("skill-tree");
     el.className = "skill-tree-host";
     const items = Object.entries(tree.nodes).map(([id, node]) => {
       const status = node.status || "available";
-      const statusMeta = SKILL_TREE_STATUS[status] || SKILL_TREE_STATUS.available;
+      const statusMeta = skillTreeStatus(status);
       const progress = Math.max(0, Math.min(100, Number(node.progress || 0)));
       const name = (node.name || id).replace(/^\d{2}-/, "").replace(/-/g, " ");
+      const nextStep = renderSkillNodeStep(skillNodeNextStep(id, node, status));
       return '<div class="skill-map-item is-' + escapeAttr(status) + '">' +
         '<span class="skill-map-dot"></span>' +
         '<div class="skill-map-body">' +
         '<div class="skill-map-head"><span class="skill-map-name">' + escapeHtml(name) + '</span>' +
         '<span class="skill-map-status">' + statusMeta.label + (progress ? " " + progress + "%" : "") + '</span></div>' +
         '<div class="skill-map-bar"><span class="skill-map-fill" style="width:' + progress + '%"></span></div>' +
-        '</div></div>';
+        nextStep + '</div></div>';
     });
     el.innerHTML = items.join("");
   }
@@ -452,12 +612,15 @@
         html += renderStudyBlock(part.lang, part.content);
       }
     }
-    el.innerHTML = '<div class="markdown-body">' + html + "</div>";
+    const completionAction = STATE.server_mode === "interactive" && isCurrentLearningPage()
+      ? '<section class="session-finish" id="session-finish"><div><div class="session-finish-title">本页学完了吗？</div><div class="session-finish-note" id="session-finish-note" aria-live="polite">正在准备学习记录...</div></div><button type="button" class="layui-btn session-finish-btn" id="finish-session-btn" onclick="finishCurrentPage()" disabled>完成本次学习</button></section>'
+      : "";
+    el.innerHTML = '<article class="markdown-body">' + html + "</article>" + completionAction;
     await postProcessContent(el);
     restoreSubmittedExercises(el);
     renderLayuiCodeBlocks(el);
     rerenderLayui();
-    maybeRecordPageCompletion();
+    updateCompletionAction();
   }
 
   function restoreSubmittedExercises(root) {
@@ -522,7 +685,21 @@
   }
 
   function renderMarkdown(md) {
-    return marked.parse(md);
+    const delimiters = [
+      ["\\[", "STUDY_MATH_DISPLAY_OPEN"],
+      ["\\]", "STUDY_MATH_DISPLAY_CLOSE"],
+      ["\\(", "STUDY_MATH_INLINE_OPEN"],
+      ["\\)", "STUDY_MATH_INLINE_CLOSE"]
+    ];
+    let protectedMarkdown = md;
+    for (const [delimiter, placeholder] of delimiters) {
+      protectedMarkdown = protectedMarkdown.split(delimiter).join(placeholder);
+    }
+    let html = marked.parse(protectedMarkdown);
+    for (const [delimiter, placeholder] of delimiters) {
+      html = html.split(placeholder).join(delimiter);
+    }
+    return html;
   }
 
   function renderDiagramBlock(lang, code) {
@@ -784,7 +961,7 @@
       }
     });
     try {
-      renderMathInElement(el);
+      renderCourseMath(el);
     } catch(e) {}
     el.querySelectorAll("img").forEach(img => {
       const src = img.getAttribute("src") || "";
@@ -835,7 +1012,15 @@
     return "/file/" + parts.map(encodeURIComponent).join("/");
   }
 
-  function renderMathInElement(el) {
+  function renderCourseMath(el) {
+    if (typeof window.renderMathInElement === "function") {
+      window.renderMathInElement(el, {
+        delimiters: COURSE_MATH_DELIMITERS,
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+        throwOnError: false
+      });
+      return;
+    }
     el.querySelectorAll("code").forEach(code => {
       const text = code.textContent;
       if (text.startsWith("$$") && text.endsWith("$$")) {
@@ -852,25 +1037,53 @@
 
   function renderLearningOverview() {
     const current = STATE.current_module;
-    const modules = STATE.modules || [];
     const completedPages = completedLearningPageKeys();
-    const expectedPages = expectedLearningPages();
+    const expectedPages = mainCourseLearningPages();
     const completedPageCount = expectedPages.filter(page => completedPages.has(pageKeyFromParts(page.module, page.section, page.content_file))).length;
-    const learnableModules = modules.filter(mod => expectedPagesForModule(mod).length > 0);
-    const completedModuleCount = learnableModules.filter(mod => {
-      const expected = expectedPagesForModule(mod);
-      return expected.length > 0 && expected.every(page => completedPages.has(pageKeyFromParts(page.module, page.section, page.content_file)));
-    }).length;
+    const tree = STATE.domain_tree || {};
+    const nodes = Object.entries(tree.nodes || {})
+      .filter(([id]) => id !== SUPPLEMENT_MODULE_ID)
+      .map(([, node]) => node);
+    const masteredNodeCount = nodes.filter(node => node.status === "mastered").length;
     const el = document.getElementById("learning-overview");
     if (!current) {
       el.innerHTML = '<div class="viewer-muted">暂无学习进度</div>';
       return;
     }
     let html = '<div class="overview-metrics">';
-    html += '<div class="overview-metric"><span class="value">' + completedModuleCount + "/" + learnableModules.length + '</span><span class="label">已学完章节</span></div>';
-    html += '<div class="overview-metric"><span class="value">' + completedPageCount + "/" + expectedPages.length + '</span><span class="label">已学完知识点</span></div>';
+    html += '<div class="overview-metric"><span class="value">' + completedPageCount + "/" + expectedPages.length + '</span><span class="label">已完成学习页</span></div>';
+    html += (STATE.meta || {}).skill_tree_enabled && nodes.length > 0
+      ? '<div class="overview-metric"><span class="value">' + masteredNodeCount + "/" + nodes.length + '</span><span class="label">已通过掌握节点</span></div>'
+      : '<div class="overview-metric"><span class="value">--</span><span class="label">技能树已关闭</span></div>';
     html += "</div>";
+    const rpg = tree.rpg;
+    if ((STATE.meta || {}).rpg_enabled && rpg) {
+      const xp = Math.max(0, Number(rpg.xp || 0));
+      const levelProgress = Math.round(((xp % 500) / 500) * 100);
+      const quests = Array.isArray(rpg.quests) ? rpg.quests.map(rpgItemLabel).filter(Boolean).slice(0, 2) : [];
+      const achievements = Array.isArray(rpg.achievements) ? rpg.achievements.map(achievementLabel).filter(Boolean).slice(-3) : [];
+      html += '<div class="rpg-overview"><div class="rpg-overview-head"><span><strong>Lv.' + (rpg.level || 1) + "</strong> " + escapeHtml(rpg.title || "学徒") + '</span><span>' + xp + ' XP</span></div>' +
+        '<div class="rpg-xp-track" role="progressbar" aria-label="本级经验进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + levelProgress + '"><span style="width:' + levelProgress + '%"></span></div>';
+      if (quests.length > 0) {
+        html += '<div class="rpg-next"><span class="rpg-label">当前任务</span>' + quests.map(item => '<div class="rpg-list-item">' + escapeHtml(item) + '</div>').join("") + '</div>';
+      }
+      if (achievements.length > 0) {
+        html += '<div class="rpg-achievements"><span class="rpg-label">最近成就</span><div>' + achievements.map(item => '<span class="achievement-chip">' + escapeHtml(item) + '</span>').join("") + '</div></div>';
+      }
+      html += "</div>";
+    }
     el.innerHTML = html;
+  }
+
+  function rpgItemLabel(item) {
+    if (typeof item === "string") return item;
+    if (!item || typeof item !== "object") return "";
+    return item.title || item.name || item.label || item.description || item.id || "";
+  }
+
+  function achievementLabel(item) {
+    const label = rpgItemLabel(item);
+    return ACHIEVEMENT_LABELS[label] || label.replace(/_/g, " ");
   }
 
   function renderReviewPanel() {
@@ -912,8 +1125,11 @@
   }
 
   window.rateReview = async function(button, conceptId, rating) {
+    const sessionKey = currentSessionPageKey();
     const container = document.getElementById("review-" + conceptId);
     if (!container) return;
+    beginReviewForSession(sessionKey);
+    updateCompletionAction();
     const feedback = container.querySelector(".review-feedback");
     const buttons = container.querySelectorAll("button[data-rating]");
     const oldText = button ? button.textContent : "";
@@ -943,6 +1159,7 @@
           rating: rating,
           next_review: concept.next_review || ""
         });
+        countReviewForSession(sessionKey);
         feedback.className = "review-feedback";
         feedback.textContent = "已记录：" + ratingLabel(rating) + (concept.next_review ? "，下次 " + concept.next_review : "");
         notify("复习记录已保存", "success");
@@ -964,6 +1181,8 @@
         b.classList.remove("is-control-disabled");
       });
       if (button) button.textContent = oldText;
+    } finally {
+      if (finishReviewForSession(sessionKey)) updateCompletionAction();
     }
   };
 
@@ -1000,18 +1219,56 @@
     return pageKeyFromParts(page.module, page.section, page.content_file);
   }
 
+  function currentSessionPageKey() {
+    return currentPageKey() + "|" + SESSION_STARTED_AT;
+  }
+
+  function hasCurrentPageView() {
+    return LAST_PAGE_SESSION_KEY === currentSessionPageKey();
+  }
+
+  function countReviewForSession(sessionKey) {
+    if (sessionKey !== currentSessionPageKey()) return false;
+    SESSION_REVIEW_RATED_COUNT += 1;
+    return true;
+  }
+
+  function beginReviewForSession(sessionKey) {
+    if (sessionKey !== currentSessionPageKey()) return false;
+    SESSION_PENDING_REVIEW_COUNT += 1;
+    return true;
+  }
+
+  function finishReviewForSession(sessionKey) {
+    if (sessionKey !== currentSessionPageKey()) return false;
+    SESSION_PENDING_REVIEW_COUNT = Math.max(0, SESSION_PENDING_REVIEW_COUNT - 1);
+    return true;
+  }
+
   function recordPageView() {
     if (!STATE || STATE.server_mode !== "interactive") return;
     const key = currentPageKey();
-    if (!key || key === LAST_PAGE_KEY) return;
-    LAST_PAGE_KEY = key;
-    saveLearningRecord("page_view", currentPagePayload())
+    const sessionKey = currentSessionPageKey();
+    if (!key || hasCurrentPageView() || PAGE_VIEW_PENDING_SESSION === sessionKey) return;
+    PAGE_VIEW_PENDING_SESSION = sessionKey;
+    updateCompletionAction();
+    const payload = currentPagePayload();
+    payload.started_at = SESSION_STARTED_AT;
+    saveLearningRecord("page_view", payload)
       .then(() => {
+        if (sessionKey !== currentSessionPageKey()) return;
+        LAST_PAGE_SESSION_KEY = sessionKey;
+        if (PAGE_VIEW_PENDING_SESSION === sessionKey) PAGE_VIEW_PENDING_SESSION = "";
         renderNav();
         renderLearningOverview();
-        maybeRecordPageCompletion();
+        updateCompletionAction();
       })
-      .catch(e => notify(e.message, "error"));
+      .catch(e => {
+        if (sessionKey !== currentSessionPageKey()) return;
+        if (PAGE_VIEW_PENDING_SESSION === sessionKey) PAGE_VIEW_PENDING_SESSION = "";
+        updateCompletionAction();
+        notify(e.message, "error");
+      });
   }
 
   function currentPageExerciseIds() {
@@ -1026,53 +1283,109 @@
       .map(item => String(item.id));
   }
 
-  function allCurrentExercisesSubmitted() {
-    const pageExerciseIds = currentPageExerciseIds();
-    if (pageExerciseIds.length === 0) return true;
-    const submitted = new Set(submittedCurrentExerciseIds().concat(
+  function submittedCurrentEvidenceIds() {
+    return new Set(submittedCurrentExerciseIds().concat(
       CHECKPOINTS
         .filter(item => item.module === STATE.current_module && (item.section || null) === (STATE.current_section || null))
         .map(item => String(item.id))
     ));
+  }
+
+  function allCurrentExercisesSubmitted() {
+    const pageExerciseIds = currentPageExerciseIds();
+    if (pageExerciseIds.length === 0) return true;
+    const submitted = submittedCurrentEvidenceIds();
     return pageExerciseIds.every(id => submitted.has(String(id)));
   }
 
-  function currentPageRecorded() {
+  function updateCompletionAction() {
+    const button = document.getElementById("finish-session-btn");
+    const note = document.getElementById("session-finish-note");
+    if (!button || !note || !STATE) return;
     const key = currentPageKey();
-    return ((STATE.learning_record || {}).pages || []).some(page =>
-      pageKeyFromParts(page.module, page.section, page.content_file) === key
-    );
+    if (SESSION_COMPLETED_PAGE_KEYS.has(currentSessionPageKey())) {
+      button.disabled = true;
+      button.textContent = "本次已保存";
+      note.textContent = "学习证据已保存，掌握度和 XP 仍由作答、解释与复习结果决定。";
+      return;
+    }
+    if (!hasCurrentPageView()) {
+      const pageViewPending = PAGE_VIEW_PENDING_SESSION === currentSessionPageKey();
+      button.disabled = pageViewPending;
+      button.textContent = pageViewPending ? "准备中" : "重试准备";
+      note.textContent = pageViewPending ? "正在保存本页打开记录..." : "本页打开记录保存失败，点击重试。";
+      return;
+    }
+    if (SESSION_PENDING_REVIEW_COUNT > 0) {
+      button.disabled = true;
+      button.textContent = "保存中";
+      note.textContent = "正在保存本页复习评分...";
+      return;
+    }
+    const submitted = submittedCurrentEvidenceIds();
+    const pendingCount = currentPageExerciseIds().filter(id => !submitted.has(String(id))).length;
+    button.disabled = pendingCount > 0;
+    button.textContent = COMPLETED_PAGE_KEYS.has(key) ? "完成本次复习" : "完成本次学习";
+    note.textContent = pendingCount > 0
+      ? "还需提交本页 " + pendingCount + " 道练习。"
+      : (COMPLETED_PAGE_KEYS.has(key) ? "这页已有历史记录；确认本次复习完成后再保存。" : "确认读完本页后保存学习证据。");
   }
 
-  function isContentReadToEnd() {
-    const content = document.getElementById("content");
-    if (!content) return false;
-    return content.scrollHeight <= content.clientHeight + 8 || content.scrollTop + content.clientHeight >= content.scrollHeight - 80;
-  }
-
-  function maybeRecordPageCompletion() {
+  window.finishCurrentPage = async function() {
     if (!STATE || STATE.server_mode !== "interactive") return;
+    const button = document.getElementById("finish-session-btn");
+    const note = document.getElementById("session-finish-note");
+    const finish = document.getElementById("session-finish");
     const key = currentPageKey();
-    if (!key || COMPLETED_PAGE_KEYS.has(key)) return;
-    if (!currentPageRecorded()) return;
-    if (!isContentReadToEnd() || !allCurrentExercisesSubmitted()) return;
-    COMPLETED_PAGE_KEYS.add(key);
-    saveLearningRecord("completion", {
+    const sessionKey = currentSessionPageKey();
+    const completionPayload = {
       module: STATE.current_module,
       section: STATE.current_section || null,
       content_file: STATE.current_content_file || "",
       started_at: SESSION_STARTED_AT,
-      question_count: QUESTIONS.length,
-      exercise_ids: submittedCurrentExerciseIds(),
-      review_rated_count: REVIEW_RATED.length
-    }).then(() => {
+      question_count: 0,
+      exercise_ids: [],
+      review_rated_count: 0
+    };
+    if (!button || !note || !key || SESSION_COMPLETED_PAGE_KEYS.has(sessionKey)) return;
+    if (!hasCurrentPageView()) {
+      recordPageView();
+      return;
+    }
+    if (SESSION_PENDING_REVIEW_COUNT > 0) {
+      updateCompletionAction();
+      return;
+    }
+    if (!allCurrentExercisesSubmitted()) {
+      updateCompletionAction();
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "保存中";
+    note.textContent = "正在写入本次学习证据...";
+    try {
+      if (PENDING_QUESTION_SAVE_SESSION === SESSION_STARTED_AT) await PENDING_QUESTION_SAVE;
+      if (sessionKey !== currentSessionPageKey()) return;
+      completionPayload.question_count = SESSION_QUESTION_COUNT;
+      completionPayload.exercise_ids = Array.from(SESSION_SUBMITTED_EXERCISE_IDS);
+      completionPayload.review_rated_count = SESSION_REVIEW_RATED_COUNT;
+      await saveLearningRecord("completion", completionPayload);
+      COMPLETED_PAGE_KEYS.add(key);
+      SESSION_COMPLETED_PAGE_KEYS.add(sessionKey);
+      if (sessionKey !== currentSessionPageKey()) return;
       renderNav();
       renderLearningOverview();
-    }).catch(e => {
-      COMPLETED_PAGE_KEYS.delete(key);
+      updateCompletionAction();
+      if (finish) finish.classList.add("is-complete");
+      notify("本次学习已保存", "success");
+    } catch(e) {
+      if (sessionKey === currentSessionPageKey()) {
+        updateCompletionAction();
+        note.textContent = "学习证据保存失败，点击完成按钮重试。";
+      }
       notify(e.message, "error");
-    });
-  }
+    }
+  };
 
   function upsertById(list, id, record) {
     const index = list.findIndex(item => item.id === id);
@@ -1090,7 +1403,8 @@
     btn.classList.toggle("is-open", isOpen);
   };
 
-  window.saveExerciseAnswer = function(block) {
+  window.saveExerciseAnswer = async function(block) {
+    const sessionKey = currentSessionPageKey();
     const id = block.getAttribute("data-study-id");
     const type = block.getAttribute("data-study-type");
     const question = block.getAttribute("data-study-question");
@@ -1105,7 +1419,7 @@
       result.textContent = "先写下答案，再保存";
       return;
     }
-    upsertById(EXERCISES, id, {
+    const submittedExercise = {
       id: id,
       type: type,
       module: STATE.current_module,
@@ -1116,22 +1430,37 @@
       explanation: explanation,
       mastery_tags: masteryTags ? masteryTags.split(",").filter(Boolean) : [],
       time_spent_seconds: 0
-    });
-    const submittedExercise = EXERCISES.find(item => item.id === id);
-    if (submittedExercise && STATE.server_mode === "interactive") {
-      saveLearningRecord("exercise_submitted", {
-        module: STATE.current_module,
-        section: STATE.current_section || null,
-        content_file: STATE.current_content_file || "",
-        exercise: submittedExercise
-      }).then(() => {
-        maybeRecordPageCompletion();
-      }).catch(e => {
-        notify(e.message, "error");
-      });
+    };
+    const saveBtn = block.querySelector(".save-answer-btn");
+    const saveButtonText = saveBtn ? saveBtn.textContent : "";
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "保存中";
     }
-    markStudyBlockSubmitted(block);
-    rerenderLayui();
+    if (STATE.server_mode === "interactive") {
+      try {
+        await saveLearningRecord("exercise_submitted", {
+          module: STATE.current_module,
+          section: STATE.current_section || null,
+          content_file: STATE.current_content_file || "",
+          exercise: submittedExercise
+        });
+      } catch(e) {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = saveButtonText;
+        }
+        notify(e.message, "error");
+        return;
+      }
+    }
+    upsertById(EXERCISES, id, submittedExercise);
+    if (sessionKey === currentSessionPageKey()) {
+      SESSION_SUBMITTED_EXERCISE_IDS.add(String(id));
+      markStudyBlockSubmitted(block);
+      updateCompletionAction();
+      rerenderLayui();
+    }
   };
 
   function markStudyBlockSubmitted(block) {
@@ -1174,34 +1503,39 @@
     return field ? field.value.trim() : "";
   }
 
-  window.submitCheckpoint = function(block) {
+  window.submitCheckpoint = async function(block) {
     const id = block.getAttribute("data-study-id");
     const total = parseInt(block.getAttribute("data-study-total") || "0");
     const minPass = parseInt(block.getAttribute("data-study-min-pass") || "0");
     const result = block.querySelector(".assess-result");
-    upsertById(CHECKPOINTS, id, {
+    const checkpoint = {
       id: id,
       module: STATE.current_module,
       section: STATE.current_section || null,
       items_total: total,
       min_pass: minPass
-    });
-    const checkpoint = CHECKPOINTS.find(item => item.id === id);
-    if (checkpoint && STATE.server_mode === "interactive") {
-      saveLearningRecord("legacy_checkpoint_submitted", {
-        module: STATE.current_module,
-        section: STATE.current_section || null,
-        content_file: STATE.current_content_file || "",
-        checkpoint: checkpoint
-      }).catch(e => {
+    };
+    const buttons = block.querySelectorAll(".checkpoint-assess button");
+    buttons.forEach(button => button.disabled = true);
+    if (STATE.server_mode === "interactive") {
+      try {
+        await saveLearningRecord("legacy_checkpoint_submitted", {
+          module: STATE.current_module,
+          section: STATE.current_section || null,
+          content_file: STATE.current_content_file || "",
+          checkpoint: checkpoint
+        });
+      } catch(e) {
+        buttons.forEach(button => button.disabled = false);
         notify(e.message, "error");
-      });
+        return;
+      }
     }
+    upsertById(CHECKPOINTS, id, checkpoint);
     result.style.display = "none";
     result.className = "assess-result";
     result.textContent = "";
-    block.querySelectorAll(".checkpoint-assess button").forEach(b => b.disabled = true);
-    maybeRecordPageCompletion();
+    updateCompletionAction();
   };
 
   window.toggleHint = function(btn, index) {
@@ -1210,6 +1544,90 @@
     const hint = container.querySelector('[data-hint="' + index + '"]');
     hint.style.display = hint.style.display === "none" ? "block" : "none";
   };
+
+  window.toggleDrawer = function(target) {
+    const className = target === "nav" ? "show-nav" : "show-aside";
+    const shouldOpen = !document.body.classList.contains(className);
+    closeDrawers(false);
+    if (shouldOpen) {
+      DRAWER_TRIGGER = document.activeElement;
+      document.body.classList.add(className);
+    }
+    syncDrawerInert();
+    syncDrawerButtons();
+    if (shouldOpen) {
+      const drawer = document.getElementById(target === "nav" ? "course-sidebar" : "learning-sidebar");
+      window.requestAnimationFrame(() => drawer.focus());
+    }
+  };
+
+  function closeDrawers(restoreFocus = true) {
+    const hadOpenDrawer = document.body.classList.contains("show-nav") || document.body.classList.contains("show-aside");
+    document.body.classList.remove("show-nav", "show-aside");
+    syncDrawerInert();
+    syncDrawerButtons();
+    if (restoreFocus && hadOpenDrawer && DRAWER_TRIGGER && typeof DRAWER_TRIGGER.focus === "function") {
+      DRAWER_TRIGGER.focus();
+    }
+    DRAWER_TRIGGER = null;
+  }
+  window.closeDrawers = closeDrawers;
+
+  function closeDrawersOutsideBreakpoints() {
+    if (
+      (document.body.classList.contains("show-nav") && window.innerWidth > 720) ||
+      (document.body.classList.contains("show-aside") && window.innerWidth > 960)
+    ) {
+      closeDrawers(false);
+    }
+  }
+
+  function syncDrawerInert() {
+    const navOpen = document.body.classList.contains("show-nav");
+    const panelOpen = document.body.classList.contains("show-aside");
+    const content = document.querySelector(".viewer-body");
+    const nav = document.getElementById("course-sidebar");
+    const panel = document.getElementById("learning-sidebar");
+    if (content) content.toggleAttribute("inert", navOpen || panelOpen);
+    if (nav) nav.toggleAttribute("inert", panelOpen);
+    if (panel) panel.toggleAttribute("inert", navOpen);
+  }
+
+  function trapDrawerFocus(event) {
+    if (event.key !== "Tab") return;
+    const drawer = document.body.classList.contains("show-nav")
+      ? document.getElementById("course-sidebar")
+      : (document.body.classList.contains("show-aside") ? document.getElementById("learning-sidebar") : null);
+    if (!drawer) return;
+    const focusable = Array.from(drawer.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      .filter(element => element.offsetParent !== null);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      drawer.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (document.activeElement === drawer || !drawer.contains(document.activeElement) || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    }
+  }
+
+  function syncDrawerButtons() {
+    const navButton = document.getElementById("nav-toggle-btn");
+    const panelButton = document.getElementById("panel-toggle-btn");
+    const navOpen = document.body.classList.contains("show-nav");
+    const panelOpen = document.body.classList.contains("show-aside");
+    if (navButton) {
+      navButton.setAttribute("aria-expanded", String(navOpen));
+      navButton.setAttribute("aria-label", navOpen ? "关闭课程目录" : "打开课程目录");
+    }
+    if (panelButton) {
+      panelButton.setAttribute("aria-expanded", String(panelOpen));
+      panelButton.setAttribute("aria-label", panelOpen ? "关闭学习面板" : "打开学习面板");
+    }
+  }
 
   window.switchModule = function(moduleId) {
     EXPANDED_MODULES.add(moduleId);
@@ -1221,6 +1639,7 @@
       })
       .then(state => {
         STATE = state;
+        closeDrawers();
         document.getElementById("content").scrollTop = 0;
         renderAll();
       })
@@ -1239,6 +1658,7 @@
       })
       .then(state => {
         STATE = state;
+        closeDrawers();
         document.getElementById("content").scrollTop = 0;
         renderAll();
       })
@@ -1273,10 +1693,29 @@
     const input = document.getElementById("question-input");
     const q = input.value.trim();
     if (!q) return;
-    QUESTIONS.push(q);
+    const wasPresent = QUESTIONS.includes(q);
+    if (!wasPresent) QUESTIONS.push(q);
     input.value = "";
     renderQuestions();
-    persistQuestions();
+    persistQuestionChange("question_added", q, !wasPresent).catch(() => {
+      if (!wasPresent) QUESTIONS = QUESTIONS.filter(item => item !== q);
+      if (!input.value) input.value = q;
+      renderQuestions();
+    });
+  };
+
+  window.requestMasteryChallenge = function(nodeName, detail) {
+    const question = masteryChallengeQuestion(nodeName, detail);
+    const wasPresent = QUESTIONS.includes(question);
+    if (!wasPresent) QUESTIONS.push(question);
+    renderQuestions();
+    closeDrawers();
+    persistQuestionChange("question_added", question, !wasPresent)
+      .then(() => notify("掌握挑战已在待问清单中，回到聊天即可开始", "success"))
+      .catch(() => {
+        if (!wasPresent) QUESTIONS = QUESTIONS.filter(item => item !== question);
+        renderQuestions();
+      });
   };
 
   function setupTextSelection() {
@@ -1328,19 +1767,49 @@
   }
 
   window.removeQuestion = function(index) {
+    const question = QUESTIONS[index];
+    if (typeof question !== "string") return;
     QUESTIONS.splice(index, 1);
     renderQuestions();
-    persistQuestions();
+    persistQuestionChange("question_removed", question).catch(() => {
+      if (!QUESTIONS.includes(question)) QUESTIONS.splice(Math.min(index, QUESTIONS.length), 0, question);
+      renderQuestions();
+    });
   };
 
-  function persistQuestions() {
-    if (!STATE || STATE.server_mode !== "interactive") return;
-    saveLearningRecord("questions_snapshot", {
+  function persistQuestionChange(event, question, countAsNew = false) {
+    if (!STATE || STATE.server_mode !== "interactive") {
+      const error = new Error("只读模式不能保存待问问题");
+      notify(error.message, "error");
+      return Promise.reject(error);
+    }
+    const sessionStartedAt = SESSION_STARTED_AT;
+    PENDING_QUESTION_SAVE_SESSION = sessionStartedAt;
+    const payload = {
       module: STATE.current_module,
       section: STATE.current_section || null,
       content_file: STATE.current_content_file || "",
-      questions: QUESTIONS.slice()
-    }).catch(e => notify(e.message, "error"));
+      question: question
+    };
+    const operation = PENDING_QUESTION_SAVE
+      .catch(() => undefined)
+      .then(() => saveLearningRecord(event, payload))
+      .then(data => {
+        const serverQuestions = data && data.record && data.record.questions_for_llm;
+        if (Array.isArray(serverQuestions)) QUESTIONS = serverQuestions.slice();
+        renderQuestions();
+        if (SESSION_STARTED_AT !== sessionStartedAt) return;
+        if (countAsNew) SESSION_QUESTION_COUNT += 1;
+      });
+    PENDING_QUESTION_SAVE = operation;
+    operation.catch(e => {
+      notify(e.message, "error");
+      if (PENDING_QUESTION_SAVE === operation) {
+        PENDING_QUESTION_SAVE = Promise.resolve();
+        PENDING_QUESTION_SAVE_SESSION = "";
+      }
+    });
+    return operation;
   }
 
   document.addEventListener("DOMContentLoaded", function() {
@@ -1348,7 +1817,14 @@
     renderQuestions();
     setupNavToggle();
     setupTextSelection();
-    document.getElementById("content").addEventListener("scroll", maybeRecordPageCompletion, { passive: true });
+    window.addEventListener("resize", closeDrawersOutsideBreakpoints);
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape") {
+        closeDrawers();
+      } else {
+        trapDrawerFocus(event);
+      }
+    });
   });
 
 })();
