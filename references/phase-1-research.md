@@ -89,6 +89,8 @@ For each source, extract:
 | Complete teaching example per concept/procedure | → Best runnable or guided example, including input/data/schema, expected result, and why each step matters |
 | Failure or counterexample | → Common wrong answer, error symptom, invalid case, or misconception the learner must recognize |
 | Source fragment worth preserving | → Original wording, paragraph, diagram, table, image, formula, problem statement, or worked solution worth preserving or adapting |
+| Teaching move worth borrowing | → How the source opens the topic, orders the explanation, chooses an example, exposes a failure, or turns the idea into practice |
+| Reuse permission | → `verbatim` for user-provided/public-domain/permissively licensed material, `short-quote` for a brief attributed excerpt, or `adapt` for structure/examples explained in the course's own voice |
 | Version-specific notes | → Version comparison tables |
 | Interview / exam question patterns | → Module-local `study-input`, `study-choice`, or `study-truefalse` practice with scoring points and reference answers |
 | Source exercises and worked solutions | → Adapted practice, answer rubrics, or step-by-step solution notes |
@@ -112,7 +114,23 @@ For each source, extract:
 
 For code, SQL, formula, query, design, or procedure topics, the research summary must preserve enough raw teaching material to write a self-contained lesson: the concrete task, full example, sample data or inputs, expected output or failure, and at least one learner exercise. Do not extract only headings or keywords; that forces Phase 2 to write shallow summaries.
 
-Source fragment worth preservings should be copied into the research notes with source location. If the source is user-provided, public-domain, permissively licensed, or explicitly allowed by the user, preserve longer original passages or images when they teach better than a paraphrase. For other external sources, preserve the structure, example data, formula, diagram description, and short quotes, then rewrite the lesson in the course voice with attribution.
+Source fragments worth preserving must be copied into the research notes with a precise source location and reuse permission. If the source is user-provided, public-domain, permissively licensed, or explicitly allowed by the rights holder, preserve longer original passages or images within that permission. For other external sources, preserve the teaching move, example structure, data, formula, diagram description, and only brief attributed quotes; Phase 2 rewrites the explanation in the course voice.
+
+### Teaching Asset Ledger
+
+The research handoff must include a compact ledger for the teaching assets that should survive into the course. This is a working research artifact, not a learner-facing appendix.
+
+| Source and location | Asset | Why it teaches well | Reuse mode | Planned section |
+| --- | --- | --- | --- | --- |
+| {URL/chapter/heading} | {example, wording, diagram, failure, exercise, explanation order} | {specific teaching value} | {verbatim / short-quote / adapt} | {module/section or scoped omission reason} |
+
+Rules:
+
+- Record concrete assets, not praise such as "讲得很好" or a list of headings.
+- Capture the source's teaching move when it is stronger than the raw wording: the opening problem, explanation order, chosen example, intermediate steps, contrast, and practice transition.
+- Every core concept needs at least one usable teaching asset. One asset may serve several tightly related concepts.
+- Do not add sources merely to fill the ledger. A smaller ledger of strong, usable assets is better than a long bibliography.
+- `Planned section` is provisional in Phase 1 and becomes binding after the user confirms the course scope. Phase 2 may move an item, but it must not silently disappear.
 
 ### Output: Research Summary
 
@@ -140,6 +158,9 @@ Present findings in this format. Adapt the labels (📊信息来源, 🎯建议�
 
 💡 调研笔记：
 - ...
+
+🧰 教学素材账本：
+- {来源位置} → {值得保留的说法/例子/图/讲解顺序} → {复用方式} → {计划落入的小节}
 ```
 
 

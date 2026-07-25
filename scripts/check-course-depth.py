@@ -51,6 +51,11 @@ PURE_PRACTICE_FORBIDDEN_TERMS: Final[tuple[str, ...]] = tuple("本小节|先自�
 PURE_PRACTICE_FORBIDDEN_FIELDS: Final[tuple[str, ...]] = ("hints:",)
 ANSWER_PLACEHOLDER_TERMS: Final[tuple[str, ...]] = tuple("参考答案应包含|参考思路|评分重点是|评分重点不是".split("|"))
 SLIDE_HEADING_PATTERN: Final[re.Pattern[str]] = re.compile(r"^###\s*(原课件页|第\s*\d+\s*页|Page\s*\d+\s*of\s*PPT)", re.IGNORECASE)
+MATH_COMMAND_DELIMITER_PATTERN: Final[re.Pattern[str]] = re.compile(r"(?<!\\)\\([()\[\]])")
+DOUBLE_DOLLAR_PATTERN: Final[re.Pattern[str]] = re.compile(r"(?<!\\)(?<!\$)\$\$(?!\$)")
+SINGLE_DOLLAR_PATTERN: Final[re.Pattern[str]] = re.compile(r"(?<!\\)(?<!\$)\$(?!\$)")
+INLINE_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"`[^`]*`")
+CURRENCY_AMOUNT_PATTERN: Final[re.Pattern[str]] = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?")
 REPEATED_LINE_MIN_CHARS: Final[int] = 28
 REPEATED_LINE_MIN_COUNT: Final[int] = 3
 
@@ -130,6 +135,58 @@ def repeated_line_key(text: str) -> str | None:
     return normalized
 
 
+def malformed_math_lines(lines: list[VisibleLine]) -> list[int]:
+    """Return lines with mismatched LaTeX command or single-dollar delimiters."""
+    malformed: set[int] = set()
+    stack: list[tuple[str, int]] = []
+    closer_for = {"(": ")", "[": "]"}
+    double_dollar_opened_at: int | None = None
+
+    for line in lines:
+        text = INLINE_CODE_PATTERN.sub("", line.text)
+        for match in MATH_COMMAND_DELIMITER_PATTERN.finditer(text):
+            token = match.group(1)
+            if token in closer_for:
+                stack.append((token, line.line_no))
+            elif not stack or closer_for[stack[-1][0]] != token:
+                malformed.add(line.line_no)
+            else:
+                stack.pop()
+
+        for _ in DOUBLE_DOLLAR_PATTERN.finditer(text):
+            if double_dollar_opened_at is None:
+                double_dollar_opened_at = line.line_no
+            else:
+                double_dollar_opened_at = None
+
+        dollars = [match for match in SINGLE_DOLLAR_PATTERN.finditer(text) if not is_currency_marker(text, match)]
+        if dollars:
+            malformed.add(line.line_no)
+
+    malformed.update(line_no for _, line_no in stack)
+    if double_dollar_opened_at is not None:
+        malformed.add(double_dollar_opened_at)
+    return sorted(malformed)
+
+
+def is_currency_marker(text: str, marker: re.Match[str]) -> bool:
+    """Return true for an unclosed dollar-prefixed amount such as '$5,' or '$5 USD'."""
+    amount = CURRENCY_AMOUNT_PATTERN.match(text, marker.end())
+    if amount is None:
+        return False
+    remainder = text[amount.end():]
+    if not remainder:
+        return True
+    if remainder.startswith("$"):
+        return False
+    if remainder[0] in ",，。.!！?？;；:：/":
+        return True
+    if remainder[0].isspace():
+        next_token = remainder.lstrip()
+        return not next_token.startswith(("+", "-", "*", "/", "=", "^", "$"))
+    return False
+
+
 def collect_markdown_depths(root: Path) -> list[MarkdownDepth]:
     """Collect depth counts for README, syllabus, module, and section Markdown files."""
     if root.is_file():
@@ -180,6 +237,15 @@ def scan_markdown_risks(depths: list[MarkdownDepth]) -> list[ScanFinding]:
         markdown = item.path.read_text(encoding="utf-8-sig")
         lines = visible_lines(markdown)
         pure_practice = is_pure_practice_section(item.path, lines)
+        for line_no in malformed_math_lines(lines):
+            findings.append(
+                ScanFinding(
+                    path=item.path,
+                    line_no=line_no,
+                    category="math-delimiter",
+                    detail="formula delimiter is unsupported or asymmetric; use \\(...\\), \\[...\\], or $$...$$ and keep single $ for currency",
+                ),
+            )
 
         for line in lines:
             for term in EXTRACTION_TRACE_TERMS:
@@ -400,7 +466,7 @@ def main() -> int:
     findings += scan_slide_structure(depths)
     print("Advisory risk scan:")
     if not findings:
-        print("No extraction traces, pure-practice guidance leakage, or repeated lines found.")
+        print("No advisory risk patterns found.")
     else:
         for finding in findings:
             location = relative_display(finding.path, root)

@@ -216,7 +216,7 @@ Ask: "这个路线 OK 吗？需要调整哪里？" — **Wait for user confirmat
 After confirmation:
 1. Initialize `{learning_root}/.learning-profile/` if missing.
 2. Create the course directory under `.learning-profile/courses/{course-slug}/`.
-3. Update `profile.json.learner_profile` with durable facts from anchoring: baseline, goals, known languages or skills, weak prerequisites, preferred analogies, teaching constraints, and material summary. Do not keep these only in chat context.
+3. Update `profile.json.learner_profile` with durable facts from anchoring: baseline, goals, known languages or skills, weak prerequisites, preferred analogies, teaching constraints, and material summary. Read the existing profile first and merge new facts into it; preserve unrelated durable facts and list items unless the user explicitly corrects or removes them. Do not replace the whole profile with facts from only the current course, and do not keep new facts only in chat context.
 4. Write `meta.json` with `generation_status: "generating"`, `params.json`, `domain-tree.json` with empty `nodes`, an empty `concepts.json`, and an empty `learning-record.json` using the schema in `state-schema.md`.
 5. Use `{skill_dir}/scripts/write-state.py`; never overwrite existing state without reading it first.
 
