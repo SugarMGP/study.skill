@@ -16,16 +16,14 @@
   let LAST_PAGE_SESSION_KEY = "";
   let PAGE_VIEW_PENDING_SESSION = "";
   let DRAWER_TRIGGER = null;
+  let MODAL_ZOOM = 1;
   const COMPLETED_PAGE_KEYS = new Set();
   const SESSION_COMPLETED_PAGE_KEYS = new Set();
   const SESSION_SUBMITTED_EXERCISE_IDS = new Set();
   const EXPANDED_MODULES = new Set();
   const SUPPLEMENT_MODULE_ID = "99-content-supplements";
-  let isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const DIAGRAM_LANGS = new Set([
-    "plantuml", "puml", "graphviz", "dot", "d2", "vega-lite", "vegalite",
-    "vega", "svgbob", "pikchr", "structurizr"
-  ]);
+  let isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+
   const COURSE_MATH_DELIMITERS = [
     { left: "$$", right: "$$", display: true },
     { left: "\\[", right: "\\]", display: true },
@@ -55,9 +53,16 @@
     first_module: "首章通关",
     foundation_complete: "基础层完成"
   };
+  const CALLOUT_META = {
+    NOTE: { cls: "is-note", label: "提示 · Note" },
+    TIP: { cls: "is-tip", label: "技巧 · Tip" },
+    IMPORTANT: { cls: "is-important", label: "重点 · Important" },
+    WARNING: { cls: "is-warning", label: "注意 · Warning" },
+    CAUTION: { cls: "is-caution", label: "警告 · Caution" }
+  };
 
   function tokenFromHash() {
-    const hash = window.location.hash;
+    const hash = window.location.hash || "";
     const tokenMatch = hash.match(/token=([^&]+)/);
     return tokenMatch ? decodeURIComponent(tokenMatch[1]) : "";
   }
@@ -70,31 +75,35 @@
     }
     TOKEN = token;
 
-    if (isDark) document.documentElement.classList.add("dark");
+    applyThemeClass();
     updateThemeBtn();
     updateThemeAssets();
 
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: isDark ? "dark" : "default",
-      securityLevel: "strict"
-    });
-
-    marked.setOptions({
-      gfm: true,
-      breaks: false,
-      pedantic: false,
-      highlight: function(code, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-          try { return hljs.highlight(code, { language: lang }).value; } catch(e) {}
+    if (typeof marked !== "undefined" && marked.setOptions) {
+      marked.setOptions({
+        gfm: true,
+        breaks: false,
+        pedantic: false,
+        highlight: function(code, lang) {
+          if (typeof hljs !== "undefined") {
+            if (lang && hljs.getLanguage(lang)) {
+              try { return hljs.highlight(code, { language: lang }).value; } catch(e) {}
+            }
+            try { return hljs.highlightAuto(code).value; } catch(e) {}
+          }
+          return code;
         }
-        try { return hljs.highlightAuto(code).value; } catch(e) {}
-        return code;
-      }
-    });
+      });
+    }
 
     fetchInitialState(token);
     window.addEventListener("hashchange", reloadFromHash);
+  }
+
+  function applyThemeClass() {
+    if (!document.documentElement) return;
+    document.documentElement.classList.toggle("dark", Boolean(isDark));
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
   }
 
   function reloadFromHash() {
@@ -139,23 +148,24 @@
   }
 
   function showError(msg) {
-    document.getElementById("content").innerHTML = '<div class="layui-card viewer-card"><div class="layui-card-body"><div class="error-box">' + escapeHtml(msg) + "</div></div></div>";
+    const el = document.getElementById("content");
+    if (el) {
+      el.innerHTML = '<div class="viewer-card"><div class="viewer-card-body"><div class="error-box">' + escapeHtml(msg) + "</div></div></div>";
+    }
     notify(msg, "error");
   }
 
   function escapeHtml(s) {
-    const d = document.createElement("div");
-    d.textContent = s;
-    return d.innerHTML;
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function escapeAttr(s) {
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return escapeHtml(s);
   }
 
   function escapeJsArgAttr(s) {
@@ -163,48 +173,22 @@
   }
 
   function notify(msg, type) {
-    if (!window.layui || !layui.layer) return;
-    const icon = type === "error" ? 2 : type === "success" ? 1 : 0;
-    layui.layer.msg(msg, { icon: icon, time: type === "error" ? 2600 : 1600 });
+    if (typeof document === "undefined" || typeof document.getElementById !== "function") return;
+    const host = document.getElementById("viewer-toast-host");
+    if (!host) return;
+    const item = document.createElement("div");
+    item.className = "viewer-toast" + (type === "error" ? " is-error" : type === "success" ? " is-success" : "");
+    item.textContent = msg;
+    host.appendChild(item);
+    setTimeout(() => {
+      item.remove();
+    }, type === "error" ? 3000 : 1800);
   }
 
-  function rerenderLayui() {
-    if (!window.layui) return;
-    layui.use(["element", "form"], function(){
-      if (layui.element) layui.element.render();
-      if (layui.form) layui.form.render();
-    });
-  }
-
-  function renderLayuiCodeBlocks(root) {
-    if (!window.layui) return;
-    root.querySelectorAll("pre code").forEach(code => {
-      const pre = code.parentElement;
-      if (!pre || pre.dataset.layuiCode === "true") return;
-      const langClass = Array.from(code.classList).find(name => name.startsWith("language-")) || "";
-      const lang = langClass.replace(/^language-/, "");
-      const safeLang = /^[A-Za-z0-9_+-]+$/.test(lang) ? lang : "text";
-      const source = code.textContent || "";
-      pre.textContent = source;
-      pre.dataset.layuiCode = "true";
-      pre.setAttribute("lay-options", "{copy: true, lang: '" + safeLang + "', theme: '" + (isDark ? "dark" : "light") + "'}");
-      pre.classList.add("layui-code");
-    });
-    layui.use("code", function(){
-      if (layui.code) {
-        layui.code({
-          elem: root.querySelectorAll(".markdown-body pre.layui-code"),
-          theme: isDark ? "dark" : "light"
-        });
-        syncLayuiCodeTheme(root);
-      }
-    });
-  }
-
-  function syncLayuiCodeTheme(root) {
-    root.querySelectorAll(".layui-code-view").forEach(el => {
-      el.classList.toggle("layui-code-theme-dark", isDark);
-    });
+  function refreshIcons() {
+    if (typeof window.lucide !== "undefined" && typeof window.lucide.createIcons === "function") {
+      try { window.lucide.createIcons(); } catch(e) {}
+    }
   }
 
   function ratingLabel(rating) {
@@ -225,14 +209,14 @@
       }
       const toggle = e.target.closest(".module-toggle");
       if (!toggle || !nav.contains(toggle)) return;
-      const item = toggle.closest(".layui-nav-item");
+      const item = toggle.closest(".nav-item");
       if (!item) return;
       e.preventDefault();
       e.stopPropagation();
-      item.classList.toggle("layui-nav-itemed");
+      item.classList.toggle("nav-item-expanded");
       const moduleId = item.getAttribute("data-module-id");
       if (!moduleId) return;
-      if (item.classList.contains("layui-nav-itemed")) {
+      if (item.classList.contains("nav-item-expanded")) {
         EXPANDED_MODULES.add(moduleId);
       } else {
         EXPANDED_MODULES.delete(moduleId);
@@ -241,10 +225,6 @@
   }
 
   function renderAll() {
-    if (window.__layuiLoadError) {
-      showError("Layui 资源加载失败，请检查网络或 unpkg 访问。");
-      return;
-    }
     hydrateLearningRecord();
     SESSION_STARTED_AT = new Date().toISOString();
     SESSION_QUESTION_COUNT = 0;
@@ -262,7 +242,7 @@
     renderLearningOverview();
     renderReviewPanel();
     recordPageView();
-    rerenderLayui();
+    refreshIcons();
   }
 
   function renderBreadcrumb() {
@@ -271,10 +251,15 @@
     const mod = STATE.current_module || "";
     const sectionTitle = STATE.current_section_title || "";
     const el = document.getElementById("breadcrumb");
-    let text = '<a href="javascript:;">' + escapeHtml(name) + '</a>';
-    if (mod) text += '<a href="javascript:;">' + escapeHtml(currentModuleLabel()) + "</a>";
-    if (sectionTitle) text += '<a><cite>' + escapeHtml(sectionTitle) + "</cite></a>";
-    el.innerHTML = text;
+    if (!el) return;
+    let html = '<a href="javascript:;">' + escapeHtml(name) + "</a>";
+    if (mod) {
+      html += '<span class="breadcrumb-sep">/</span><a href="javascript:;" onclick="switchModule(' + escapeJsArgAttr(mod) + ')">' + escapeHtml(currentModuleLabel()) + "</a>";
+    }
+    if (sectionTitle) {
+      html += '<span class="breadcrumb-sep">/</span><cite>' + escapeHtml(sectionTitle) + "</cite>";
+    }
+    el.innerHTML = html;
     document.title = name + (mod ? " / " + currentModuleLabel() : "") + (sectionTitle ? " / " + sectionTitle : "") + " - 课程播放器";
   }
 
@@ -283,6 +268,7 @@
     const rpg = tree.rpg;
     const meta = STATE.meta || {};
     const el = document.getElementById("rpg-status");
+    if (!el) return;
     if (!meta.rpg_enabled || !rpg) {
       el.classList.add("viewer-hidden");
       el.textContent = "";
@@ -296,6 +282,7 @@
 
   function renderReviewBadge() {
     const badge = document.getElementById("review-badge");
+    if (!badge) return;
     const due = (STATE || {}).due_reviews || { total: 0 };
     if ((STATE || {}).review_check_error) {
       badge.classList.remove("viewer-hidden");
@@ -318,9 +305,11 @@
     const completed = (STATE.meta || {}).completed_modules || [];
     const treeNodes = ((STATE.domain_tree || {}).nodes) || {};
     const moduleProgress = getModuleProgress();
+    const completedPages = completedLearningPageKeys();
     const el = document.getElementById("nav-list");
+    if (!el) return;
     if (modules.length === 0) {
-      el.innerHTML = '<li class="layui-nav-item"><a href="javascript:;">未找到模块</a></li>';
+      el.innerHTML = '<li class="viewer-muted p-3">未找到模块</li>';
       return;
     }
     let html = "";
@@ -332,7 +321,7 @@
       const isDone = completed.includes(mod.id);
       const isLocked = treeNodes[mod.id] && treeNodes[mod.id].status === "locked";
       const statusClass = isDone ? "done" : (isActive ? "active" : "");
-      const cls = "layui-nav-item" + (EXPANDED_MODULES.has(mod.id) ? " layui-nav-itemed" : "");
+      const cls = "nav-item" + (EXPANDED_MODULES.has(mod.id) ? " nav-item-expanded" : "");
       const label = mod.name || labelFromId(mod.id);
       const currentRowClass = isActive ? " is-current" : "";
       const lockRowClass = isLocked ? " is-locked" : "";
@@ -346,16 +335,18 @@
         '"><span class="module-progress-track"><span class="module-progress-fill" style="width:' + progress.percent +
         '%"></span></span><span class="module-progress-text">' + progress.completed + '/' + progress.total + "</span></div></div></a>";
       if ((mod.sections || []).length > 0) {
-        html += '<button type="button" class="module-toggle" aria-label="展开或收起小节"><i class="layui-icon layui-icon-down"></i></button>';
+        html += '<button type="button" class="module-toggle" aria-label="展开或收起小节"><span class="module-chevron">▾</span></button>';
       }
       html += "</div>";
       if ((mod.sections || []).length > 0) {
-        html += '<dl class="layui-nav-child">';
+        html += '<dl class="nav-child">';
         for (const section of mod.sections) {
-          const sectionActive = section.id === currentSection;
-          const sectionCls = (sectionActive ? "layui-this" : "") + (isLocked ? " is-locked" : "");
+          const sectionActive = isActive && section.id === currentSection;
+          const sectionCls = (sectionActive ? "is-active" : "") + (isLocked ? " is-locked" : "");
           const sectionAction = isLocked ? "showLockedModule()" : ("switchSection(" + escapeJsArgAttr(mod.id) + "," + escapeJsArgAttr(section.id) + ")");
+          const secDone = completedPages.has(pageKeyFromParts(mod.id, section.id, section.content_path || ""));
           html += '<dd class="' + sectionCls + '"><a href="javascript:;" onclick="' + sectionAction + '">' +
+            (secDone ? '<span class="section-check" title="已完成">✓</span>' : "") +
             '<span class="section-title">' + escapeHtml(section.title || labelFromId(section.id)) + "</span></a></dd>";
         }
         html += "</dl>";
@@ -363,7 +354,6 @@
       html += "</li>";
     }
     el.innerHTML = html;
-    rerenderLayui();
   }
 
   function pageKeyFromParts(moduleId, sectionId, contentFile) {
@@ -545,14 +535,14 @@
       }
       const action = "requestMasteryChallenge(" + escapeJsArgAttr(step.node_name) + "," + escapeJsArgAttr(step.detail) + ")";
       return detail + '<button type="button" class="skill-map-next" onclick="' + action + '" aria-label="' + escapeAttr(step.label) + '">' +
-        '<span>' + escapeHtml(step.label) + '</span><i class="layui-icon layui-icon-right"></i></button>';
+        '<span>' + escapeHtml(step.label) + '</span><span>→</span></button>';
     }
     const page = step.page;
     const action = page.section
       ? "switchSection(" + escapeJsArgAttr(page.module) + "," + escapeJsArgAttr(page.section) + ")"
       : "switchModule(" + escapeJsArgAttr(page.module) + ")";
     return '<button type="button" class="skill-map-next" onclick="' + action + '" aria-label="' + escapeAttr(step.label) + '">' +
-      '<span>' + escapeHtml(step.label) + '</span><i class="layui-icon layui-icon-right"></i></button>';
+      '<span>' + escapeHtml(step.label) + '</span><span>→</span></button>';
   }
 
   function masteryChallengeQuestion(nodeName, detail) {
@@ -571,12 +561,14 @@
     const tree = STATE.domain_tree || {};
     const meta = STATE.meta || {};
     const section = document.getElementById("skill-tree-section");
+    if (!section) return;
     if (!meta.skill_tree_enabled || !tree.nodes || Object.keys(tree.nodes).length === 0) {
       section.classList.add("viewer-hidden");
       return;
     }
     section.classList.remove("viewer-hidden");
     const el = document.getElementById("skill-tree");
+    if (!el) return;
     el.className = "skill-tree-host";
     const items = Object.entries(tree.nodes).map(([id, node]) => {
       const status = node.status || "available";
@@ -597,6 +589,7 @@
 
   async function renderContent(md) {
     const el = document.getElementById("content");
+    if (!el) return;
     if (!md) {
       el.innerHTML = '<div class="markdown-body"><p class="viewer-muted">暂无内容</p></div>';
       return;
@@ -606,21 +599,24 @@
     for (const part of parts) {
       if (part.type === "markdown") {
         html += renderMarkdown(part.content);
-      } else if (part.type === "diagram") {
-        html += renderDiagramBlock(part.lang, part.content);
+      } else if (part.type === "archify") {
+        html += renderArchifyBlock(part.content);
+      } else if (part.type === "steps") {
+        html += renderStudyStepsBlock(part.content);
       } else if (part.type === "study") {
         html += renderStudyBlock(part.lang, part.content);
       }
     }
     const completionAction = STATE.server_mode === "interactive" && isCurrentLearningPage()
-      ? '<section class="session-finish" id="session-finish"><div><div class="session-finish-title">本页学完了吗？</div><div class="session-finish-note" id="session-finish-note" aria-live="polite">正在准备学习记录...</div></div><button type="button" class="layui-btn session-finish-btn" id="finish-session-btn" onclick="finishCurrentPage()" disabled>完成本次学习</button></section>'
+      ? '<section class="session-finish" id="session-finish"><div><div class="session-finish-title">本页学完了吗？</div><div class="session-finish-note" id="session-finish-note" aria-live="polite">正在准备学习记录...</div></div><button type="button" class="viewer-btn viewer-btn-primary session-finish-btn" id="finish-session-btn" onclick="finishCurrentPage()" disabled>完成本次学习</button></section>'
       : "";
-    el.innerHTML = '<article class="markdown-body">' + html + "</article>" + completionAction;
+    const pagerHtml = renderAdjacentPager();
+    el.innerHTML = '<article class="markdown-body" id="markdown-article">' + html + "</article>" + completionAction + pagerHtml;
     await postProcessContent(el);
     restoreSubmittedExercises(el);
-    renderLayuiCodeBlocks(el);
-    rerenderLayui();
     updateCompletionAction();
+    updateReadingProgress();
+    refreshIcons();
   }
 
   function restoreSubmittedExercises(root) {
@@ -666,12 +662,17 @@
     while ((match = regex.exec(md)) !== null) {
       const lang = match[1].toLowerCase();
       const content = match[2];
-      if (lang === "mermaid" || DIAGRAM_LANGS.has(lang) || lang.startsWith("study-")) {
+      if (lang === "archify" || lang === "study-steps" || lang.startsWith("study-")) {
         if (match.index > last) {
-          parts.push({ type: "markdown", content: md.slice(last, match.index) });
+          const between = md.slice(last, match.index);
+          if (between.trim()) {
+            parts.push({ type: "markdown", content: between });
+          }
         }
-        if (lang === "mermaid" || DIAGRAM_LANGS.has(lang)) {
-          parts.push({ type: "diagram", lang: lang, content: content.trim() });
+        if (lang === "archify") {
+          parts.push({ type: "archify", content: content.trim() });
+        } else if (lang === "study-steps") {
+          parts.push({ type: "steps", content: content.trim() });
         } else {
           parts.push({ type: "study", lang: lang, content: content.trim() });
         }
@@ -699,13 +700,151 @@
     for (const [delimiter, placeholder] of delimiters) {
       html = html.split(placeholder).join(delimiter);
     }
+    if (typeof DOMPurify !== "undefined" && typeof DOMPurify.sanitize === "function") {
+      html = DOMPurify.sanitize(html);
+    }
     return html;
   }
 
-  function renderDiagramBlock(lang, code) {
-    const id = "diagram-" + Math.random().toString(36).slice(2, 10);
-    return '<div class="diagram-container" data-diagram-id="' + escapeAttr(id) + '" data-diagram-lang="' + escapeAttr(lang) + '" data-diagram-code="' + escapeAttr(code) + '"><div class="loading">渲染图表...</div></div>';
+  function renderArchifyBlock(rawCode) {
+    if (!window.StudyDiagrams || typeof window.StudyDiagrams.renderArchifySvg !== "function") {
+      return '<div class="error-box">图表引擎未加载</div>';
+    }
+    try {
+      const rendered = window.StudyDiagrams.renderArchifySvg(rawCode);
+      return (
+        '<section class="archify-card" data-archify-card-id="' + escapeAttr(rendered.id) + '">' +
+        '<div class="archify-card-header">' +
+        '<div class="archify-card-title-wrap">' +
+        '<span class="archify-type-badge">' + escapeHtml(rendered.type) + "</span>" +
+        '<span class="archify-card-title">' + escapeHtml(rendered.title) + "</span>" +
+        "</div>" +
+        '<div class="archify-card-tools">' +
+        '<button type="button" class="viewer-btn viewer-btn-xs" onclick="resetDiagramSteps(' + escapeJsArgAttr(rendered.id) + ')" title="重置步骤高亮">全部展示</button>' +
+        '<button type="button" class="viewer-btn viewer-btn-xs" onclick="openDiagramModal(' + escapeJsArgAttr(rendered.id) + "," + escapeJsArgAttr(rendered.title) + ')" title="全屏放大检视">全屏检视</button>' +
+        "</div>" +
+        "</div>" +
+        '<div class="archify-canvas" id="archify-canvas-' + escapeAttr(rendered.id) + '">' +
+        rendered.svg +
+        "</div>" +
+        "</section>"
+      );
+    } catch(e) {
+      return '<div class="error-box">Archify 图表解析失败: ' + escapeHtml(e.message) + "<pre>" + escapeHtml(rawCode) + "</pre></div>";
+    }
   }
+
+  function renderStudyStepsBlock(rawCode) {
+    if (!window.StudyDiagrams || typeof window.StudyDiagrams.parseStudyStepsBlock !== "function") {
+      return "";
+    }
+    const parsed = window.StudyDiagrams.parseStudyStepsBlock(rawCode);
+    if (!parsed.steps || parsed.steps.length === 0) return "";
+    const diagId = parsed.diagram || "";
+    let listHtml = "";
+    parsed.steps.forEach((step, idx) => {
+      const targetsAttr = (step.targets || []).join(",");
+      listHtml +=
+        '<li class="study-step-item" data-step-diagram="' + escapeAttr(diagId) + '" data-step-targets="' + escapeAttr(targetsAttr) + '" ' +
+        'onclick="activateDiagramStep(this)" onmouseenter="activateDiagramStep(this)">' +
+        '<span class="study-step-num">' + (idx + 1) + "</span>" +
+        '<div class="study-step-body">' +
+        '<div class="study-step-title">' + escapeHtml(step.title) + "</div>" +
+        (step.detail ? '<div class="study-step-detail">' + escapeHtml(step.detail) + "</div>" : "") +
+        "</div>" +
+        "</li>";
+    });
+    return (
+      '<section class="study-steps-card" data-steps-for="' + escapeAttr(diagId) + '">' +
+      '<div class="study-steps-head">' +
+      '<span>步骤走查（点击或悬停步骤在图中聚光定位）</span>' +
+      (diagId ? '<button type="button" class="viewer-btn viewer-btn-xs" onclick="resetDiagramSteps(' + escapeJsArgAttr(diagId) + ')">清除高亮</button>' : "") +
+      "</div>" +
+      '<ol class="study-steps-list">' + listHtml + "</ol>" +
+      "</section>"
+    );
+  }
+
+  window.activateDiagramStep = function(stepEl) {
+    if (!stepEl) return;
+    const diagId = stepEl.getAttribute("data-step-diagram");
+    const targetsRaw = stepEl.getAttribute("data-step-targets") || "";
+    const targets = new Set(targetsRaw.split(",").map(s => s.trim()).filter(Boolean));
+    const list = stepEl.closest(".study-steps-list");
+    if (list) {
+      list.querySelectorAll(".study-step-item").forEach(li => li.classList.toggle("is-active", li === stepEl));
+    }
+    if (!diagId) return;
+    const svg = document.querySelector('svg[data-archify-id="' + CSS.escape(diagId) + '"]');
+    if (!svg) return;
+    if (targets.size === 0) {
+      svg.removeAttribute("data-step-active");
+      svg.querySelectorAll("[data-step-match]").forEach(n => n.removeAttribute("data-step-match"));
+      return;
+    }
+    svg.setAttribute("data-step-active", "true");
+    svg.querySelectorAll("[data-node-id]").forEach(node => {
+      const nid = node.getAttribute("data-node-id");
+      if (targets.has(nid)) {
+        node.setAttribute("data-step-match", "true");
+      } else {
+        node.removeAttribute("data-step-match");
+      }
+    });
+    svg.querySelectorAll("[data-edge-id]").forEach(edge => {
+      const eid = edge.getAttribute("data-edge-id");
+      const from = edge.getAttribute("data-edge-from");
+      const to = edge.getAttribute("data-edge-to");
+      if (targets.has(eid) || (targets.has(from) && targets.has(to))) {
+        edge.setAttribute("data-step-match", "true");
+      } else {
+        edge.removeAttribute("data-step-match");
+      }
+    });
+  };
+
+  window.resetDiagramSteps = function(diagId) {
+    if (diagId) {
+      const svg = document.querySelector('svg[data-archify-id="' + CSS.escape(diagId) + '"]');
+      if (svg) {
+        svg.removeAttribute("data-step-active");
+        svg.querySelectorAll("[data-step-match]").forEach(n => n.removeAttribute("data-step-match"));
+      }
+      document.querySelectorAll('.study-steps-card[data-steps-for="' + CSS.escape(diagId) + '"] .study-step-item').forEach(li => {
+        li.classList.remove("is-active");
+      });
+    }
+  };
+
+  window.openDiagramModal = function(diagId, title) {
+    const modal = document.getElementById("diagram-modal");
+    const stage = document.getElementById("diagram-modal-stage");
+    const titleEl = document.getElementById("diagram-modal-title");
+    const canvas = document.getElementById("archify-canvas-" + diagId);
+    if (!modal || !stage || !canvas) return;
+    MODAL_ZOOM = 1;
+    if (titleEl) titleEl.textContent = title || "图表全屏检视";
+    stage.innerHTML = canvas.innerHTML;
+    modal.classList.remove("viewer-hidden");
+  };
+
+  window.closeDiagramModal = function() {
+    const modal = document.getElementById("diagram-modal");
+    if (modal) modal.classList.add("viewer-hidden");
+  };
+
+  window.zoomDiagramModal = function(delta) {
+    const stage = document.getElementById("diagram-modal-stage");
+    if (!stage) return;
+    const svg = stage.querySelector("svg");
+    if (!svg) return;
+    if (delta === 0) {
+      MODAL_ZOOM = 1;
+    } else {
+      MODAL_ZOOM = Math.max(0.5, Math.min(2.5, Number((MODAL_ZOOM + delta).toFixed(2))));
+    }
+    svg.style.transform = "scale(" + MODAL_ZOOM + ")";
+  };
 
   function renderStudyBlock(lang, yamlContent) {
     let data;
@@ -743,7 +882,7 @@
 
   function questionHeader(label, question, title) {
     const text = title || question || "";
-    return '<div class="layui-card-header"><span class="study-type-badge">' + escapeHtml(label) +
+    return '<div class="study-block-header"><span class="study-type-badge">' + escapeHtml(label) +
       '</span><span class="study-title">' + escapeHtml(text) + "</span></div>";
   }
 
@@ -756,28 +895,29 @@
     const name = "study-" + id;
     const options = data.options.map((option, index) => normalizeChoiceOption(option, index));
     const saved = savedExerciseFor(id);
-    let optionsHtml = '<div class="choice-list">';
+    let optionsHtml = '<div class="study-options">';
     for (const option of options) {
-      const checked = saved && savedAnswerValues(saved.user_answer).includes(option.value) ? ' checked' : '';
-      optionsHtml += '<label class="choice-option">' +
-        '<input type="' + inputType + '" name="' + escapeAttr(name) + '" value="' + escapeAttr(option.value) + '" title="' + escapeAttr(option.label) + '"' + checked + '>' +
-        (option.note ? '<div class="choice-note">' + escapeHtml(option.note) + "</div>" : "") +
-        "</label>";
+      const checked = saved && savedAnswerValues(saved.user_answer).includes(option.value) ? " checked" : "";
+      optionsHtml += '<label class="study-option">' +
+        '<input type="' + inputType + '" name="' + escapeAttr(name) + '" value="' + escapeAttr(option.value) + '"' + checked + ">" +
+        '<div><span class="study-option-text">' + escapeHtml(option.label) + "</span>" +
+        (option.note ? '<span class="study-option-note">' + escapeHtml(option.note) + "</span>" : "") +
+        "</div></label>";
     }
     optionsHtml += "</div>";
-    return '<div class="layui-card viewer-card study-block study-choice" data-study-id="' + escapeAttr(id) + '" data-study-type="' + escapeAttr(rawType) + '" ' +
+    return '<div class="study-block study-choice" data-study-id="' + escapeAttr(id) + '" data-study-type="' + escapeAttr(rawType) + '" ' +
       'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(normalizeAnswer(data.answer)) + '" ' +
       'data-study-explanation="' + escapeAttr(data.explanation || data.reason || "") + '" data-study-multiple="' + escapeAttr(multiple ? "true" : "false") + '" ' +
       'data-study-mastery-tags="' + escapeAttr(normalizeTags(data.mastery_tags || data.skill_tags)) + '">' +
-      questionHeader(multiple ? "多选题" : "选择题", data.question, data.title || "") +
-      '<div class="layui-card-body layui-form">' +
+      questionHeader(multiple ? "多选题" : "单选题", data.question, data.title || "") +
+      '<div class="study-block-body">' +
       '<div class="study-question">' + escapeHtml(data.question) + "</div>" +
       renderHintTools(data.hints) +
       optionsHtml +
       renderSubmitRow("提交作答") +
       renderAnswerPanel(data.answer, data.explanation || data.reason || "") +
       '<div class="assess-result"></div>' +
-      '</div></div>';
+      "</div></div>";
   }
 
   function renderTrueFalseQuestion(data, rawType) {
@@ -786,22 +926,22 @@
     const answerValue = normalizeBooleanAnswer(data.answer);
     const saved = savedExerciseFor(id);
     const savedValue = saved ? normalizeSavedTrueFalse(saved.user_answer) : "";
-    return '<div class="layui-card viewer-card study-block study-truefalse" data-study-id="' + escapeAttr(id) + '" data-study-type="' + escapeAttr(rawType) + '" ' +
+    return '<div class="study-block study-truefalse" data-study-id="' + escapeAttr(id) + '" data-study-type="' + escapeAttr(rawType) + '" ' +
       'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(answerValue) + '" ' +
       'data-study-explanation="' + escapeAttr(data.explanation || data.reason || "") + '" ' +
       'data-study-mastery-tags="' + escapeAttr(normalizeTags(data.mastery_tags || data.skill_tags)) + '">' +
       questionHeader("判断题", data.question, data.title || "") +
-      '<div class="layui-card-body layui-form">' +
+      '<div class="study-block-body">' +
       '<div class="study-question">' + escapeHtml(data.question) + "</div>" +
       renderHintTools(data.hints) +
-      '<div class="choice-list">' +
-      '<label class="choice-option"><input type="radio" name="' + escapeAttr("study-" + id) + '" value="true" title="正确"' + (savedValue === "true" ? " checked" : "") + '></label>' +
-      '<label class="choice-option"><input type="radio" name="' + escapeAttr("study-" + id) + '" value="false" title="错误"' + (savedValue === "false" ? " checked" : "") + '></label>' +
-      '</div>' +
+      '<div class="study-options">' +
+      '<label class="study-option"><input type="radio" name="' + escapeAttr("study-" + id) + '" value="true"' + (savedValue === "true" ? " checked" : "") + '><span class="study-option-text">正确 (True)</span></label>' +
+      '<label class="study-option"><input type="radio" name="' + escapeAttr("study-" + id) + '" value="false"' + (savedValue === "false" ? " checked" : "") + '><span class="study-option-text">错误 (False)</span></label>' +
+      "</div>" +
       renderSubmitRow("提交作答") +
       renderAnswerPanel(answerValue === "true" ? "正确" : answerValue === "false" ? "错误" : data.answer, data.explanation || data.reason || "") +
       '<div class="assess-result"></div>' +
-      '</div></div>';
+      "</div></div>";
   }
 
   function renderInputQuestion(data, rawType) {
@@ -809,28 +949,28 @@
     const id = questionId("input", data);
     const mode = data.mode === "single" ? "single" : "multi";
     const minWords = data.min_words || data.min_chars || "";
-    const placeholder = data.placeholder || (mode === "single" ? "写下你的答案..." : "写下你的思路、理由或解释...");
+    const placeholder = data.placeholder || (mode === "single" ? "写下你的答案..." : "写下你的推导过程、关键机制或实现思路...");
     const saved = savedExerciseFor(id);
     const savedAnswer = saved ? saved.user_answer || "" : "";
     const inputHtml = mode === "single"
-      ? '<input type="text" class="layui-input exercise-answer" placeholder="' + escapeAttr(placeholder) + '" value="' + escapeAttr(savedAnswer) + '">'
-      : '<textarea class="layui-textarea exercise-answer" placeholder="' + escapeAttr(placeholder) + '">' + escapeHtml(savedAnswer) + '</textarea>';
-    const label = rawType === "recall" ? "开放题" : rawType === "transfer" ? "应用题" : rawType === "feynman" ? "解释题" : "开放题";
-    return '<div class="layui-card viewer-card study-block study-input" data-study-id="' + escapeAttr(id) + '" data-study-type="' + escapeAttr(rawType) + '" ' +
+      ? '<input type="text" class="viewer-input exercise-answer" placeholder="' + escapeAttr(placeholder) + '" value="' + escapeAttr(savedAnswer) + '">'
+      : '<textarea rows="4" class="exercise-answer" placeholder="' + escapeAttr(placeholder) + '">' + escapeHtml(savedAnswer) + "</textarea>";
+    const label = rawType === "recall" ? "开放题" : rawType === "transfer" ? "应用题" : rawType === "feynman" ? "费曼解释题" : "主观问答题";
+    return '<div class="study-block study-input" data-study-id="' + escapeAttr(id) + '" data-study-type="' + escapeAttr(rawType) + '" ' +
       'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(data.answer || "") + '" ' +
       'data-study-explanation="' + escapeAttr(data.explanation || data.reason || "") + '" data-study-min-words="' + escapeAttr(minWords) + '" ' +
       'data-study-mastery-tags="' + escapeAttr(normalizeTags(data.mastery_tags || data.skill_tags)) + '" data-study-concept="' + escapeAttr(data.concept || "") + '">' +
       questionHeader(label, data.question, data.title || "") +
-      '<div class="layui-card-body layui-form">' +
+      '<div class="study-block-body">' +
       '<div class="study-question">' + escapeHtml(data.question) + "</div>" +
       (data.prompt ? '<div class="viewer-muted study-prompt">' + escapeHtml(data.prompt) + "</div>" : "") +
       renderHintTools(data.hints) +
       inputHtml +
-      (minWords ? '<div class="viewer-muted viewer-stack-sm">建议不少于 ' + escapeHtml(minWords) + " 字</div>" : "") +
+      (minWords ? '<div class="study-meta-note">建议不少于 ' + escapeHtml(minWords) + " 字</div>" : "") +
       renderSubmitRow("提交作答") +
       renderAnswerPanel(data.answer, data.explanation || data.reason || "") +
       '<div class="assess-result"></div>' +
-      '</div></div>';
+      "</div></div>";
   }
 
   function renderLegacyCheckpoint(data) {
@@ -839,19 +979,19 @@
     const id = data.module || questionId("checkpoint", data);
     let itemsHtml = "";
     for (const item of items) {
-      itemsHtml += '<li>' + escapeHtml(item.type || "practice") + (item.ref ? " (" + escapeHtml(item.ref) + ")" : "") + "</li>";
+      itemsHtml += "<li>" + escapeHtml(item.type || "practice") + (item.ref ? " (" + escapeHtml(item.ref) + ")" : "") + "</li>";
     }
-    return '<div class="layui-card viewer-card study-block study-legacy" data-study-id="' + escapeAttr(id) + '" data-study-type="checkpoint" ' +
+    return '<div class="study-block study-legacy" data-study-id="' + escapeAttr(id) + '" data-study-type="checkpoint" ' +
       'data-study-total="' + escapeAttr(items.length) + '">' +
       questionHeader("旧版检查组", "本课程使用了旧版 checkpoint 块", "建议改成模块末尾的一组题型练习") +
-      '<div class="layui-card-body">' +
+      '<div class="study-block-body">' +
       '<div class="study-question">本课程使用了旧版 checkpoint 块。播放器会保存检查记录，但新课程应改用选择题、判断题或开放题。</div>' +
-      '<ul>' + itemsHtml + "</ul>" +
+      "<ul>" + itemsHtml + "</ul>" +
       '<div class="checkpoint-assess study-action-row">' +
-      '<button type="button" class="layui-btn layui-btn-sm" onclick="submitCheckpoint(this.closest(\'.study-block\'))">保存检查记录</button>' +
-      '</div>' +
+      '<button type="button" class="viewer-btn viewer-btn-sm" onclick="submitCheckpoint(this.closest(\'.study-block\'))">保存检查记录</button>' +
+      "</div>" +
       '<div class="assess-result"></div>' +
-      '</div></div>';
+      "</div></div>";
   }
 
   function normalizeChoiceOption(option, index) {
@@ -859,9 +999,14 @@
       const value = String.fromCharCode(65 + index);
       return { value: value, label: value + ". " + String(option), note: "" };
     }
-    const value = option.value != null ? String(option.value) : String.fromCharCode(65 + index);
-    const text = option.text || option.label || option.title || value;
-    return { value: value, label: value + ". " + text, note: option.note || option.hint || "" };
+    if (option && typeof option === "object") {
+      const value = String(option.value || option.key || option.id || String.fromCharCode(65 + index));
+      const text = String(option.text || option.label || option.title || value);
+      const label = text.startsWith(value + ".") || text.startsWith(value + " ") ? text : (value + ". " + text);
+      return { value: value, label: label, note: option.note ? String(option.note) : "" };
+    }
+    const fallback = String.fromCharCode(65 + index);
+    return { value: fallback, label: fallback, note: "" };
   }
 
   function savedExerciseFor(id) {
@@ -904,9 +1049,9 @@
 
   function renderHintTools(hints) {
     if (!Array.isArray(hints) || !hints.length) return "";
-    let html = '<div class="hint-tools">';
+    let html = '<div class="hints-section">';
     for (let i = 0; i < hints.length; i++) {
-      html += '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" onclick="toggleHint(this, ' + i + ')">提示 ' + (i + 1) + "</button> ";
+      html += '<button type="button" class="viewer-btn viewer-btn-xs" onclick="toggleHint(this, ' + i + ')">提示 ' + (i + 1) + "</button> ";
     }
     html += '<div class="hints-container">';
     for (let i = 0; i < hints.length; i++) {
@@ -918,7 +1063,7 @@
 
   function renderSubmitRow(text) {
     return '<div class="study-actions study-action-row">' +
-      '<button type="button" class="layui-btn layui-btn-sm save-answer-btn" onclick="saveExerciseAnswer(this.closest(\'.study-block\'))">' + escapeHtml(text) + "</button>" +
+      '<button type="button" class="viewer-btn viewer-btn-primary viewer-btn-sm save-answer-btn" onclick="saveExerciseAnswer(this.closest(\'.study-block\'))">' + escapeHtml(text) + "</button>" +
       "</div>";
   }
 
@@ -930,36 +1075,135 @@
       body += '<div class="answer-section"><div class="answer-section-title">参考答案</div><div class="answer-section-content">' + renderMarkdown(String(answer)) + "</div></div>";
     }
     if (hasExplanation) {
-      body += '<div class="answer-section"><div class="answer-section-title">解析</div><div class="answer-section-content">' + renderMarkdown(String(explanation)) + "</div></div>";
+      body += '<div class="answer-section"><div class="answer-section-title">深度解析</div><div class="answer-section-content">' + renderMarkdown(String(explanation)) + "</div></div>";
     }
     if (!body) body = '<div class="viewer-muted">这道题没有配置参考内容。</div>';
-    return '<div class="answer-panel" data-answer-panel><div class="answer-header"><span>参考解析</span>' +
-      '<button type="button" class="answer-toggle" title="展开或收起解析" onclick="toggleAnswerPanel(this)" aria-label="展开或收起解析">' +
-      '<i class="layui-icon layui-icon-down"></i></button></div><div class="answer-body">' + body + "</div></div>";
+    return '<div class="answer-panel" data-answer-panel><div class="answer-header"><span>参考答案与解析</span>' +
+      '<button type="button" class="answer-toggle" title="展开或收起解析" onclick="toggleAnswerPanel(this)" aria-label="展开或收起解析">▾</button></div><div class="answer-body">' + body + "</div></div>";
+  }
+
+  function enhanceCallouts(articleEl) {
+    articleEl.querySelectorAll("blockquote").forEach(bq => {
+      const firstP = bq.querySelector("p");
+      if (!firstP) return;
+      const match = firstP.innerHTML.match(/^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(?:<br\s*\/?>|\n)?([\s\S]*)$/i);
+      if (!match) return;
+      const kind = match[1].toUpperCase();
+      const meta = CALLOUT_META[kind] || CALLOUT_META.NOTE;
+      firstP.innerHTML = match[2];
+      const wrapper = document.createElement("div");
+      wrapper.className = "viewer-callout " + meta.cls;
+      wrapper.innerHTML = '<div class="viewer-callout-title">' + escapeHtml(meta.label) + "</div>" + bq.innerHTML;
+      bq.replaceWith(wrapper);
+    });
+  }
+
+  function enhanceComparisonBadges(articleEl) {
+    const badgeRegex = /\{(good|caution|bad):([^}]+)\}/g;
+    articleEl.querySelectorAll("td, th").forEach(cell => {
+      if (!badgeRegex.test(cell.innerHTML)) return;
+      cell.innerHTML = cell.innerHTML.replace(badgeRegex, (_, kind, label) => {
+        const prefix = kind === "good" ? "✓ " : kind === "caution" ? "! " : "✕ ";
+        return '<span class="cmp-badge is-' + escapeAttr(kind) + '">' + prefix + escapeHtml(label.trim()) + "</span>";
+      });
+    });
+  }
+
+  function enhanceCodeBlocks(articleEl) {
+    articleEl.querySelectorAll("pre > code").forEach(code => {
+      const pre = code.parentElement;
+      if (!pre || pre.parentElement.classList.contains("code-card")) return;
+      const langClass = Array.from(code.classList).find(name => name.startsWith("language-")) || "";
+      const lang = langClass.replace(/^language-/, "") || "code";
+      if (typeof hljs !== "undefined" && !code.classList.contains("hljs")) {
+        try { hljs.highlightElement(code); } catch(e) {}
+      }
+      const card = document.createElement("div");
+      card.className = "code-card";
+      const header = document.createElement("div");
+      header.className = "code-card-header";
+      header.innerHTML = '<span>' + escapeHtml(lang) + '</span><button type="button" class="code-copy-btn">复制代码</button>';
+      const btn = header.querySelector(".code-copy-btn");
+      btn.addEventListener("click", function() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code.textContent || "").then(() => {
+            btn.textContent = "已复制 ✓";
+            setTimeout(() => { btn.textContent = "复制代码"; }, 1500);
+          });
+        }
+      });
+      pre.replaceWith(card);
+      card.appendChild(header);
+      card.appendChild(pre);
+    });
+  }
+
+  function injectPageToc(articleEl) {
+    const headings = Array.from(articleEl.querySelectorAll("h2, h3"));
+    if (headings.length < 2) return;
+    const items = [];
+    headings.forEach((h, idx) => {
+      if (!h.id) {
+        h.id = "sec-heading-" + (idx + 1);
+      }
+      items.push('<li><a href="#' + escapeAttr(h.id) + '" onclick="scrollToHeading(event, ' + escapeJsArgAttr(h.id) + ')">' + escapeHtml(h.textContent || "") + "</a></li>");
+    });
+    const toc = document.createElement("nav");
+    toc.className = "page-toc-card";
+    toc.setAttribute("aria-label", "本页大纲");
+    toc.innerHTML = '<div class="page-toc-title">本节大纲 (On This Page)</div><ul class="page-toc-list">' + items.join("") + "</ul>";
+    const h1 = articleEl.querySelector("h1");
+    if (h1 && h1.nextSibling) {
+      articleEl.insertBefore(toc, h1.nextSibling);
+    } else {
+      articleEl.prepend(toc);
+    }
+  }
+
+  window.scrollToHeading = function(event, id) {
+    if (event) event.preventDefault();
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  function renderAdjacentPager() {
+    if (!STATE) return "";
+    const pages = expectedLearningPages();
+    const currentKey = currentPageKey();
+    const idx = pages.findIndex(p => pageKeyFromParts(p.module, p.section, p.content_file) === currentKey);
+    if (idx < 0) return "";
+    const prev = idx > 0 ? pages[idx - 1] : null;
+    const next = idx < pages.length - 1 ? pages[idx + 1] : null;
+    if (!prev && !next) return "";
+
+    function pageCard(page, isNext) {
+      if (!page) return "<div></div>";
+      const mod = (STATE.modules || []).find(m => m.id === page.module);
+      const treeNodes = ((STATE.domain_tree || {}).nodes) || {};
+      const isLocked = treeNodes[page.module] && treeNodes[page.module].status === "locked";
+      const title = mod ? learningPageTitle(mod, page) : (page.section || page.module);
+      const action = isLocked
+        ? "showLockedModule()"
+        : (page.section
+          ? "switchSection(" + escapeJsArgAttr(page.module) + "," + escapeJsArgAttr(page.section) + ")"
+          : "switchModule(" + escapeJsArgAttr(page.module) + ")");
+      return '<button type="button" class="pager-card' + (isNext ? " is-next" : "") + '" onclick="' + action + '">' +
+        '<span class="pager-label">' + (isNext ? "下一节 →" : "← 上一节") + "</span>" +
+        '<span class="pager-title">' + escapeHtml(title) + "</span>" +
+        "</button>";
+    }
+
+    return '<nav class="section-pager" aria-label="上下节导航">' + pageCard(prev, false) + pageCard(next, true) + "</nav>";
   }
 
   async function postProcessContent(el) {
-    const diagramContainers = el.querySelectorAll(".diagram-container");
-    for (const container of diagramContainers) {
-      const code = container.getAttribute("data-diagram-code");
-      const lang = container.getAttribute("data-diagram-lang");
-      try {
-        if (lang === "mermaid") {
-          const id = container.getAttribute("data-diagram-id");
-          const { svg } = await mermaid.render(id, code);
-          container.innerHTML = svg;
-        } else {
-          await renderRemoteDiagram(container, lang, code);
-        }
-      } catch(e) {
-        container.innerHTML = '<div class="error-box">图表渲染失败: ' + escapeHtml(e.message) + "</div>";
-      }
-    }
-    el.querySelectorAll("pre code").forEach(block => {
-      if (!block.classList.contains("hljs")) {
-        try { hljs.highlightElement(block); } catch(e) {}
-      }
-    });
+    const article = el.querySelector("#markdown-article") || el;
+    enhanceCallouts(article);
+    enhanceComparisonBadges(article);
+    enhanceCodeBlocks(article);
+    injectPageToc(article);
     try {
       renderCourseMath(el);
     } catch(e) {}
@@ -977,22 +1221,6 @@
       } else if (src && !src.startsWith("/") && !src.startsWith("data:")) {
         img.setAttribute("src", resolveCourseAsset(src));
       }
-    });
-  }
-
-  async function renderRemoteDiagram(container, lang, code) {
-    const resp = await fetch("/api/render-diagram", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Session-Token": TOKEN },
-      body: JSON.stringify({ type: lang, source: code })
-    });
-    const data = await resp.json();
-    if (!resp.ok || !data.ok) {
-      throw new Error(data.error || "remote diagram render failed");
-    }
-    container.innerHTML = DOMPurify.sanitize(data.svg, {
-      ADD_TAGS: ["svg", "path", "g", "circle", "ellipse", "line", "polyline", "polygon", "rect", "text", "tspan", "defs", "marker", "style", "title"],
-      ADD_ATTR: ["viewBox", "d", "fill", "stroke", "transform", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "width", "height", "points", "font-size", "font-family", "text-anchor", "marker-end", "class", "style"]
     });
   }
 
@@ -1023,7 +1251,7 @@
     }
     el.querySelectorAll("code").forEach(code => {
       const text = code.textContent;
-      if (text.startsWith("$$") && text.endsWith("$$")) {
+      if (text.startsWith("$$") && text.endsWith("$$") && typeof katex !== "undefined") {
         try {
           const html = katex.renderToString(text.slice(2, -2), { displayMode: true, throwOnError: false });
           const div = document.createElement("div");
@@ -1046,15 +1274,19 @@
       .map(([, node]) => node);
     const masteredNodeCount = nodes.filter(node => node.status === "mastered").length;
     const el = document.getElementById("learning-overview");
+    if (!el) return;
     if (!current) {
       el.innerHTML = '<div class="viewer-muted">暂无学习进度</div>';
       return;
     }
-    let html = '<div class="overview-metrics">';
-    html += '<div class="overview-metric"><span class="value">' + completedPageCount + "/" + expectedPages.length + '</span><span class="label">已完成学习页</span></div>';
+    const percent = expectedPages.length > 0 ? Math.round((completedPageCount / expectedPages.length) * 100) : 0;
+    let html = '<div class="overview-stat-row"><span>主线学习进度</span><strong>' + percent + "%</strong></div>" +
+      '<div class="overview-progress-bar"><span style="width:' + percent + '%"></span></div>' +
+      '<div class="overview-grid">';
+    html += '<div class="overview-metric"><span>已完成学习页</span><strong>' + completedPageCount + "/" + expectedPages.length + "</strong></div>";
     html += (STATE.meta || {}).skill_tree_enabled && nodes.length > 0
-      ? '<div class="overview-metric"><span class="value">' + masteredNodeCount + "/" + nodes.length + '</span><span class="label">已通过掌握节点</span></div>'
-      : '<div class="overview-metric"><span class="value">--</span><span class="label">技能树已关闭</span></div>';
+      ? '<div class="overview-metric"><span>已掌握节点</span><strong>' + masteredNodeCount + "/" + nodes.length + "</strong></div>"
+      : '<div class="overview-metric"><span>技能树状态</span><strong>未启用</strong></div>';
     html += "</div>";
     const rpg = tree.rpg;
     if ((STATE.meta || {}).rpg_enabled && rpg) {
@@ -1062,13 +1294,13 @@
       const levelProgress = Math.round(((xp % 500) / 500) * 100);
       const quests = Array.isArray(rpg.quests) ? rpg.quests.map(rpgItemLabel).filter(Boolean).slice(0, 2) : [];
       const achievements = Array.isArray(rpg.achievements) ? rpg.achievements.map(achievementLabel).filter(Boolean).slice(-3) : [];
-      html += '<div class="rpg-overview"><div class="rpg-overview-head"><span><strong>Lv.' + (rpg.level || 1) + "</strong> " + escapeHtml(rpg.title || "学徒") + '</span><span>' + xp + ' XP</span></div>' +
+      html += '<div class="rpg-overview"><div class="rpg-overview-head"><span><strong>Lv.' + (rpg.level || 1) + "</strong> " + escapeHtml(rpg.title || "学徒") + "</span><span>" + xp + " XP</span></div>" +
         '<div class="rpg-xp-track" role="progressbar" aria-label="本级经验进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + levelProgress + '"><span style="width:' + levelProgress + '%"></span></div>';
       if (quests.length > 0) {
-        html += '<div class="rpg-next"><span class="rpg-label">当前任务</span>' + quests.map(item => '<div class="rpg-list-item">' + escapeHtml(item) + '</div>').join("") + '</div>';
+        html += '<div class="rpg-next"><span class="rpg-label">当前任务</span>' + quests.map(item => '<div class="rpg-list-item">' + escapeHtml(item) + "</div>").join("") + "</div>";
       }
       if (achievements.length > 0) {
-        html += '<div class="rpg-achievements"><span class="rpg-label">最近成就</span><div>' + achievements.map(item => '<span class="achievement-chip">' + escapeHtml(item) + '</span>').join("") + '</div></div>';
+        html += '<div class="rpg-achievements"><span class="rpg-label">最近成就</span><div>' + achievements.map(item => '<span class="achievement-chip">' + escapeHtml(item) + "</span>").join("") + "</div></div>";
       }
       html += "</div>";
     }
@@ -1089,6 +1321,7 @@
   function renderReviewPanel() {
     const due = (STATE || {}).due_reviews || { total: 0, courses: [] };
     const el = document.getElementById("review-panel");
+    if (!el) return;
     if ((STATE || {}).review_check_error) {
       el.innerHTML = '<div class="error-box">复习检查失败: ' + escapeHtml(STATE.review_check_error) + "</div>";
       return;
@@ -1097,26 +1330,26 @@
       el.innerHTML = '<div class="viewer-muted">当前课程暂无待复习项</div>';
       return;
     }
-    let html = '<div><span class="viewer-soft-badge">' + due.total + '</span> 个知识点需要复习</div>' +
-      '<div class="viewer-muted review-intro">先回想，再按真实感觉记录。</div>';
+    let html = '<div><strong>' + due.total + '</strong> 个知识点需要复习</div>' +
+      '<div class="viewer-muted review-intro">先闭眼回想核心机制，再按真实感觉打分。</div>';
     for (const course of due.courses) {
       for (const item of course.items || []) {
         const rated = REVIEW_RATED.find(r => r.concept_id === item.id);
         if (rated) {
           html += '<div class="review-item">' +
-            '<div class="review-name is-recorded">' + escapeHtml(item.name) + '</div>' +
-            '<div class="viewer-muted"><span class="viewer-soft-badge is-success">已记录</span> ' + escapeHtml(ratingLabel(rated.rating)) +
-            (rated.next_review ? ' · 下次 ' + escapeHtml(rated.next_review) : "") + '</div></div>';
+            '<div class="review-name is-recorded">' + escapeHtml(item.name) + "</div>" +
+            '<div class="viewer-muted">✓ 已记录：' + escapeHtml(ratingLabel(rated.rating)) +
+            (rated.next_review ? " · 下次 " + escapeHtml(rated.next_review) : "") + "</div></div>";
         } else {
           html += '<div class="review-item" id="review-' + escapeAttr(item.id) + '">' +
-            '<div class="review-name">' + escapeHtml(item.name) + '</div>' +
-            (item.retrievability != null ? '<div class="viewer-muted review-strength">当前记忆强度约 ' + Math.round(item.retrievability * 100) + '%</div>' : "") +
-            '<div class="layui-btn-container">' +
-            '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" data-rating="1" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',1)">忘了</button>' +
-            '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" data-rating="2" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',2)">一点</button>' +
-            '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" data-rating="3" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',3)">大部分</button>' +
-            '<button type="button" class="layui-btn layui-btn-primary layui-btn-xs" data-rating="4" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',4)">轻松</button>' +
-            '</div>' +
+            '<div class="review-name">' + escapeHtml(item.name) + "</div>" +
+            (item.retrievability != null ? '<div class="viewer-muted review-strength">当前记忆强度约 ' + Math.round(item.retrievability * 100) + "%</div>" : "") +
+            '<div class="review-rating-row">' +
+            '<button type="button" class="viewer-btn viewer-btn-xs" data-rating="1" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',1)">忘了</button>' +
+            '<button type="button" class="viewer-btn viewer-btn-xs" data-rating="2" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',2)">一点</button>' +
+            '<button type="button" class="viewer-btn viewer-btn-xs" data-rating="3" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',3)">大部分</button>' +
+            '<button type="button" class="viewer-btn viewer-btn-xs" data-rating="4" onclick="rateReview(this, ' + escapeJsArgAttr(item.id) + ',4)">轻松</button>' +
+            "</div>" +
             '<div class="review-feedback"></div></div>';
         }
       }
@@ -1139,8 +1372,6 @@
     });
     if (button) {
       button.textContent = "保存中";
-      button.classList.remove("layui-btn-primary");
-      button.classList.remove("is-control-disabled");
     }
     feedback.style.display = "block";
     feedback.className = "review-feedback viewer-muted";
@@ -1301,12 +1532,14 @@
   function updateCompletionAction() {
     const button = document.getElementById("finish-session-btn");
     const note = document.getElementById("session-finish-note");
+    const finish = document.getElementById("session-finish");
     if (!button || !note || !STATE) return;
     const key = currentPageKey();
     if (SESSION_COMPLETED_PAGE_KEYS.has(currentSessionPageKey())) {
       button.disabled = true;
       button.textContent = "本次已保存";
       note.textContent = "学习证据已保存，掌握度和 XP 仍由作答、解释与复习结果决定。";
+      if (finish) finish.classList.add("is-completed");
       return;
     }
     if (!hasCurrentPageView()) {
@@ -1376,7 +1609,7 @@
       renderNav();
       renderLearningOverview();
       updateCompletionAction();
-      if (finish) finish.classList.add("is-complete");
+      if (finish) finish.classList.add("is-completed");
       notify("本次学习已保存", "success");
     } catch(e) {
       if (sessionKey === currentSessionPageKey()) {
@@ -1415,8 +1648,8 @@
     const userAnswer = readStudyAnswer(block);
     if (!userAnswer) {
       result.style.display = "block";
-      result.className = "assess-result result-warning";
-      result.textContent = "先写下答案，再保存";
+      result.className = "assess-result error-box";
+      result.textContent = "先写下或选择答案，再提交";
       return;
     }
     const submittedExercise = {
@@ -1459,7 +1692,6 @@
       SESSION_SUBMITTED_EXERCISE_IDS.add(String(id));
       markStudyBlockSubmitted(block);
       updateCompletionAction();
-      rerenderLayui();
     }
   };
 
@@ -1472,11 +1704,11 @@
     const saveBtn = block.querySelector(".save-answer-btn");
     if (saveBtn) {
       saveBtn.disabled = true;
-      saveBtn.textContent = "已提交";
-      saveBtn.classList.add("layui-btn-disabled");
+      saveBtn.textContent = "已提交 ✓";
     }
     const answerPanel = block.querySelector("[data-answer-panel]");
     if (answerPanel) {
+      answerPanel.style.display = "block";
       answerPanel.classList.add("is-unlocked", "is-open");
       const toggle = answerPanel.querySelector(".answer-toggle");
       if (toggle) toggle.classList.add("is-open");
@@ -1505,8 +1737,8 @@
 
   window.submitCheckpoint = async function(block) {
     const id = block.getAttribute("data-study-id");
-    const total = parseInt(block.getAttribute("data-study-total") || "0");
-    const minPass = parseInt(block.getAttribute("data-study-min-pass") || "0");
+    const total = parseInt(block.getAttribute("data-study-total") || "0", 10);
+    const minPass = parseInt(block.getAttribute("data-study-min-pass") || "0", 10);
     const result = block.querySelector(".assess-result");
     const checkpoint = {
       id: id,
@@ -1516,7 +1748,7 @@
       min_pass: minPass
     };
     const buttons = block.querySelectorAll(".checkpoint-assess button");
-    buttons.forEach(button => button.disabled = true);
+    buttons.forEach(button => { button.disabled = true; });
     if (STATE.server_mode === "interactive") {
       try {
         await saveLearningRecord("legacy_checkpoint_submitted", {
@@ -1526,7 +1758,7 @@
           checkpoint: checkpoint
         });
       } catch(e) {
-        buttons.forEach(button => button.disabled = false);
+        buttons.forEach(button => { button.disabled = false; });
         notify(e.message, "error");
         return;
       }
@@ -1557,7 +1789,7 @@
     syncDrawerButtons();
     if (shouldOpen) {
       const drawer = document.getElementById(target === "nav" ? "course-sidebar" : "learning-sidebar");
-      window.requestAnimationFrame(() => drawer.focus());
+      if (drawer) window.requestAnimationFrame(() => drawer.focus());
     }
   };
 
@@ -1575,8 +1807,8 @@
 
   function closeDrawersOutsideBreakpoints() {
     if (
-      (document.body.classList.contains("show-nav") && window.innerWidth > 720) ||
-      (document.body.classList.contains("show-aside") && window.innerWidth > 960)
+      (document.body.classList.contains("show-nav") && window.innerWidth > 780) ||
+      (document.body.classList.contains("show-aside") && window.innerWidth > 1120)
     ) {
       closeDrawers(false);
     }
@@ -1640,7 +1872,8 @@
       .then(state => {
         STATE = state;
         closeDrawers();
-        document.getElementById("content").scrollTop = 0;
+        const contentEl = document.getElementById("content");
+        if (contentEl) contentEl.scrollTop = 0;
         renderAll();
       })
       .catch(e => showError("切换模块失败: " + e.message));
@@ -1659,7 +1892,8 @@
       .then(state => {
         STATE = state;
         closeDrawers();
-        document.getElementById("content").scrollTop = 0;
+        const contentEl = document.getElementById("content");
+        if (contentEl) contentEl.scrollTop = 0;
         renderAll();
       })
       .catch(e => showError("切换小节失败: " + e.message));
@@ -1671,26 +1905,31 @@
 
   window.toggleTheme = function() {
     isDark = !isDark;
-    document.documentElement.classList.toggle("dark", isDark);
+    applyThemeClass();
     updateThemeBtn();
     updateThemeAssets();
-    mermaid.initialize({ startOnLoad: false, theme: isDark ? "dark" : "default", securityLevel: "strict" });
     if (STATE) renderContent(STATE.current_content || STATE.readme || "");
   };
 
   function updateThemeAssets() {
     const link = document.getElementById("hljs-theme");
+    if (!link) return;
     link.href = isDark
       ? "https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css"
       : "https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css";
   }
 
   function updateThemeBtn() {
-    document.getElementById("theme-btn").textContent = isDark ? "浅色" : "深色";
+    const btnLabel = document.getElementById("theme-btn-label");
+    const btn = document.getElementById("theme-btn");
+    const text = isDark ? "浅色" : "深色";
+    if (btnLabel) btnLabel.textContent = text;
+    else if (btn) btn.textContent = text;
   }
 
   window.addQuestion = function() {
     const input = document.getElementById("question-input");
+    if (!input) return;
     const q = input.value.trim();
     if (!q) return;
     const wasPresent = QUESTIONS.includes(q);
@@ -1720,6 +1959,7 @@
 
   function setupTextSelection() {
     const content = document.getElementById("content");
+    if (!content) return;
     let floatBtn = null;
     content.addEventListener("mouseup", function(e) {
       if (floatBtn) { floatBtn.remove(); floatBtn = null; }
@@ -1728,15 +1968,17 @@
       if (text.length < 2) return;
       floatBtn = document.createElement("button");
       floatBtn.type = "button";
-      floatBtn.className = "layui-btn layui-btn-xs text-select-btn";
+      floatBtn.className = "text-select-btn";
       floatBtn.textContent = "问这个";
-      floatBtn.style.left = (e.clientX - 40) + "px";
-      floatBtn.style.top = (e.clientY - 36) + "px";
+      floatBtn.style.left = Math.max(12, e.clientX - 36) + "px";
+      floatBtn.style.top = Math.max(12, e.clientY - 40) + "px";
       floatBtn.onclick = function() {
         const snippet = text.length > 100 ? text.slice(0, 100) + "..." : text;
         const input = document.getElementById("question-input");
-        input.value = "关于「" + snippet + "」：";
-        input.focus();
+        if (input) {
+          input.value = "关于「" + snippet + "」：";
+          input.focus();
+        }
         floatBtn.remove();
         floatBtn = null;
         window.getSelection().removeAllRanges();
@@ -1754,14 +1996,15 @@
 
   function renderQuestions() {
     const el = document.getElementById("question-list");
+    if (!el) return;
     if (QUESTIONS.length === 0) {
-      el.innerHTML = '<div class="viewer-muted">暂无问题</div>';
+      el.innerHTML = '<div class="viewer-muted">暂无问题（选中正文文字可一键提问）</div>';
       return;
     }
     let html = "";
     QUESTIONS.forEach((q, i) => {
       html += '<div class="question-row"><span>' +
-        escapeHtml(q) + '</span><button type="button" class="layui-btn layui-btn-primary layui-btn-xs" onclick="removeQuestion(' + i + ')">删除</button></div>';
+        escapeHtml(q) + '</span><button type="button" class="viewer-btn viewer-btn-xs" onclick="removeQuestion(' + i + ')">删除</button></div>';
     });
     el.innerHTML = html;
   }
@@ -1812,15 +2055,35 @@
     return operation;
   }
 
+  function updateReadingProgress() {
+    const content = document.getElementById("content");
+    const bar = document.getElementById("reading-progress-bar");
+    if (!content || !bar) return;
+    const maxScroll = content.scrollHeight - content.clientHeight;
+    const pct = maxScroll > 10 ? Math.min(100, Math.round((content.scrollTop / maxScroll) * 100)) : 100;
+    bar.style.width = pct + "%";
+  }
+
   document.addEventListener("DOMContentLoaded", function() {
     init();
     renderQuestions();
     setupNavToggle();
     setupTextSelection();
+    const contentEl = document.getElementById("content");
+    if (contentEl) {
+      contentEl.addEventListener("scroll", updateReadingProgress, { passive: true });
+    }
     window.addEventListener("resize", closeDrawersOutsideBreakpoints);
     document.addEventListener("keydown", function(event) {
+      const activeTag = document.activeElement ? document.activeElement.tagName : "";
+      const isEditing = activeTag === "INPUT" || activeTag === "TEXTAREA";
       if (event.key === "Escape") {
+        closeDiagramModal();
         closeDrawers();
+      } else if (!isEditing && event.key === "[") {
+        toggleDrawer("nav");
+      } else if (!isEditing && event.key === "]") {
+        toggleDrawer("panel");
       } else {
         trapDrawerFocus(event);
       }

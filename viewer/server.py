@@ -64,7 +64,7 @@ def validate_paths(learning_root: Path, course_slug: str, viewer_dir: Path) -> N
     if not (viewer_dir / "viewer.html").exists():
         print(f"Error: viewer.html not found: {viewer_dir / 'viewer.html'}", file=sys.stderr)
         sys.exit(1)
-    for asset_name in ("viewer.css", "viewer.js"):
+    for asset_name in ("viewer.css", "diagrams.js", "viewer.js"):
         asset_path = viewer_dir / "assets" / asset_name
         if not asset_path.exists():
             print(f"Error: viewer asset not found: {asset_path}", file=sys.stderr)

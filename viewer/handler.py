@@ -10,7 +10,6 @@ from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
 
 from course_state import build_initial_state
-from diagrams import render_diagram_svg
 from records import load_learning_record, merge_learning_record_event, now_iso, write_learning_record
 from utils import content_type_for, safe_resolve, validate_slug
 
@@ -91,8 +90,6 @@ class ViewerHandler(SimpleHTTPRequestHandler):
             self._handle_review_rating()
         elif path == "/api/learning-record":
             self._handle_learning_record()
-        elif path == "/api/render-diagram":
-            self._handle_render_diagram()
         else:
             self.send_error(404)
 
@@ -172,21 +169,6 @@ class ViewerHandler(SimpleHTTPRequestHandler):
                 return
             write_learning_record(self.context.learning_record_path, record)
             self._send_json({"ok": True, "path": str(self.context.learning_record_path), "record": record})
-        except Exception as exc:
-            self._send_json({"error": str(exc)}, 500)
-
-    def _handle_render_diagram(self):
-        try:
-            body = self._read_body()
-            diagram_type = str(body.get("type", "")).strip().lower()
-            source = body.get("source")
-            if not isinstance(source, str):
-                self._send_json({"error": "invalid params: need supported type and source"}, 400)
-                return
-            svg = render_diagram_svg(diagram_type, source)
-            self._send_json({"ok": True, "svg": svg})
-        except ValueError as exc:
-            self._send_json({"error": str(exc)}, 400)
         except Exception as exc:
             self._send_json({"error": str(exc)}, 500)
 

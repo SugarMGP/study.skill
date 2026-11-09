@@ -55,10 +55,13 @@ def load_learning_record(path: Path, course_slug: str) -> dict:
 
 def write_learning_record(path: Path, record: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = json.dumps(record, ensure_ascii=False, indent=2)
+    data = json.dumps(record, ensure_ascii=False, indent=2) + "\n"
     tmp_file = path.with_suffix(".tmp")
+    bak_file = path.with_suffix(path.suffix + ".bak")
     tmp_file.write_text(data, encoding="utf-8")
     json.loads(tmp_file.read_text(encoding="utf-8"))
+    if path.exists():
+        bak_file.write_bytes(path.read_bytes())
     tmp_file.replace(path)
 
 

@@ -8,18 +8,20 @@
 # 1. Install uv (if not installed):
 #      curl -LsSf https://astral.sh/uv/install.sh | sh
 # 2. Run directly (no venv, no pip install needed):
-#      uv run scripts/check-course-depth.py path/to/course-or-module
+#      uv run scripts/check-course-depth.py path/to/course-or-module [--mode systematic] [--strict]
 # 3. Or make executable and run:
 #      chmod +x scripts/check-course-depth.py && ./scripts/check-course-depth.py path/to/course-or-module
 
-"""Report advisory depth and risk clues for generated study course Markdown files.
+"""Report depth, diagram, and risk diagnostics for generated study course Markdown files.
 
 Usage:
-  python scripts/check-course-depth.py path/to/course-or-module
+  python scripts/check-course-depth.py path/to/course-or-module [--mode {system,systematic,exam,interview,speedrun}] [--strict]
 
-The report is advisory. It helps an agent notice thin sections, unusually long
-modules, extraction traces, practice-section guidance leakage, or repeated lines
-after generation; it is not a hard validation gate.
+By default the report is advisory (exit code 0). When --strict is passed,
+blocking violations (sections below the mode character floor, main modules
+with zero archify diagrams or zero exercises, handwaving phrases, extraction
+traces, template placeholders, malformed math delimiters, or invalid archify
+diagram syntax) return exit code 1.
 """
 
 from __future__ import annotations
@@ -37,14 +39,43 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 
-MIN_SECTION_CHARS: Final[int] = 1000
-LONG_SECTION_CHARS: Final[int] = 2600
-LONG_MODULE_CHARS: Final[int] = 12000
+MODE_MIN_SECTION_CHARS: Final[dict[str, int]] = {
+    "system": 1800,
+    "systematic": 1800,
+    "exam": 1100,
+    "interview": 1100,
+    "speedrun": 800,
+}
+MIN_SECTION_CHARS: Final[int] = MODE_MIN_SECTION_CHARS["system"]
+LEGACY_DIAGRAM_LANGS: Final[frozenset[str]] = frozenset({
+    "mermaid",
+    "plantuml",
+    "puml",
+    "graphviz",
+    "dot",
+    "d2",
+    "vega-lite",
+    "vegalite",
+})
+LONG_SECTION_CHARS: Final[int] = 5500
+LONG_MODULE_CHARS: Final[int] = 25000
+SUPPLEMENT_MODULE_ID: Final[str] = "99-content-supplements"
 CONTENT_FILE_NAME: Final[str] = "content.md"
 NON_SYMBOL_PATTERN: Final[re.Pattern[str]] = re.compile(r"[\w\u4e00-\u9fff]", re.UNICODE)
 FENCED_BLOCK_PATTERN: Final[re.Pattern[str]] = re.compile(r"```.*?```", re.DOTALL)
-EXTRACTION_TRACE_TERMS: Final[tuple[str, ...]] = tuple("PPT 第|PPT第|原课件页|本页怎么学|原始内容整理|按页整理|抽取文本|抽取结果|本章对应 PPT|按 PPT 对应页学习|$\\(@\\{".split("|"))
-TEMPLATE_TRACE_TERMS: Final[tuple[str, ...]] = tuple("先把这一页归到|它要么是在给定义，要么是在给公式|不要单独背这一页|输入、输出、核心思想、时间复杂度|参考答案应包含|参考思路|设计一道.*小规模手算题".split("|"))
+FENCE_EXTRACT_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^```([A-Za-z0-9_-]+)[ \t]*\n(.*?)^```[ \t]*$",
+    re.MULTILINE | re.DOTALL,
+)
+EXTRACTION_TRACE_TERMS: Final[tuple[str, ...]] = tuple(
+    "PPT 第|PPT第|原课件页|本页怎么学|原始内容整理|按页整理|抽取文本|抽取结果|本章对应 PPT|按 PPT 对应页学习|$\\(@\\{".split("|")
+)
+TEMPLATE_TRACE_TERMS: Final[tuple[str, ...]] = tuple(
+    "先把这一页归到|它要么是在给定义，要么是在给公式|不要单独背这一页|输入、输出、核心思想、时间复杂度|参考答案应包含|参考思路|设计一道.*小规模手算题".split("|")
+)
+HANDWAVING_TERMS: Final[tuple[str, ...]] = tuple(
+    "限于篇幅|此处不展开|这里不展开|读者可自行查阅|留给读者自己探索|具体实现略|细节略过|不再赘述底层".split("|")
+)
 PURE_PRACTICE_PATH_MARKERS: Final[tuple[str, ...]] = ("chapter-practice", "pure-practice", "only-questions")
 PURE_PRACTICE_TITLE_MARKERS: Final[tuple[str, ...]] = tuple("纯题目|纯练习|只放题|章末练习|Chapter Practice".split("|"))
 PURE_PRACTICE_FORBIDDEN_TERMS: Final[tuple[str, ...]] = tuple("本小节|先自己|做完|回看|参考答案|提示|解析".split("|"))
@@ -58,6 +89,19 @@ INLINE_CODE_PATTERN: Final[re.Pattern[str]] = re.compile(r"`[^`]*`")
 CURRENCY_AMOUNT_PATTERN: Final[re.Pattern[str]] = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?")
 REPEATED_LINE_MIN_CHARS: Final[int] = 28
 REPEATED_LINE_MIN_COUNT: Final[int] = 3
+
+ARCHIFY_TYPES: Final[frozenset[str]] = frozenset({
+    "sequence",
+    "workflow",
+    "architecture",
+    "dataflow",
+    "lifecycle",
+    "tree",
+    "erd",
+    "timeline",
+    "waterfall",
+})
+KEY_VALUE_PATTERN: Final[re.Pattern[str]] = re.compile(r'([A-Za-z_][A-Za-z0-9_-]*)=("[^"]*"|\'[^\']*\'|\S+)')
 
 # AI writing slop term patterns — advisory only
 AI_SLOP_ZH_TERMS: Final[tuple[str, ...]] = tuple(
@@ -74,6 +118,20 @@ AI_SLOP_EN_TERMS: Final[tuple[str, ...]] = tuple(
     "Here.s the thing|Let.s dive in|It.s not just|"
     "The question isn.t|I hope this helps|Great question".split("|")
 )
+
+STRICT_BLOCKING_CATEGORIES: Final[frozenset[str]] = frozenset({
+    "short-section",
+    "missing-diagram",
+    "missing-exercise",
+    "archify-syntax",
+    "handwaving-trace",
+    "extraction-trace",
+    "template-trace",
+    "template-answer",
+    "pure-practice-risk",
+    "math-delimiter",
+    "slide-structure",
+})
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,13 +272,20 @@ def is_course_root(root: Path) -> bool:
 
 def is_module_root(root: Path) -> bool:
     """Return true when the checked root looks like a module directory."""
-    return (root / CONTENT_FILE_NAME).exists()
+    return (root / CONTENT_FILE_NAME).exists() and any(
+        child.is_dir() and (child / CONTENT_FILE_NAME).exists()
+        for child in root.iterdir()
+    )
 
 
 def is_section_content(path: Path, root: Path) -> bool:
     """Return true for section pages, not module prefaces."""
-    if path.name != CONTENT_FILE_NAME or path.parent == root:
+    if path.name != CONTENT_FILE_NAME:
         return False
+    if root.is_file():
+        return True
+    if path.parent == root:
+        return not is_module_root(root) and not is_course_root(root)
     if is_course_root(root):
         return path.parent.parent != root
     if is_module_root(root):
@@ -228,8 +293,152 @@ def is_section_content(path: Path, root: Path) -> bool:
     return True
 
 
+def module_name_for_item(path: Path, root: Path) -> str:
+    """Resolve the owning module directory name for a course Markdown file."""
+    if root.is_file():
+        return path.parent.parent.name if path.parent.name != root.parent.name else path.parent.name
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        return path.parent.name
+    parts = rel.parts
+    if is_course_root(root):
+        return parts[0] if len(parts) > 1 else "root"
+    if is_module_root(root):
+        return root.name
+    return path.parent.name
+
+
+def parse_header_kv(line: str) -> dict[str, str]:
+    """Parse key=value pairs from an archify or study-steps header line."""
+    attrs: dict[str, str] = {}
+    for match in KEY_VALUE_PATTERN.finditer(line):
+        key = match.group(1).lower()
+        raw_val = match.group(2)
+        if len(raw_val) >= 2 and raw_val[0] == raw_val[-1] and raw_val[0] in {'"', "'"}:
+            raw_val = raw_val[1:-1]
+        attrs[key] = raw_val.strip()
+    return attrs
+
+
+def scan_archify_blocks(depths: list[MarkdownDepth]) -> list[ScanFinding]:
+    """Validate ```archify and ```study-steps syntax in course Markdown files."""
+    findings: list[ScanFinding] = []
+    for item in depths:
+        markdown = item.path.read_text(encoding="utf-8-sig")
+        diagram_ids: set[str] = set()
+        step_targets: list[tuple[int, str]] = []
+
+        for match in FENCE_EXTRACT_PATTERN.finditer(markdown):
+            lang = match.group(1).strip().lower()
+            body = match.group(2)
+            start_line = markdown.count("\n", 0, match.start()) + 1
+            raw_lines = [
+                (start_line + idx, line.strip())
+                for idx, line in enumerate(body.splitlines(), start=1)
+                if line.strip() and not line.strip().startswith("#")
+            ]
+
+            if lang == "archify":
+                if not raw_lines:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=start_line,
+                        category="archify-syntax",
+                        detail="empty ```archify block; expected header 'type=<type> id=<id> title=\"...\"' and pipe rows",
+                    ))
+                    continue
+                header_line_no, header_text = raw_lines[0]
+                attrs = parse_header_kv(header_text)
+                dtype = attrs.get("type", "").lower()
+                did = attrs.get("id", "")
+                if dtype not in ARCHIFY_TYPES:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=header_line_no,
+                        category="archify-syntax",
+                        detail=f"invalid or missing archify type '{dtype}'; must be one of {sorted(ARCHIFY_TYPES)}",
+                    ))
+                if did:
+                    if did in diagram_ids:
+                        findings.append(ScanFinding(
+                            path=item.path,
+                            line_no=header_line_no,
+                            category="archify-syntax",
+                            detail=f"duplicate archify diagram id '{did}' in the same file",
+                        ))
+                    diagram_ids.add(did)
+                pipe_rows = [row for row in raw_lines[1:] if "|" in row[1]]
+                if not pipe_rows:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=header_line_no,
+                        category="archify-syntax",
+                        detail="archify diagram has no pipe-separated data rows",
+                    ))
+                for row_line_no, row_text in pipe_rows:
+                    stripped_row = row_text.strip("|").strip()
+                    cells = [c.strip() for c in stripped_row.split("|")]
+                    if len(cells) < 2 or not cells[0]:
+                        findings.append(ScanFinding(
+                            path=item.path,
+                            line_no=row_line_no,
+                            category="archify-syntax",
+                            detail=f"malformed archify pipe row: '{row_text[:60]}'",
+                        ))
+
+            elif lang in LEGACY_DIAGRAM_LANGS:
+                findings.append(ScanFinding(
+                    path=item.path,
+                    line_no=start_line,
+                    category="archify-syntax",
+                    detail=f"legacy diagram fence ```{lang} is not supported; use ```archify instead",
+                ))
+
+            elif lang == "study-steps":
+                if not raw_lines:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=start_line,
+                        category="archify-syntax",
+                        detail="empty ```study-steps block; expected 'diagram=<id>' header and step rows",
+                    ))
+                    continue
+                header_line_no, header_text = raw_lines[0]
+                attrs = parse_header_kv(header_text)
+                target_diagram = attrs.get("diagram", "")
+                if not target_diagram:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=header_line_no,
+                        category="archify-syntax",
+                        detail="study-steps header missing 'diagram=<diagram-id>'",
+                    ))
+                else:
+                    step_targets.append((header_line_no, target_diagram))
+                step_rows = [row for row in raw_lines[1:] if "|" in row[1]]
+                if not step_rows:
+                    findings.append(ScanFinding(
+                        path=item.path,
+                        line_no=header_line_no,
+                        category="archify-syntax",
+                        detail="study-steps block has no pipe-separated step rows",
+                    ))
+
+        for line_no, target_diagram in step_targets:
+            if target_diagram not in diagram_ids:
+                findings.append(ScanFinding(
+                    path=item.path,
+                    line_no=line_no,
+                    category="archify-syntax",
+                    detail=f"study-steps references unknown diagram id '{target_diagram}' in this file",
+                ))
+
+    return findings
+
+
 def scan_markdown_risks(depths: list[MarkdownDepth]) -> list[ScanFinding]:
-    """Collect advisory generation-quality risk clues from course Markdown."""
+    """Collect generation-quality risk clues from course Markdown."""
     findings: list[ScanFinding] = []
     repeated_lines: defaultdict[str, list[ScanFinding]] = defaultdict(list)
 
@@ -259,13 +468,23 @@ def scan_markdown_risks(depths: list[MarkdownDepth]) -> list[ScanFinding]:
                         ),
                     )
             for term in TEMPLATE_TRACE_TERMS:
-                if term in line.text:
+                if re.search(term, line.text):
                     findings.append(
                         ScanFinding(
                             path=item.path,
                             line_no=line.line_no,
                             category="template-trace",
                             detail=f"contains '{term}'",
+                        ),
+                    )
+            for term in HANDWAVING_TERMS:
+                if term in line.text:
+                    findings.append(
+                        ScanFinding(
+                            path=item.path,
+                            line_no=line.line_no,
+                            category="handwaving-trace",
+                            detail=f"contains handwaving shortcut '{term}'; expand the mechanism instead of skipping",
                         ),
                     )
             for term in AI_SLOP_ZH_TERMS:
@@ -345,7 +564,7 @@ def scan_study_block_answers(depths: list[MarkdownDepth]) -> list[ScanFinding]:
         in_study_block = False
         for line_no, raw_line in enumerate(markdown.splitlines(), start=1):
             stripped = raw_line.strip()
-            if stripped.startswith("```study"):
+            if stripped.startswith("```study-") and not stripped.startswith("```study-steps"):
                 in_study_block = True
                 continue
             if in_study_block and stripped == "```":
@@ -394,29 +613,26 @@ def scan_slide_structure(depths: list[MarkdownDepth]) -> list[ScanFinding]:
     return findings
 
 
-def count_exercises_by_module(depths: list[MarkdownDepth], root: Path) -> dict[str, int]:
-    """Count study-* blocks per module directory."""
-    from collections import defaultdict
-    counts: dict[str, int] = defaultdict(int)
+def count_blocks_by_module(depths: list[MarkdownDepth], root: Path) -> tuple[dict[str, int], dict[str, int]]:
+    """Count study-* exercise blocks and ```archify diagram blocks per module directory."""
+    exercise_counts: dict[str, int] = defaultdict(int)
+    diagram_counts: dict[str, int] = defaultdict(int)
     for item in depths:
+        if item.path.name in {"README.md", "syllabus.md"}:
+            continue
+        mod = module_name_for_item(item.path, root)
+        if mod == "root":
+            continue
+        exercise_counts.setdefault(mod, 0)
+        diagram_counts.setdefault(mod, 0)
         markdown = item.path.read_text(encoding="utf-8-sig")
-        study_count = markdown.count("```study")
-        if study_count > 0:
-            try:
-                rel = str(item.path.relative_to(root))
-            except ValueError:
-                rel = str(item.path)
-            parts = rel.replace("\\", "/").split("/")
-            if is_course_root(root):
-                module = parts[0] if parts else "root"
-            elif is_module_root(root):
-                module = root.name
-            elif len(parts) >= 2:
-                module = parts[-2] if item.path.name == "content.md" else parts[0]
-            else:
-                module = "root"
-            counts[module] += study_count
-    return dict(counts)
+        for match in FENCE_EXTRACT_PATTERN.finditer(markdown):
+            lang = match.group(1).strip().lower()
+            if lang in {"study-choice", "study-truefalse", "study-input"}:
+                exercise_counts[mod] += 1
+            elif lang == "archify":
+                diagram_counts[mod] += 1
+    return dict(exercise_counts), dict(diagram_counts)
 
 
 def relative_display(path: Path, root: Path) -> str:
@@ -429,9 +645,20 @@ def relative_display(path: Path, root: Path) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Report advisory non-symbol character counts for study course Markdown.",
+        description="Report depth, diagram, and risk diagnostics for study course Markdown.",
     )
     parser.add_argument("path", help="Course, module, section, or Markdown file to inspect.")
+    parser.add_argument(
+        "--mode",
+        choices=tuple(MODE_MIN_SECTION_CHARS.keys()),
+        default="system",
+        help="Course mode used to select minimum section character threshold (default: systematic).",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 when blocking depth, diagram, or quality violations are found.",
+    )
     args = parser.parse_args()
 
     root = Path(args.path).resolve()
@@ -443,16 +670,30 @@ def main() -> int:
         print("No course Markdown files found.")
         return 0
 
-    print("Advisory course depth and risk report")
+    min_chars = MODE_MIN_SECTION_CHARS[args.mode]
+    mode_tag = "Strict gate" if args.strict else "Advisory"
+    print(f"{mode_tag} course depth and risk report (mode={args.mode})")
     print(f"Root: {root}")
-    print(f"Section diagnostic: short < {MIN_SECTION_CHARS}, long > {LONG_SECTION_CHARS}")
+    print(f"Section diagnostic: short < {min_chars}, long > {LONG_SECTION_CHARS}")
     print()
 
+    findings: list[ScanFinding] = []
     for item in depths:
         label = "ok"
+        markdown = item.path.read_text(encoding="utf-8-sig")
+        lines = visible_lines(markdown)
+        pure_practice = is_pure_practice_section(item.path, lines)
+        mod_name = module_name_for_item(item.path, root)
+        is_supplement = mod_name == SUPPLEMENT_MODULE_ID or SUPPLEMENT_MODULE_ID in item.path.parts
+
         if is_section_content(item.path, root):
-            if item.non_symbol_chars < MIN_SECTION_CHARS:
-                label = "short: expand explanation/examples/practice unless intentionally narrow"
+            if item.non_symbol_chars < min_chars and not pure_practice and not is_supplement:
+                label = f"short (<{min_chars}): expand 4-layer concept anatomy, examples, walkthroughs, and edge cases"
+                findings.append(ScanFinding(
+                    path=item.path,
+                    category="short-section",
+                    detail=f"{item.non_symbol_chars} chars < {min_chars} required for mode '{args.mode}'",
+                ))
             elif item.non_symbol_chars > LONG_SECTION_CHARS:
                 label = "long: consider split only if learner question changes"
         elif item.non_symbol_chars > LONG_MODULE_CHARS:
@@ -461,12 +702,39 @@ def main() -> int:
         print(f"{relative_display(item.path, root)}\t{item.non_symbol_chars}\t{label}")
 
     print()
-    findings = scan_markdown_risks(depths)
+    findings += scan_markdown_risks(depths)
     findings += scan_study_block_answers(depths)
     findings += scan_slide_structure(depths)
-    print("Advisory risk scan:")
+    findings += scan_archify_blocks(depths)
+
+    exercise_counts, diagram_counts = count_blocks_by_module(depths, root)
+    for mod in sorted(set(exercise_counts) | set(diagram_counts)):
+        if mod == SUPPLEMENT_MODULE_ID:
+            continue
+        mod_files = [d.path for d in depths if module_name_for_item(d.path, root) == mod and is_section_content(d.path, root)]
+        if not mod_files:
+            continue
+        all_pure_practice = all(
+            is_pure_practice_section(p, visible_lines(p.read_text(encoding="utf-8-sig")))
+            for p in mod_files
+        )
+        anchor_path = mod_files[0]
+        if exercise_counts.get(mod, 0) == 0:
+            findings.append(ScanFinding(
+                path=anchor_path,
+                category="missing-exercise",
+                detail=f"module '{mod}' has 0 study-* exercises",
+            ))
+        if diagram_counts.get(mod, 0) == 0 and not all_pure_practice:
+            findings.append(ScanFinding(
+                path=anchor_path,
+                category="missing-diagram",
+                detail=f"module '{mod}' has 0 ```archify diagrams; add visual explanations for flows/structures",
+            ))
+
+    print("Risk and quality scan:")
     if not findings:
-        print("No advisory risk patterns found.")
+        print("No risk patterns found.")
     else:
         for finding in findings:
             location = relative_display(finding.path, root)
@@ -474,19 +742,25 @@ def main() -> int:
                 location = f"{location}:{finding.line_no}"
             print(f"{finding.category}\t{location}\t{finding.detail}")
 
-    print()
-    print("This report is advisory. It does not replace the blocking learner-perspective review.")
-
-    exercise_counts = count_exercises_by_module(depths, root)
-    if exercise_counts:
+    if exercise_counts or diagram_counts:
         print()
-        print("Exercise count per module:")
-        for mod, cnt in sorted(exercise_counts.items()):
-            flag = "  <-- NO exercises" if cnt == 0 else ""
-            print(f"  {mod}: {cnt}{flag}")
-        zero_modules = [m for m, c in exercise_counts.items() if c == 0]
-        if zero_modules:
-            print(f"  WARNING: {len(zero_modules)} module(s) have zero exercises")
+        print("Module block summary (exercises / archify diagrams):")
+        for mod in sorted(set(exercise_counts) | set(diagram_counts)):
+            ex_cnt = exercise_counts.get(mod, 0)
+            dg_cnt = diagram_counts.get(mod, 0)
+            print(f"  {mod}: {ex_cnt} exercise(s), {dg_cnt} diagram(s)")
+
+    if args.strict:
+        blocking = [f for f in findings if f.category in STRICT_BLOCKING_CATEGORIES]
+        if blocking:
+            print()
+            print(f"STRICT GATE FAILED: {len(blocking)} blocking issue(s) found.")
+            return 1
+        print()
+        print("STRICT GATE PASSED.")
+    else:
+        print()
+        print("This report is advisory unless --strict is enabled. It does not replace the blocking learner-perspective review.")
 
     return 0
 

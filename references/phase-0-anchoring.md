@@ -78,20 +78,19 @@ These are internal quality constraints. Do NOT mention word counts or exercise c
 
 The selected mode's prose band is a post-generation diagnostic, not a generation cap. Generate learner-facing explanation, examples, transitions, diagrams, code, worked solutions, and practice first. After generation, use the band only to notice suspiciously thin or unusually verbose modules. A module is acceptable only when it satisfies the selected mode's structural coverage and teaches the source material clearly. Time is a planning aid, not a content-length constraint. Reading speed and prior knowledge vary widely; do not cut teaching to fit a time estimate.
 
-Prose length guidance:
+Prose length & depth gate guidance:
 
-- Code blocks, Mermaid, tables, images, and `study-*` metadata do not count as prose; their explanation does.
-- The mode-specific diagnostic bands in the table below are post-generation checks, not quotas. Generate for structural coverage first; use `scripts/check-course-depth.py` after generation to spot thin or unusually long modules.
-- If a section is diagnostically short, check for missing explanation, worked examples, transitions, or practice before adding filler.
-- If a section is very long, split only when the learner question, example, prerequisite, or practice type changes.
-- If a module exceeds the upper band, check for redundancy before trimming; do not cut teaching that satisfies structural-coverage requirements to fit a band.
+- Code blocks, `archify` diagrams, `study-steps`, tables, images, and `study-*` metadata do not count as prose; their explanation does.
+- Every mode has a strict per-section non-symbol character floor enforced by `scripts/check-course-depth.py --mode <mode> --strict` (`system=1800`, `exam=1100`, `interview=1100`, `speedrun=800`).
+- If a section falls below the mode floor, expand the 4-layer concept anatomy (`courseware-format.md` GC6): concrete pain/counterexample, internal state/data walkthrough, trade-offs & failure boundaries, and runnable engineering example. Never pad with generic fluff.
+- If a section is very long (>5500 chars), split only when the learner question, example, prerequisite, or practice type changes.
 
-| Mode | 目标正文规模/模块 | 小节规模建议 | 结构覆盖/模块 | 粗略学习负荷 | 解释深度 |
+| Mode (`--mode`) | 目标正文规模/模块 | 小节规模建议（含 `--strict` 硬下限） | 结构覆盖与图表要求/模块 | 粗略学习负荷 | 解释深度 |
 |------|------------------|----------------|----------------|--------------|----------|
-| 速成导览 | 中文 1800-3200 字；英文 900-1900 words | 2-3 节，每节中文 700-1400 字 / 英文 400-850 words | 1 条主路径；1 个可运行/可检查例子；1-2 个互动题 | 短到中；通常一坐能完成 | 精简解释，先跑通主路径，只讲会阻塞上手的原理 |
-| 系统精讲 | 中文 6000-11000 字；英文 3600-6800 words | 4-7 节，每节中文 1000-2200 字 / 英文 650-1300 words | 3-6 个概念块；2 个以上例子/案例/代码；4-7 个互动题；必要时配图或对比表 | 长；适合分小节学习 | 深挖为什么、怎么选、边界和底层机制；讲清概念关系和迁移条件 |
-| 面试冲刺 | 中文 2200-4500 字；英文 1200-2600 words | 2-4 节，每节中文 800-1800 字 / 英文 450-1000 words | 1 个高频考点簇；2-4 个追问；1 套回答评分标准；2-3 个面试型 `study-input` / `study-choice` | 中等；以输出答案为目标 | 用场景题组织回答要点、追问方向、反例和判断标准 |
-| 考试备考 | 中文 3500-7000 字；英文 2000-4200 words | 3-6 节，每节中文 900-1900 字 / 英文 550-1150 words | 对齐考纲/材料；1-2 个完整例题；3-6 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲清定义、推导、题型、分值权重和易混点；不考的不展开 |
+| 速成导览 (`speedrun`) | 中文 2400-5000 字；英文 1400-3000 words | 2-3 节，每节中文 900-1800 字（硬下限 **800 字**） / 英文 500-1050 words | 1 条主路径；≥1 张 `archify` 图表；1 个可运行/可检查例子；1-2 个互动题 | 短到中；通常一坐能完成 | 精简解释，先跑通主路径，讲清会阻塞上手的核心机制 |
+| 系统精讲 (`system`) | 中文 9000-20000 字；英文 5200-12000 words | 4-7 节，每节中文 2000-4200 字（硬下限 **1800 字**） / 英文 1200-2500 words | 3-6 个概念块（执行四层概念解剖 GC6）；每节推荐 1 张 `archify` 图表（模块 ≥1 张）+ `study-steps` 走查；2 个以上完整案例/代码；4-7 个互动题 | 长；分小节深度精学 | 四层解剖：具象痛点 → 黑盒内部状态走查 → 设计权衡与失效边界 → 工程落地与决策表 |
+| 面试冲刺 (`interview`) | 中文 3500-7500 字；英文 2000-4400 words | 2-4 节，每节中文 1200-2600 字（硬下限 **1100 字**） / 英文 700-1500 words | 1 个高频考点簇；≥1 张 `archify` 原理/时序图；2-4 个深水区追问；1 套回答评分标准；2-3 个面试型 `study-input` / `study-choice` | 中等；以输出高分回答为目标 | 用场景题组织底层机制、回答要点、追问方向、反例和判分标准 |
+| 考试备考 (`exam`) | 中文 4500-10000 字；英文 2600-6000 words | 3-6 节，每节中文 1200-2600 字（硬下限 **1100 字**） / 英文 700-1500 words | 对齐考纲/材料；≥1 张 `archify` 结构/流程图；1-2 个完整推导例题；3-6 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲透必考点的定义、完整推导、题型套路、分值权重和易混边界；不考的不展开 |
 
 Code examples, diagrams, images, tables, formulas, and source excerpts are not constrained by prose length. Include them whenever they reduce cognitive load or make the learner's answer checkable.
 

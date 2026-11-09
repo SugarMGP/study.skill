@@ -48,7 +48,7 @@ Most agents only read the first ~160 lines. Use this table before substantial wo
 | Review check, review session, learning bulletin | `references/phase-4-consolidation.md` + `references/fsrs-scheduler.md` |
 | Skill tree, XP, levels, achievements, quests | `references/skill-tree.md` |
 
-Script shortcuts: run the scripts from this skill directory, not from the learning directory. Use `{skill_dir}/scripts/check-reviews.py` for due reviews, `{skill_dir}/scripts/record-review.py` for review ratings, `{skill_dir}/scripts/write-state.py` for JSON state writes, and `{skill_dir}/scripts/migrate-profile.py` for old state migration. Use `{skill_dir}/scripts/check-course-depth.py` only as an advisory post-generation depth and risk diagnostic; never as a hard course validator.
+Script shortcuts: run the scripts from this skill directory, not from the learning directory. Use `{skill_dir}/scripts/check-reviews.py` for due reviews, `{skill_dir}/scripts/record-review.py` for review ratings, `{skill_dir}/scripts/write-state.py` for JSON state writes, and `{skill_dir}/scripts/migrate-profile.py` for old state migration. Use `{skill_dir}/scripts/check-course-depth.py <path> --mode <mode> --strict` as the mandatory per-module and post-generation depth, diagram, and risk gate during Phase 2 generation.
 
 ## Core Contract
 
@@ -139,8 +139,8 @@ Before answering any learning request:
 | "Every chapter needs the same heading template." | Keep the learning loop, not fixed headings. Do not force phrases such as "先记住一句话". |
 | "快速备考 means I should make every point short." | Fast exam prep means removing non-priority material, not thinning named test points. |
 | "The learner wants more detail, so I should patch the original section." | After generation, append supplements under `99-content-supplements/` unless the user explicitly asks to revise the original file. |
-| "Everything is generated. Time to tell the user it's ready." | ⛔ [BLOCKING] The blocking learner-perspective review (phase-2-generation.md §Blocker) must pass all 13 items first. Files on disk ≠ course complete. |
-| "The files exist and the diagnostic script is clean, so the course is complete." | ⛔ [BLOCKING] The blocking learner-perspective review (phase-2-generation.md §Blocker) must pass all 13 items first. A clean script does not replace this review. Never claim completion with pending or failed review items. |
+| "Everything is generated. Time to tell the user it's ready." | ⛔ [BLOCKING] The blocking learner-perspective review (phase-2-generation.md §Blocker) must pass all 15 items first. Files on disk ≠ course complete. |
+| "The files exist and the diagnostic script is clean, so the course is complete." | ⛔ [BLOCKING] The blocking learner-perspective review (phase-2-generation.md §Blocker) must pass all 15 items first. A clean script does not replace this review. Never claim completion with pending or failed review items. |
 | "Context was compressed; I'll continue from what I remember." | ⛔ [BLOCKING] Re-read SKILL.md and currently active references before continuing. Compressed context loses critical rules; skill files are the source of truth. |
 | "meta.json says generation_status: pending_review, but I remember doing the review." | ⛔ [BLOCKING] If generation_status is not "complete", the review is not done. Trust the persisted state over memory. Re-run the review. |
 | "More praise means more motivation." | Use concrete progress, not empty praise. |

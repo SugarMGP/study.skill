@@ -1,85 +1,155 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer">
-<title>课程播放器</title>
-<link rel="stylesheet" href="https://unpkg.com/layui@2.13.7/dist/css/layui.css">
+<title>课程播放器 · study.skill</title>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github.min.css" id="hljs-theme">
 <link rel="stylesheet" href="/assets/viewer.css">
 </head>
-<body class="layui-layout-body">
-<div class="layui-layout layui-layout-admin viewer-shell">
-  <div class="layui-header viewer-header">
-    <button type="button" class="viewer-icon-btn viewer-nav-toggle" id="nav-toggle-btn" aria-label="打开课程目录" aria-controls="course-sidebar" aria-expanded="false" title="课程目录" onclick="toggleDrawer('nav')"><i class="layui-icon layui-icon-spread-left"></i></button>
-    <div class="layui-logo viewer-logo">课程播放器</div>
-    <div class="viewer-breadcrumb">
-      <span class="layui-breadcrumb" lay-separator="/" id="breadcrumb">loading...</span>
-    </div>
-    <div class="viewer-header-actions">
-      <span class="layui-badge-rim viewer-hidden" id="rpg-status"></span>
-      <span class="layui-badge layui-bg-orange viewer-hidden" id="review-badge"></span>
-      <button type="button" class="viewer-icon-btn viewer-panel-toggle" id="panel-toggle-btn" aria-label="打开学习面板" aria-controls="learning-sidebar" aria-expanded="false" title="学习面板" onclick="toggleDrawer('panel')"><i class="layui-icon layui-icon-more-vertical"></i></button>
-      <button type="button" class="layui-btn layui-btn-primary layui-border layui-btn-sm" id="theme-btn" onclick="toggleTheme()">深色</button>
-    </div>
+<body class="viewer-body-root" x-data="{ leftTab: 'catalog' }">
+<div class="viewer-shell">
+  <!-- Reading Progress Bar -->
+  <div class="reading-progress-track" aria-hidden="true">
+    <div class="reading-progress-fill" id="reading-progress-bar"></div>
   </div>
 
-  <div class="layui-side viewer-side" id="course-sidebar" tabindex="-1">
-    <div class="layui-side-scroll">
-      <div class="viewer-side-title">课程目录</div>
-      <ul class="layui-nav layui-nav-tree course-nav" id="nav-list" lay-filter="course-nav">
-        <li class="layui-nav-item"><a href="javascript:;">加载中...</a></li>
-      </ul>
-      <div class="skill-map viewer-hidden" id="skill-tree-section">
-        <div class="skill-map-title">技能树</div>
-        <div id="skill-tree"></div>
+  <!-- Top Glass Header -->
+  <header class="viewer-header">
+    <div class="viewer-header-left">
+      <button type="button" class="viewer-icon-btn viewer-nav-toggle" id="nav-toggle-btn" aria-label="打开课程目录" aria-controls="course-sidebar" aria-expanded="false" title="课程目录 ([)" onclick="toggleDrawer('nav')">
+        <i data-lucide="panel-left" class="icon-sm"></i>
+      </button>
+      <div class="viewer-logo">
+        <span class="viewer-logo-mark"><i data-lucide="book-open-check" class="icon-sm"></i></span>
+        <span class="viewer-logo-text">学习工作台</span>
       </div>
+      <nav class="viewer-breadcrumb" aria-label="面包屑导航">
+        <div id="breadcrumb" class="breadcrumb-trail">加载中...</div>
+      </nav>
     </div>
-  </div>
 
-  <div class="layui-body viewer-body">
-    <main class="viewer-content" id="content">
-      <div class="layui-card viewer-card"><div class="layui-card-body loading">加载课程内容...</div></div>
-    </main>
-  </div>
-
-  <aside class="viewer-aside" id="learning-sidebar" tabindex="-1">
-    <div class="layui-card viewer-card viewer-overview-card">
-      <div class="layui-card-header">学习概览</div>
-      <div class="layui-card-body" id="learning-overview"><div class="loading">加载中...</div></div>
+    <div class="viewer-header-actions">
+      <span class="viewer-pill viewer-rpg-pill viewer-hidden" id="rpg-status"></span>
+      <span class="viewer-pill viewer-review-pill viewer-hidden" id="review-badge"></span>
+      <button type="button" class="viewer-icon-btn viewer-panel-toggle" id="panel-toggle-btn" aria-label="打开学习面板" aria-controls="learning-sidebar" aria-expanded="false" title="学习面板 (])" onclick="toggleDrawer('panel')">
+        <i data-lucide="sliders-horizontal" class="icon-sm"></i>
+      </button>
+      <button type="button" class="viewer-theme-btn" id="theme-btn" onclick="toggleTheme()" title="切换亮/暗主题">
+        <span id="theme-btn-label">深色</span>
+      </button>
     </div>
-    <div class="layui-card viewer-card viewer-panel-card">
-      <div class="layui-card-header">待问清单</div>
-      <div class="layui-card-body">
-        <div id="question-list"></div>
-        <div class="layui-form viewer-stack-md">
-          <div class="layui-input-group">
-            <input type="text" id="question-input" placeholder="输入问题..." class="layui-input">
-            <div class="layui-input-suffix">
-              <button type="button" class="layui-btn layui-btn-sm" onclick="addQuestion()">添加</button>
-            </div>
-          </div>
+  </header>
+
+  <!-- Left Sidebar: Course Catalog & Skill Tree -->
+  <aside class="viewer-side" id="course-sidebar" tabindex="-1" aria-label="课程导航与技能树">
+    <div class="viewer-side-tabs" role="tablist">
+      <button type="button" role="tab" class="side-tab-btn" :class="{ 'is-active': leftTab === 'catalog' }" @click="leftTab = 'catalog'">
+        <i data-lucide="list-tree" class="icon-xs"></i>
+        <span>章节目录</span>
+      </button>
+      <button type="button" role="tab" class="side-tab-btn" id="skill-tree-tab-btn" :class="{ 'is-active': leftTab === 'skilltree' }" @click="leftTab = 'skilltree'">
+        <i data-lucide="git-branch" class="icon-xs"></i>
+        <span>技能树</span>
+      </button>
+    </div>
+
+    <div class="viewer-side-scroll">
+      <div x-show="leftTab === 'catalog'">
+        <ul class="course-nav" id="nav-list">
+          <li class="viewer-muted p-4 text-sm">加载目录中...</li>
+        </ul>
+      </div>
+      <div x-show="leftTab === 'skilltree'" x-cloak>
+        <div class="skill-map viewer-hidden" id="skill-tree-section">
+          <div class="skill-map-title">课程技能树与解锁路径</div>
+          <div id="skill-tree"></div>
         </div>
       </div>
     </div>
-    <div class="layui-card viewer-card viewer-panel-card">
-      <div class="layui-card-header">本课程待复习</div>
-      <div class="layui-card-body" id="review-panel"><div class="loading">加载中...</div></div>
-    </div>
   </aside>
+
+  <!-- Center Main Reading Canvas -->
+  <div class="viewer-body">
+    <main class="viewer-content" id="content">
+      <div class="viewer-card"><div class="viewer-card-body loading">加载课程内容...</div></div>
+    </main>
+  </div>
+
+  <!-- Right Sidebar: Overview, Questions Queue, Spaced Repetition -->
+  <aside class="viewer-aside" id="learning-sidebar" tabindex="-1" aria-label="学习助手面板">
+    <section class="viewer-card viewer-overview-card">
+      <div class="viewer-card-header">
+        <i data-lucide="compass" class="icon-xs"></i>
+        <span>学习概览</span>
+      </div>
+      <div class="viewer-card-body" id="learning-overview">
+        <div class="loading">加载中...</div>
+      </div>
+    </section>
+
+    <section class="viewer-card viewer-panel-card">
+      <div class="viewer-card-header">
+        <i data-lucide="message-square-question" class="icon-xs"></i>
+        <span>待问清单（划词可快捷添加）</span>
+      </div>
+      <div class="viewer-card-body">
+        <div id="question-list"></div>
+        <div class="question-form">
+          <input type="text" id="question-input" placeholder="记下不懂的问题，回聊天问师傅..." class="viewer-input" onkeydown="if(event.key==='Enter'){event.preventDefault();addQuestion();}">
+          <button type="button" class="viewer-btn viewer-btn-primary viewer-btn-sm" onclick="addQuestion()">添加</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="viewer-card viewer-panel-card">
+      <div class="viewer-card-header">
+        <i data-lucide="flame" class="icon-xs"></i>
+        <span>本课程待复习（FSRS）</span>
+      </div>
+      <div class="viewer-card-body" id="review-panel">
+        <div class="loading">加载中...</div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- Mobile / Tablet Drawer Backdrop -->
   <button type="button" class="viewer-drawer-backdrop" id="drawer-backdrop" aria-label="关闭侧栏" onclick="closeDrawers()"></button>
+
+  <!-- Fullscreen Diagram Zoom Modal -->
+  <div class="diagram-modal viewer-hidden" id="diagram-modal" role="dialog" aria-modal="true" aria-label="图表全屏检视">
+    <div class="diagram-modal-backdrop" onclick="closeDiagramModal()"></div>
+    <div class="diagram-modal-card">
+      <div class="diagram-modal-header">
+        <span class="diagram-modal-title" id="diagram-modal-title">图表全屏检视</span>
+        <div class="diagram-modal-controls">
+          <button type="button" class="viewer-btn viewer-btn-xs" onclick="zoomDiagramModal(-0.2)">缩小 -</button>
+          <button type="button" class="viewer-btn viewer-btn-xs" onclick="zoomDiagramModal(0)">100%</button>
+          <button type="button" class="viewer-btn viewer-btn-xs" onclick="zoomDiagramModal(0.2)">放大 +</button>
+          <button type="button" class="viewer-btn viewer-btn-xs" onclick="closeDiagramModal()">关闭 (Esc)</button>
+        </div>
+      </div>
+      <div class="diagram-modal-stage" id="diagram-modal-stage"></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="viewer-toast-host" class="viewer-toast-host" aria-live="polite"></div>
 </div>
 
-<script src="https://unpkg.com/layui@2.13.7/dist/layui.js" onload="this.dataset.loaded='true'" onerror="window.__layuiLoadError=true"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.475.0/dist/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script src="/assets/diagrams.js"></script>
 <script src="/assets/viewer.js"></script>
 </body>
 </html>

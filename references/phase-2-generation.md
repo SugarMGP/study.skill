@@ -30,7 +30,7 @@ Load `learning-viewer.md` only when exact player-supported syntax, viewer startu
 
 ## Completion Rule
 
-⛔ **Do not claim a course is complete until the blocking learner-perspective full-course review (see Blocker section below) has been run and all 13 items pass.** The Quality Gate table is a per-module check during writing; the blocking review is the whole-course gate that comes after all modules are generated. Both are required. The diagnostic script (`check-course-depth.py`) provides clues only — a clean script output does not replace the review.
+⛔ **Do not claim a course is complete until the blocking learner-perspective full-course review (see Blocker section below) has been run and all 15 items pass.** The Quality Gate table is a per-module check during writing; the blocking review is the whole-course gate that comes after all modules are generated. Both are required. The diagnostic script (`check-course-depth.py`) provides clues only — a clean script output does not replace the review.
 
 **The `meta.json.generation_status` field is the persisted gate.** After all modules are written, write it to `"pending_review"`. Only after the blocking review passes every item, write it to `"complete"`. If context is compressed and you re-read `meta.json` and see `"pending_review"`, the review has not been done — do not proceed to Phase 3. If you see `"generating"`, writing is incomplete — continue from where you left off.
 
@@ -65,7 +65,7 @@ Every module should contain:
 - concise recap; a concrete continuation action only when the next module builds on this one
 - source notes for non-trivial claims, code, images, diagrams, and data; link placement and export rules come from `courseware-format.md`
 - teaching patterns from `references/teaching-patterns.md` only where they fit the concept; one well-used pattern is enough, and a section may use none when a plain worked explanation is clearer
-- adherence to information density pace rules GC1-GC5 from `courseware-format.md`
+- adherence to information density pace rules GC1-GC6 from `courseware-format.md`
 
 Course files are for learners. Do not include design notes, generation rationale, tool choices, internal field names, or agent self-evaluation unless they are part of the hidden machine-readable exercise block format defined in `courseware-format.md`.
 
@@ -140,27 +140,37 @@ Chinese prompt: `课程大纲 OK 吗？我开始写具体内容？`
 
 English prompt: `Does this outline look right? I can start writing the modules next.`
 
-## Step 2: Generate Remaining Modules
+## Step 1.5: Generate `syllabus.md` With Section Blueprints
 
-After Module 00 is confirmed, generate `syllabus.md` and all remaining modules in one pass. The Module 00 outline is the contract. No per-module confirmation is needed unless the user pauses or asks to revise the outline.
-
-⛔ **Interleaved quality checkpoint (MUST RUN every 3 modules):** Every 3 modules generated, pause internally to check the last 3 for generation fatigue (do not ask the user for confirmation; this is an agent-internal gate):
-- Exercise count per module is not dropping (>=80% of the first 3 modules' average).
-- No `study-*` answer field has regressed to template placeholders ("参考答案应包含..." etc.).
-- Module preface section descriptions are section-specific (not identical boilerplate repeated across all sections).
-- No new extraction traces or raw artifacts have appeared.
-- AI 写作抽检：随机抽 2-3 个小节，执行 `anti-ai-writing.md` §7 自检。要求 0 个无合理理由保留的 Tier 1 警惕词，≤1 个 Tier 2 警惕词。
-- 教科书压缩感抽检：随机抽 2-3 个小节，执行 `courseware-format.md` GC1-GC5 规则检查。连续 3 个概念块间质元素不足，或靠固定口头禅制造节奏的，打回重写。
-If the checkpoint fails, fix the degraded modules before continuing to the next 3.
+After Module 00 is confirmed, write `{learning_root}/courses/{course-slug}/syllabus.md` first. Do NOT treat `syllabus.md` as a bare title list — it is the **Section Depth & Diagram Blueprint** that prevents later sections from being compressed into shallow summaries.
 
 `syllabus.md` minimum content:
 
 - module order, section titles, and learning objectives
+- **per-section blueprint contract** (for every Foundation/Core section):
+  1. **4-Layer Anatomy breakdown points**: concrete pain/counterexample -> internal state/data walkthrough -> design trade-offs & failure boundaries -> actionable decision table / runnable example (`courseware-format.md` GC6)
+  2. **Planned `archify` diagram**: exact diagram `type` (`sequence` / `workflow` / `architecture` / `dataflow` / `lifecycle` / `tree` / `erd` / `timeline` / `waterfall`) + diagram subject + `study-steps` walkthrough focus
+  3. **Demonstration & exercise plan**: target worked example and `study-*` exercise progression
 - prerequisites and unlock order when relevant
 - mode-specific emphasis, such as interview follow-ups or exam question forms
 - the fixed `99-content-supplements` module, titled "内容补充", marked as always available and outside the main learning path
 - short course-level source list, limited to sources that actually shaped the syllabus
 - links to optional appendices only when those appendices were explicitly requested or have a runtime consumer
+
+## Step 2: Automated Module-by-Module Deep Generation (Anti-Dilution Loop)
+
+After `syllabus.md` is written, generate all remaining modules **sequentially one module at a time** without pausing to ask the user for per-module confirmation.
+
+⛔ **Anti-Compression Rule (Never dump the whole course in a single hurried batch):**
+Attempting to write 5–10 modules in one unverified breath causes severe token dilution and 800-word summary sections. You MUST execute the following loop **for each module in order (`01-*`, `02-*`, ...)**:
+
+1. **Draft one module completely**: Write `{module}/content.md` and every `{module}/{section}/content.md` in that module, fulfilling every point in the `syllabus.md` section blueprint, the 4-layer concept anatomy (`GC6`), the `archify` + `study-steps` visual triggers, and the mode prose depth (`system >= 1800` chars/section, `exam/interview >= 1100`, `speedrun >= 800`).
+2. **Run the per-module strict gate immediately**:
+   ```bash
+   python {skill_dir}/scripts/check-course-depth.py {learning_root}/courses/{course-slug}/{module} --mode {system|exam|interview|speedrun} --strict
+   ```
+3. **Repair before advancing**: If `--strict` exits non-zero (short section, 0 `archify` diagrams, 0 `study-*` exercises, `handwaving-trace` such as "限于篇幅/此处不展开", `template-answer`, `math-delimiter`, or `archify-syntax` error), expand and fix that module immediately and re-run `--strict` until it passes. Never proceed to the next module while the current module fails `--strict`.
+4. **Interleaved quality checkpoint (every 3 modules)**: Check that exercise density is not dropping (>=80% of the first 3 modules' average), `anti-ai-writing.md` §7 passes (0 unjustified Tier 1 terms, <=1 Tier 2 term), and `courseware-format.md` GC1-GC6 hold.
 
 **Course structure guard:** one course should stay within <=12 modules and <=60 section pages. If the outline exceeds either limit, split it into a series of separate courses before writing modules. Do not use "batch generation" to hide an oversized single course. Batches are only for context management inside a course that already passes the structure guard.
 
@@ -194,7 +204,7 @@ Before outputting any module, check against this tiered checklist.
 | Beginner entry before definitions | [MUST] concrete scene/problem + why it matters | [SHOULD] unless prior module already prepared it | [OPTIONAL] |
 | Language-specific natural writing rules | [MUST] | [MUST] | [MUST] |
 | Problem entry -> concept explanation -> minimum complete example/source item -> step-by-step breakdown -> decision boundary -> practice -> recap | [MUST] keep the learning loop; simplify step-by-step breakdown when the concept has only one or two trivial steps | [MUST] | [MUST] |
-| Diagram or equivalent visual structure | [SHOULD] if structure is complex; else table/examples OK. Must use renderable formats (mermaid/plantuml/graphviz/d2/vega-lite); ASCII art/character drawings do not count as diagrams. See `courseware-format.md` diagram rules. | [MUST] when content involves flow/architecture/hierarchy/contrast/dependency; else table/examples OK. Must use renderable formats; ASCII art/character drawings do not count. | [SHOULD] |
+| Archify deterministic diagram + `study-steps` walkthrough | [MUST] >=1 `archify` diagram in the module; apply `courseware-format.md` 6 visual triggers. ASCII art and legacy mermaid/plantuml/graphviz do not count. | [MUST] >=1 `archify` diagram in the module (systematic mode: recommended 1 per section) + `study-steps` interactive walkthrough when flow/sequence/architecture/state/hierarchy/schema/timing is taught. | [SHOULD] |
 | Interactive practice | [MUST] 1-2 learner-answerable questions across the module; use `courseware-format.md` exercise blocks when answers should be saved or unlocked after submit | [MUST] 3-6 learner-answerable questions across section pages, covering recall + apply/analyze/explain evidence through `mastery_tags` | [SHOULD] 1-2 learner-answerable questions |
 | Source citations | [MUST] primary source | [MUST] primary + 1 supplement | [SHOULD] |
 | Inline authoritative links | [SHOULD] for APIs/core concepts | [MUST] for official API/library concepts and important primary sources | [SHOULD] |
@@ -217,7 +227,7 @@ Cross-tier rules (apply across all tiers where the context matches):
 - **Mode-specific depth coverage**: [MUST] structural coverage from Phase 0 for all tiers; length checked only after generation.
 - **No extraction, template, or AI writing traces**: [MUST] for all tiers. No source extraction labels, no repeated generic scaffold, no batch-reused filler, no AI-slop phrasing. See `anti-ai-writing.md` for the complete forbidden-pattern criteria; language guides reference it rather than maintaining independent lists.
 - **Anti-AI writing compliance**: [MUST] for Foundation/Core, [SHOULD] for Enrichment. 0 Tier 1 警惕词 without justified reason; ≤1 Tier 2 警惕词 per section. Agent must execute `anti-ai-writing.md` §7 self-check per section.
-- **Information density pace (anti-compression)**: [MUST] for Foundation/Core, [SHOULD] for Enrichment. All sections must satisfy `courseware-format.md` GC1-GC5 rules. Sections that read like compressed reference documents must be rewritten.
+- **Information density pace (anti-compression)**: [MUST] for Foundation/Core, [SHOULD] for Enrichment. All sections must satisfy `courseware-format.md` GC1-GC6 rules. Sections that read like compressed reference documents must be rewritten.
 
 **Material-driven quality gate:** When the course is based on PPT, lecture notes, textbook chapters, exam outlines, past papers, or teacher materials, apply the material-driven rules in `courseware-format.md` and also check the generation result as a whole:
 
@@ -255,7 +265,7 @@ The Quality Gate table above is a per-module check done during writing. This is 
 4. For material-driven courses, check each source unit (PPT page, textbook section, exam point) against the module outline. Mark whether it was taught, practiced, or omitted with scoped reason.
 5. Compile findings into a brief internal review note listing: total sections checked, sections with missing learning-loop pieces, source-content gaps, and extraction/template traces found.
 
-**Review checklist** — every generated course must pass all 13 items. ⛔ Mark each as PASS or FAIL with a brief note:
+**Review checklist** — every generated course must pass all 15 items. ⛔ Mark each as PASS or FAIL with a brief note:
 
 1. **Order coherence**: Can a learner with the stated baseline follow the module and section order without confusion? Check that prerequisites are taught before they are needed.
 2. **Self-contained sections**: For every section, pick one concept/example/exercise. Can a learner understand it without opening external source material? If the answer depends on a figure or code only in the source, it must be embedded in the course file.
@@ -269,11 +279,13 @@ The Quality Gate table above is a per-module check done during writing. This is 
 10. **Answerability**: For a randomly chosen section from each module, could a learner complete at least one same-type task without the source material?
 11. **No template/placeholder answers**: Every `study-*` answer field contains a concrete, learner-checkable answer. No meta-instructions like "参考答案应包含…", "参考思路", or agent-facing placeholder text. If an answer describes what a good answer *should* contain rather than providing it, the exercise is incomplete.
 12. **No slide-by-slide structure**: Section body is organized by concept, not by source page number. No headings like "原课件页 N", "Page X of PPT", or any per-page structural pattern with 5+ consecutive page-numbered headings. Content must be rearranged into concept-driven sections regardless of which source page the material came from.
-13. **No textbook compression or synthetic teacher voice**: For a randomly chosen section from each module, read the first 200 words aloud. Does it sound like a teacher following one problem, or like a dictionary padded with "我们来看看" and progress announcements? Apply `courseware-format.md` GC1-GC5: concepts have breathing room (GC1), core concept clusters have complete demonstrations (GC2), formulas have numeric walkthroughs (GC3), navigation appears only at real transitions (GC4), and teacher voice performs a concrete job rather than meeting a phrase quota (GC5).
+13. **No textbook compression or synthetic teacher voice**: For a randomly chosen section from each module, read the first 200 words aloud. Does it sound like a teacher following one problem, or like a dictionary padded with "我们来看看" and progress announcements? Apply `courseware-format.md` GC1-GC6: concepts have breathing room (GC1), core concept clusters have complete demonstrations (GC2), formulas have numeric walkthroughs (GC3), navigation appears only at real transitions (GC4), and teacher voice performs a concrete job rather than meeting a phrase quota (GC5).
+14. **4-Layer Concept Anatomy & Anti-Handwaving (GC6)**: Does every Foundation/Core section unpack its core mechanism across all 4 layers (concrete pain/counterexample -> internal state/data walkthrough -> design trade-offs & failure boundaries -> actionable decision table & complete example)? Are there zero handwaving shortcuts ("限于篇幅", "此处不展开", "读者可自行查阅")?
+15. **Visual-first `archify` coverage & strict gate pass**: Does every main module contain valid ```` ```archify ```` diagrams (and ```` ```study-steps ```` walkthroughs on key flows/architectures/sequences) wherever the 6 visual triggers apply, and does `python {skill_dir}/scripts/check-course-depth.py {course_dir} --mode {mode} --strict` pass with exit code 0?
 
 This review is blocking. If any item fails, revise the course files and re-run the review. Max 2 full retries. On the 3rd failure or time constraint, present the course with a flagged warning listing the remaining failures — never claim completion when items fail. Do not replace this step with a script report.
 
-**Diagnostic protocol:** After generation, run `scripts/check-course-depth.py` on the generated course or module. It reports non-symbol character counts and advisory scan findings for extraction traces, pure-practice contamination, and repeated template-like lines. Treat any section below the selected mode diagnostic band as requiring inspection for missing items from `courseware-format.md`: complete example, step breakdown, figure/source-question explanation, common error, decision boundary, or exercise progression. Fix the missing teaching item; if the section is intentionally concise because its task is narrow and already complete, record that concrete reason in the blocking review note instead of silently accepting the warning. Treat every flagged phrase as requiring rewrite unless it is a verbatim quote from source material (with citation). Treat long modules as review prompts to trim redundant wording or split mixed goals. The report is advisory: a module may remain above the band when the extra material is useful, source-backed, and not redundant, and a clean report does not replace the quality gate or the blocking learner-perspective review.
+**Strict gate & diagnostic protocol:** During Step 2 (per module) and after full-course generation, run `python {skill_dir}/scripts/check-course-depth.py {target_path} --mode {system|exam|interview|speedrun} --strict`. In `--strict` mode, the script exits with code 1 on any section below the mode character floor, main module with 0 `archify` diagrams or 0 `study-*` exercises, `handwaving-trace`, `extraction-trace`, `template-trace`, `template-answer`, `pure-practice-risk`, `math-delimiter`, or `archify-syntax` error. Every strict failure must be fixed before claiming completion. Running without `--strict` remains available as an advisory overview.
 
 **Quality gate protocol:** If any [MUST] item fails, fix and re-check. Max 2 retries. On the 3rd failure, present with a flagged warning instead of pretending the module is complete.
 
@@ -287,7 +299,7 @@ This review is blocking. If any item fails, revise the course files and re-run t
 
 ## Step 4: File Output
 
-Module 00 creates the root structure and course contract. After the user confirms Module 00, write all remaining module files in the same generation pass.
+Module 00 creates the root structure and course contract. After the user confirms Module 00, write `syllabus.md` and all remaining modules sequentially one module at a time, running `--strict` after each module.
 
 See `references/courseware-format.md` for the definitive course file structure. Key constraint: every course must include `README.md`, `syllabus.md`, `{module}/content.md` prefaces, `{module}/{section}/content.md` sections, and `99-content-supplements/content.md`.
 
@@ -301,7 +313,7 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 4. Do not create side files by default; terminology, links, interview/exam practice, review items, and exports follow `courseware-format.md`.
 5. Generate or update `domain-tree.json` when `meta.json.skill_tree_enabled=true`. Nodes must mirror the confirmed syllabus, and the `99-content-supplements` node must remain always available/unlocked. RPG fields are included by default when `meta.json.rpg_enabled=true`.
 6. Depth per mode comes from `phase-0-anchoring.md` Q1. Generate first for structural coverage and teaching completeness; use module/section prose bands only as post-generation diagnostics. Code examples, source fragments, images, tables, formulas, and diagrams are not constrained by prose length; include them whenever they help understanding.
-7. ⛔ Before offering to start Module 01, run the blocking learner-perspective full-course review (§Blocker above). Self-check every generated file against the natural learning-loop requirements and `courseware-format.md` as part of this review. All 13 items must pass.
+7. ⛔ Before offering to start Module 01, run the blocking learner-perspective full-course review (§Blocker above). Self-check every generated file against the natural learning-loop requirements and `courseware-format.md` as part of this review. All 15 items must pass.
 8. Once this generation pass is handed off as complete (after the blocking review passes), do not later edit mainline course files as a casual improvement. Use `99-content-supplements` for additions unless the user explicitly asks to revise original course content.
 
 ## Ownership Map
@@ -309,7 +321,7 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 | Concern | Source of truth |
 | --- | --- |
 | Module 00, syllabus, course files, quality gate, course structure guard, length diagnostics | this file |
-| Shared courseware structure, Markdown/media/code syntax, source-artifact handling, pure-practice rules, information density pace (GC1-GC5), and `study-*` block schemas | `courseware-format.md` |
+| Shared courseware structure, Markdown/media/code syntax, source-artifact handling, pure-practice rules, information density pace (GC1-GC6), and `study-*` block schemas | `courseware-format.md` |
 | Chinese explanation style and natural chapter/section rules | `chinese-tutorial-guide.md` |
 | English explanation style and natural chapter/section rules | `english-tutorial-guide.md` |
 | AI writing forbidden patterns, detection rules, self-check workflow | `anti-ai-writing.md` |
@@ -320,4 +332,4 @@ Default course content must stay on the path that Phase 3 and the local viewer a
 
 ## New Course Applicability
 
-The teaching pattern expectations, anti-AI-writing compliance gates, and anti-compression (GC1-GC5) rules introduced in this reference apply to courses generated after these rules were added. Existing courses are not retroactively re-reviewed. Quality improvements for existing courses go through the `99-content-supplements/` path established in `courseware-format.md`. Error scenarios used in teaching-patterns Pattern 1 (Pain-First) and Pattern 5 (Error-Driven Teaching) during Phase 2 generation must come from Phase 1 research-collected materials; Phase 3 teaching may additionally use learner-observed errors.
+The teaching pattern expectations, anti-AI-writing compliance gates, and anti-compression (GC1-GC6) rules introduced in this reference apply to courses generated after these rules were added. Existing courses are not retroactively re-reviewed. Quality improvements for existing courses go through the `99-content-supplements/` path established in `courseware-format.md`. Error scenarios used in teaching-patterns Pattern 1 (Pain-First) and Pattern 5 (Error-Driven Teaching) during Phase 2 generation must come from Phase 1 research-collected materials; Phase 3 teaching may additionally use learner-observed errors.
