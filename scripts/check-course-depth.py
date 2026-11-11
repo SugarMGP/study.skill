@@ -155,8 +155,13 @@ class ScanFinding:
 
 
 def count_non_symbol_chars(markdown: str) -> int:
-    """Count letters, digits, underscores, and CJK characters outside fenced blocks."""
-    text = FENCED_BLOCK_PATTERN.sub("", markdown)
+    """Count letters, digits, underscores, and CJK characters outside non-prose fenced blocks."""
+    def _keep_walkthrough(match: re.Match[str]) -> str:
+        fence_line = match.group(0).splitlines()[0].lstrip("`").strip().lower()
+        if fence_line in {"study-walkthrough", "study-tutor"}:
+            return match.group(0)
+        return ""
+    text = FENCED_BLOCK_PATTERN.sub(_keep_walkthrough, markdown)
     return len(NON_SYMBOL_PATTERN.findall(text))
 
 

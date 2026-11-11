@@ -810,12 +810,33 @@
       const innerColGap = Math.max(96, maxInternalLabelW);
       const innerRowGap = Math.max(82, internalEdges.some(e => e.label) ? 98 : 78);
 
-      cl.members.forEach((m, idx) => {
-        m.localCol = idx % colsCount;
-        m.localRow = Math.floor(idx / colsCount);
-      });
+      if (colsCount === 2) {
+        const hasExternalEdge = new Set();
+        edges.forEach(e => {
+          const inFrom = mSet.has(e.from);
+          const inTo = mSet.has(e.to);
+          if (inFrom && !inTo) hasExternalEdge.add(e.from);
+          if (!inFrom && inTo) hasExternalEdge.add(e.to);
+        });
+        const internalList = cl.members.filter(m => !hasExternalEdge.has(m.id));
+        const borderList = cl.members.filter(m => hasExternalEdge.has(m.id));
+        if (internalList.length > 0 && borderList.length > 0) {
+          internalList.forEach((m, i) => { m.localCol = 0; m.localRow = i; });
+          borderList.forEach((m, i) => { m.localCol = 1; m.localRow = i; });
+        } else {
+          cl.members.forEach((m, idx) => {
+            m.localCol = idx % colsCount;
+            m.localRow = Math.floor(idx / colsCount);
+          });
+        }
+      } else {
+        cl.members.forEach((m, idx) => {
+          m.localCol = 0;
+          m.localRow = idx;
+        });
+      }
 
-      const numRows = Math.ceil(cl.members.length / colsCount);
+      const numRows = Math.max(1, ...cl.members.map(m => (m.localRow || 0) + 1));
       const colWidths = Array.from({ length: colsCount }, (_, c) =>
         Math.max(130, ...cl.members.filter(m => m.localCol === c).map(m => m.w))
       );
@@ -850,12 +871,19 @@
       }
     });
 
-    if (crossEdges.length === 0) {
-      const colsPerRow = Math.min(3, Math.max(1, clusters.length));
-      clusters.forEach((cl, idx) => {
-        cl.mCol = idx % colsPerRow;
-        cl.mRow = Math.floor(idx / colsPerRow);
-      });
+    if (crossEdges.length === 0 || clusters.length <= 4) {
+      // Respect author declaration order: first group on the left, stacking smaller follower groups vertically when 3 groups exist
+      if (clusters.length === 3 && clusters[0].members.length >= clusters[1].members.length + clusters[2].members.length) {
+        clusters[0].mCol = 0; clusters[0].mRow = 0;
+        clusters[1].mCol = 1; clusters[1].mRow = 0;
+        clusters[2].mCol = 1; clusters[2].mRow = 1;
+      } else {
+        const colsPerRow = Math.min(3, Math.max(1, clusters.length));
+        clusters.forEach((cl, idx) => {
+          cl.mCol = idx % colsPerRow;
+          cl.mRow = Math.floor(idx / colsPerRow);
+        });
+      }
     } else {
       const macroRanks = assignTopologicalRanks(clusters, crossEdges, null);
       const byCol = new Map();
@@ -1551,8 +1579,32 @@
       compiled = compileGraphDiagram(parsed);
     }
 
+    // Compute tight bounding box across all rendered rect/polygon/line/path/text coordinates so the diagram is always centered
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = 0;
+    let maxY = 0;
+    const rectRegex = /<rect x="([0-9.-]+)" y="([0-9.-]+)" width="([0-9.-]+)" height="([0-9.-]+)"/g;
+    let rm;
+    while ((rm = rectRegex.exec(compiled.innerSvg)) !== null) {
+      const rx = parseFloat(rm[1]);
+      const ry = parseFloat(rm[2]);
+      const rw = parseFloat(rm[3]);
+      const rh = parseFloat(rm[4]);
+      if (rw >= compiled.width - 40 && rx <= 20) continue; // skip full-bleed hit rects
+      if (rx < minX) minX = rx;
+      if (ry < minY) minY = ry;
+      if (rx + rw > maxX) maxX = rx + rw;
+      if (ry + rh > maxY) maxY = ry + rh;
+    }
+    const pad = 28;
+    const vbX = Number.isFinite(minX) ? Math.max(0, Math.floor(minX - pad)) : 0;
+    const vbY = Number.isFinite(minY) ? Math.max(0, Math.floor(minY - pad)) : 0;
+    const vbW = Number.isFinite(minX) && maxX > minX ? Math.ceil(maxX - vbX + pad) : Math.ceil(compiled.width);
+    const vbH = Number.isFinite(minY) && maxY > minY ? Math.ceil(maxY - vbY + pad) : Math.ceil(compiled.height);
+
     const svg =
-      '<svg viewBox="0 0 ' + Math.ceil(compiled.width) + " " + Math.ceil(compiled.height) + '" ' +
+      '<svg viewBox="' + vbX + " " + vbY + " " + vbW + " " + vbH + '" ' +
       'role="img" aria-label="' + esc(parsed.title) + '" ' +
       'class="archify-svg" data-archify-id="' + esc(parsed.id) + '" data-archify-type="' + esc(parsed.type) + '" data-animation="trace">' +
       "<title>" + esc(parsed.title) + "</title>" +

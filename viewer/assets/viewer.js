@@ -686,6 +686,13 @@
     return parts;
   }
 
+  function normalizeCjkBold(text) {
+    return String(text || "").split(/(```[\s\S]*?```|`[^`\n]*`)/g).map((segment, idx) => {
+      if (idx % 2 === 1) return segment;
+      return segment.replace(/\*\*\s*([^\n*]+?)\s*\*\*/g, "<strong>$1</strong>");
+    }).join("");
+  }
+
   function renderMarkdown(md) {
     const delimiters = [
       ["\\[", "STUDY_MATH_DISPLAY_OPEN"],
@@ -693,7 +700,7 @@
       ["\\(", "STUDY_MATH_INLINE_OPEN"],
       ["\\)", "STUDY_MATH_INLINE_CLOSE"]
     ];
-    let protectedMarkdown = md;
+    let protectedMarkdown = normalizeCjkBold(md);
     for (const [delimiter, placeholder] of delimiters) {
       protectedMarkdown = protectedMarkdown.split(delimiter).join(placeholder);
     }
@@ -855,6 +862,7 @@
       return '<div class="error-box">这道练习暂时无法显示: ' + escapeHtml(e.message) + "<pre>" + escapeHtml(yamlContent) + "</pre></div>";
     }
     const type = lang.replace("study-", "");
+    if (type === "walkthrough" || type === "tutor") return renderWalkthroughBlock(data);
     if (type === "choice") return renderChoiceQuestion(data, type);
     if (type === "truefalse") return renderTrueFalseQuestion(data, type);
     if (type === "input" || type === "short" || type === "explain") return renderInputQuestion(data, type);
@@ -862,6 +870,137 @@
     if (type === "feynman") return renderInputQuestion(normalizeFeynmanData(data), type);
     if (type === "checkpoint") return renderLegacyCheckpoint(data);
     return '<div class="error-box">这类练习暂时不支持显示: ' + escapeHtml(type) + "</div>";
+  }
+
+  function renderWalkthroughBlock(data) {
+    const steps = Array.isArray(data && data.steps) ? data.steps : [];
+    if (!steps.length) return "";
+    const id = questionId("walkthrough", data);
+    const title = data.title || "分步推导讲台";
+    const intro = data.intro ? '<div class="walkthrough-intro">' + renderMarkdown(String(data.intro)) + "</div>" : "";
+
+    let stepsHtml = "";
+    steps.forEach((step, idx) => {
+      const isFirst = idx === 0;
+      const stepTitle = step.title || ("第 " + (idx + 1) + " 步");
+      const bodyHtml = renderMarkdown(String(step.body || step.content || ""));
+      const stateHtml = step.state
+        ? '<div class="walkthrough-state"><span class="walkthrough-state-label">当前状态快照</span><code>' + escapeHtml(String(step.state)) + "</code></div>"
+        : "";
+      const promptHtml = step.question && idx < steps.length - 1
+        ? '<div class="walkthrough-prompt">💭 <strong>先想一步：</strong>' + escapeHtml(String(step.question)) + "</div>"
+        : "";
+      stepsHtml +=
+        '<div class="walkthrough-step' + (isFirst ? " is-revealed is-current" : " viewer-hidden") + '" data-walk-step="' + idx + '">' +
+        '<div class="walkthrough-step-head">' +
+        '<span class="walkthrough-step-badge">STEP ' + (idx + 1) + " / " + steps.length + "</span>" +
+        '<span class="walkthrough-step-title">' + escapeHtml(stepTitle) + "</span>" +
+        "</div>" +
+        '<div class="walkthrough-step-body">' + bodyHtml + "</div>" +
+        stateHtml +
+        promptHtml +
+        "</div>";
+    });
+
+    const nextStepTitle = steps.length > 1 ? (steps[1].title || "第 2 步") : "";
+    const footerHtml = steps.length > 1
+      ? '<div class="walkthrough-footer" data-walk-footer>' +
+        '<button type="button" class="viewer-btn viewer-btn-primary walkthrough-next-btn" onclick="advanceWalkthrough(this)">' +
+        '揭晓下一步 (2/' + steps.length + ')：' + escapeHtml(nextStepTitle) + ' →</button>' +
+        '<span class="walkthrough-progress-text" data-walk-progress>已展开 1 / ' + steps.length + ' 步</span>' +
+        "</div>"
+      : "";
+
+    return (
+      '<section class="walkthrough-card" data-walkthrough-id="' + escapeAttr(id) + '" data-walk-revealed="1" data-walk-total="' + steps.length + '">' +
+      '<div class="walkthrough-header">' +
+      '<div class="walkthrough-header-left">' +
+      '<span class="walkthrough-badge">老师带推</span>' +
+      '<span class="walkthrough-title">' + escapeHtml(title) + "</span>" +
+      "</div>" +
+      (steps.length > 1
+        ? '<button type="button" class="viewer-btn viewer-btn-xs walkthrough-toggle-all" onclick="toggleAllWalkthroughSteps(this)">展开全部 (' + steps.length + " 步)</button>"
+        : "") +
+      "</div>" +
+      intro +
+      '<div class="walkthrough-steps">' + stepsHtml + "</div>" +
+      footerHtml +
+      "</section>"
+    );
+  }
+
+  window.advanceWalkthrough = function(btn) {
+    const card = btn.closest(".walkthrough-card");
+    if (!card) return;
+    const total = parseInt(card.getAttribute("data-walk-total") || "1", 10);
+    let revealed = parseInt(card.getAttribute("data-walk-revealed") || "1", 10);
+    if (revealed >= total) return;
+    const nextIdx = revealed;
+    revealed += 1;
+    card.setAttribute("data-walk-revealed", String(revealed));
+
+    card.querySelectorAll(".walkthrough-step").forEach((el, idx) => {
+      el.classList.toggle("is-current", idx === nextIdx);
+      if (idx <= nextIdx) {
+        el.classList.remove("viewer-hidden");
+        el.classList.add("is-revealed");
+      }
+    });
+
+    syncWalkthroughControls(card, revealed, total);
+    const targetStep = card.querySelector('[data-walk-step="' + nextIdx + '"]');
+    if (targetStep && typeof targetStep.scrollIntoView === "function") {
+      targetStep.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  };
+
+  window.toggleAllWalkthroughSteps = function(btn) {
+    const card = btn.closest(".walkthrough-card");
+    if (!card) return;
+    const total = parseInt(card.getAttribute("data-walk-total") || "1", 10);
+    const current = parseInt(card.getAttribute("data-walk-revealed") || "1", 10);
+    const expandAll = current < total;
+    const nextRevealed = expandAll ? total : 1;
+    card.setAttribute("data-walk-revealed", String(nextRevealed));
+
+    card.querySelectorAll(".walkthrough-step").forEach((el, idx) => {
+      if (idx < nextRevealed) {
+        el.classList.remove("viewer-hidden");
+        el.classList.add("is-revealed");
+      } else {
+        el.classList.add("viewer-hidden");
+        el.classList.remove("is-revealed");
+      }
+      el.classList.toggle("is-current", idx === nextRevealed - 1);
+    });
+
+    syncWalkthroughControls(card, nextRevealed, total);
+  };
+
+  function syncWalkthroughControls(card, revealed, total) {
+    const toggleBtn = card.querySelector(".walkthrough-toggle-all");
+    if (toggleBtn) {
+      toggleBtn.textContent = revealed >= total ? "重置为逐步跟学" : ("展开全部 (" + total + " 步)");
+    }
+    const footer = card.querySelector("[data-walk-footer]");
+    if (!footer) return;
+    const nextBtn = footer.querySelector(".walkthrough-next-btn");
+    const prog = footer.querySelector("[data-walk-progress]");
+    if (prog) {
+      prog.textContent = revealed >= total
+        ? ("全部 " + total + " 步推导已展开 ✓")
+        : ("已展开 " + revealed + " / " + total + " 步");
+    }
+    if (nextBtn) {
+      if (revealed >= total) {
+        nextBtn.classList.add("viewer-hidden");
+      } else {
+        nextBtn.classList.remove("viewer-hidden");
+        const nextStepEl = card.querySelector('[data-walk-step="' + revealed + '"] .walkthrough-step-title');
+        const nextTitle = nextStepEl ? nextStepEl.textContent : ("第 " + (revealed + 1) + " 步");
+        nextBtn.textContent = "揭晓下一步 (" + (revealed + 1) + "/" + total + ")：" + nextTitle + " →";
+      }
+    }
   }
 
   function questionId(prefix, data) {
@@ -1508,7 +1647,7 @@
   }
 
   function currentPageExerciseIds() {
-    return Array.from(document.querySelectorAll("#content .study-block"))
+    return Array.from(document.querySelectorAll("#content .study-block:not(.study-walkthrough)"))
       .map(block => block.getAttribute("data-study-id"))
       .filter(Boolean);
   }

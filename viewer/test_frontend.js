@@ -22,6 +22,10 @@ const diagrams = sandbox.window.StudyDiagrams;
 // 1. Math & Markdown checks
 assert.equal(api.renderMarkdown("\\[x + y\\] and \\(z\\)"), "\\[x + y\\] and \\(z\\)");
 assert.equal(api.renderMarkdown("套餐 $5/月，另一个 $10/月"), "套餐 $5/月，另一个 $10/月");
+assert.equal(
+  api.renderMarkdown("叫做**硬件相关（Hardware-dependent）**的工作"),
+  "叫做<strong>硬件相关（Hardware-dependent）</strong>的工作"
+);
 assert.equal(api.COURSE_MATH_DELIMITERS.some(item => item.left === "$"), false);
 assert.equal(api.COURSE_MATH_DELIMITERS.some(item => item.left === "$$"), true);
 
@@ -111,6 +115,21 @@ sandbox.jsyaml = {
 const renderedInputHtml = api.renderStudyBlock("study-input", "dummy");
 assert.equal(renderedInputHtml.includes('class="study-title"'), false, "Question stem should not be duplicated as .study-title in header");
 assert.equal(renderedInputHtml.includes("独立应用"), true, "Header should display mastery tag pills");
+
+// 2.6 Progressive teacher walkthrough (study-walkthrough) rendering check
+sandbox.jsyaml = {
+  load: () => ({
+    id: "wt-1",
+    title: "一步步推导",
+    steps: [
+      { title: "第一步", body: "先看初始状态", state: "PC = 300", question: "下一步呢？" },
+      { title: "第二步", body: "再看变化结果", state: "PC = 301" }
+    ]
+  })
+};
+const walkthroughHtml = api.renderStudyBlock("study-walkthrough", "dummy");
+assert.equal(walkthroughHtml.includes('data-walkthrough-id="wt-1"'), true);
+assert.equal(walkthroughHtml.includes("揭晓下一步 (2/2)：第二步"), true);
 
 // 3. Learning state & skill tree checks
 api.setState({

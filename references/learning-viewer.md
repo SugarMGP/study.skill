@@ -60,6 +60,7 @@ interactive 模式使用 skill 自带的 `scripts/check-reviews.py` 和 `scripts
 | 公式 | 见 `courseware-format.md` 的 Markdown 与媒体规则 | 公式写法由课件格式规范统一定义 |
 | 确定性图表 | fenced code block with language `archify` | 支持 `sequence` / `workflow` / `architecture` / `dataflow` / `lifecycle` / `tree` / `erd` / `timeline` / `waterfall` 共 9 类确定性 SVG 图表（支持亮暗主题、流光动画与全屏缩放检视） |
 | 步骤联动走查 | fenced code block with language `study-steps` | 紧邻 `archify` 图表，点击或悬停步骤即可在图上聚光高亮对应节点与连线 |
+| 渐进式分步讲台 | fenced code block with language `study-walkthrough` | 默认展示第 1 步，点击“揭晓下一步”逐拍展开复杂计算或状态推导，支持展开全部与重置 |
 | 可保存练习 | `study-choice` / `study-truefalse` / `study-input` | 只保存原始作答，交给 LLM 判断。完整题型列表和写法见 `courseware-format.md`；旧版 `study-recall` / `study-transfer` / `study-feynman` / `study-checkpoint` 仅兼容历史课程 |
 
 课件生成时的图片、图表和练习块选择规则以 `courseware-format.md` 为准。播放器这里只说明能渲染和能保存什么。不要把设计目的、技术选型、内部字段说明写进用户能看到的课件。章节前言可以列出小节名称和学习顺序，但不要写到子小节文件的 Markdown 超链接；播放器不会把这些链接当作课程导航，正式导航来自左侧目录树。
