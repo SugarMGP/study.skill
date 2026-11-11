@@ -597,11 +597,18 @@
     }
     const parts = splitStudyBlocks(md);
     let html = "";
-    for (const part of parts) {
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
       if (part.type === "markdown") {
         html += renderMarkdown(part.content);
       } else if (part.type === "archify") {
-        html += renderArchifyBlock(part.content);
+        const nextPart = parts[i + 1];
+        if (nextPart && nextPart.type === "steps") {
+          html += renderArchifyBlock(part.content, nextPart.content);
+          i += 1;
+        } else {
+          html += renderArchifyBlock(part.content, "");
+        }
       } else if (part.type === "steps") {
         html += renderStudyStepsBlock(part.content);
       } else if (part.type === "study") {
@@ -714,27 +721,32 @@
     return html;
   }
 
-  function renderArchifyBlock(rawCode) {
+  function renderArchifyBlock(rawCode, attachedStepsRaw) {
     if (!window.StudyDiagrams || typeof window.StudyDiagrams.renderArchifySvg !== "function") {
       return '<div class="error-box">图表引擎未加载</div>';
     }
     try {
       const rendered = window.StudyDiagrams.renderArchifySvg(rawCode);
+      const stepsSection = attachedStepsRaw ? renderStudyStepsBlock(attachedStepsRaw, true) : "";
       return (
-        '<section class="archify-card" data-archify-card-id="' + escapeAttr(rendered.id) + '">' +
+        '<section class="archify-card" data-archify-card-id="' + escapeAttr(rendered.id) + '" data-native-width="' + rendered.width + '">' +
         '<div class="archify-card-header">' +
         '<div class="archify-card-title-wrap">' +
         '<span class="archify-type-badge">' + escapeHtml(rendered.type) + "</span>" +
         '<span class="archify-card-title">' + escapeHtml(rendered.title) + "</span>" +
         "</div>" +
         '<div class="archify-card-tools">' +
-        '<button type="button" class="viewer-btn viewer-btn-xs" onclick="resetDiagramSteps(' + escapeJsArgAttr(rendered.id) + ')" title="重置步骤高亮">全部展示</button>' +
+        '<button type="button" class="viewer-btn viewer-btn-xs is-active-tool" onclick="toggleDiagramMotion(' + escapeJsArgAttr(rendered.id) + ', this)" title="切换信号流光动画">流光: 开</button>' +
+        '<button type="button" class="viewer-btn viewer-btn-xs" onclick="toggleDiagramZoom(' + escapeJsArgAttr(rendered.id) + ', this)" title="在适应窗口与 1:1 原始尺寸之间切换">1:1 尺寸</button>' +
+        '<button type="button" class="viewer-btn viewer-btn-xs" onclick="resetDiagramSteps(' + escapeJsArgAttr(rendered.id) + ')" title="重置节点与步骤高亮">重置高亮</button>' +
         '<button type="button" class="viewer-btn viewer-btn-xs" onclick="openDiagramModal(' + escapeJsArgAttr(rendered.id) + "," + escapeJsArgAttr(rendered.title) + ')" title="全屏放大检视">全屏检视</button>' +
         "</div>" +
         "</div>" +
         '<div class="archify-canvas" id="archify-canvas-' + escapeAttr(rendered.id) + '">' +
         rendered.svg +
         "</div>" +
+        '<div class="archify-inspector viewer-hidden" id="archify-inspector-' + escapeAttr(rendered.id) + '" aria-live="polite"></div>' +
+        stepsSection +
         "</section>"
       );
     } catch(e) {
@@ -742,7 +754,7 @@
     }
   }
 
-  function renderStudyStepsBlock(rawCode) {
+  function renderStudyStepsBlock(rawCode, isEmbedded) {
     if (!window.StudyDiagrams || typeof window.StudyDiagrams.parseStudyStepsBlock !== "function") {
       return "";
     }
@@ -753,8 +765,8 @@
     parsed.steps.forEach((step, idx) => {
       const targetsAttr = (step.targets || []).join(",");
       listHtml +=
-        '<li class="study-step-item" data-step-diagram="' + escapeAttr(diagId) + '" data-step-targets="' + escapeAttr(targetsAttr) + '" ' +
-        'onclick="activateDiagramStep(this)" onmouseenter="activateDiagramStep(this)">' +
+        '<li class="study-step-item" data-step-index="' + idx + '" data-step-diagram="' + escapeAttr(diagId) + '" data-step-targets="' + escapeAttr(targetsAttr) + '" ' +
+        'onclick="activateDiagramStep(this)">' +
         '<span class="study-step-num">' + (idx + 1) + "</span>" +
         '<div class="study-step-body">' +
         '<div class="study-step-title">' + escapeHtml(step.title) + "</div>" +
@@ -762,29 +774,62 @@
         "</div>" +
         "</li>";
     });
+    const cls = isEmbedded ? "study-steps-card is-embedded" : "study-steps-card";
     return (
-      '<section class="study-steps-card" data-steps-for="' + escapeAttr(diagId) + '">' +
+      '<section class="' + cls + '" data-steps-for="' + escapeAttr(diagId) + '" data-active-step="-1">' +
       '<div class="study-steps-head">' +
-      '<span>步骤走查（点击或悬停步骤在图中聚光定位）</span>' +
-      (diagId ? '<button type="button" class="viewer-btn viewer-btn-xs" onclick="resetDiagramSteps(' + escapeJsArgAttr(diagId) + ')">清除高亮</button>' : "") +
+      '<span class="study-steps-hint">💡 点击下方步骤（或直接点击图中节点）聚光追踪数据与状态流向</span>' +
+      (diagId
+        ? '<div class="study-steps-nav">' +
+          '<button type="button" class="viewer-btn viewer-btn-xs" onclick="stepDiagramWalk(' + escapeJsArgAttr(diagId) + ', -1)">◀ 上一步</button>' +
+          '<span class="study-steps-counter" data-step-counter>未选步骤 (共 ' + parsed.steps.length + " 步)</span>" +
+          '<button type="button" class="viewer-btn viewer-btn-xs" onclick="stepDiagramWalk(' + escapeJsArgAttr(diagId) + ', 1)">下一步 ▶</button>' +
+          "</div>"
+        : "") +
       "</div>" +
       '<ol class="study-steps-list">' + listHtml + "</ol>" +
       "</section>"
     );
   }
 
+  window.stepDiagramWalk = function(diagId, delta) {
+    if (!diagId) return;
+    const container = document.querySelector('.study-steps-card[data-steps-for="' + CSS.escape(diagId) + '"]');
+    if (!container) return;
+    const items = Array.from(container.querySelectorAll(".study-step-item"));
+    if (!items.length) return;
+    let curr = parseInt(container.getAttribute("data-active-step") || "-1", 10);
+    let next = curr + delta;
+    if (curr === -1) {
+      next = delta >= 0 ? 0 : items.length - 1;
+    } else if (next < 0) {
+      next = items.length - 1;
+    } else if (next >= items.length) {
+      next = 0;
+    }
+    activateDiagramStep(items[next]);
+  };
+
   window.activateDiagramStep = function(stepEl) {
     if (!stepEl) return;
     const diagId = stepEl.getAttribute("data-step-diagram");
+    const stepIdx = parseInt(stepEl.getAttribute("data-step-index") || "0", 10);
     const targetsRaw = stepEl.getAttribute("data-step-targets") || "";
     const targets = new Set(targetsRaw.split(",").map(s => s.trim()).filter(Boolean));
-    const list = stepEl.closest(".study-steps-list");
-    if (list) {
-      list.querySelectorAll(".study-step-item").forEach(li => li.classList.toggle("is-active", li === stepEl));
+    const card = stepEl.closest(".study-steps-card");
+    if (card) {
+      const items = Array.from(card.querySelectorAll(".study-step-item"));
+      items.forEach(li => li.classList.toggle("is-active", li === stepEl));
+      card.setAttribute("data-active-step", String(stepIdx));
+      const counter = card.querySelector("[data-step-counter]");
+      if (counter) counter.textContent = "第 " + (stepIdx + 1) + " / " + items.length + " 步";
     }
     if (!diagId) return;
+    const inspector = document.getElementById("archify-inspector-" + diagId);
+    if (inspector) inspector.classList.add("viewer-hidden");
     const svg = document.querySelector('svg[data-archify-id="' + CSS.escape(diagId) + '"]');
     if (!svg) return;
+    svg.querySelectorAll("[data-node-focused]").forEach(n => n.removeAttribute("data-node-focused"));
     if (targets.size === 0) {
       svg.removeAttribute("data-step-active");
       svg.querySelectorAll("[data-step-match]").forEach(n => n.removeAttribute("data-step-match"));
@@ -811,20 +856,186 @@
     });
   };
 
+  window.focusDiagramNode = function(diagId, nodeId) {
+    if (!diagId || !nodeId) return;
+    const svg = document.querySelector('svg[data-archify-id="' + CSS.escape(diagId) + '"]');
+    if (!svg) return;
+    const targetNode = svg.querySelector('[data-node-id="' + CSS.escape(nodeId) + '"]');
+    if (!targetNode) return;
+
+    // Clear active step selection
+    const stepsCard = document.querySelector('.study-steps-card[data-steps-for="' + CSS.escape(diagId) + '"]');
+    if (stepsCard) {
+      stepsCard.setAttribute("data-active-step", "-1");
+      const items = stepsCard.querySelectorAll(".study-step-item");
+      items.forEach(li => li.classList.remove("is-active"));
+      const counter = stepsCard.querySelector("[data-step-counter]");
+      if (counter) counter.textContent = "节点聚焦中 (共 " + items.length + " 步)";
+    }
+
+    const neighborNodes = new Set([nodeId]);
+    const incomingList = [];
+    const outgoingList = [];
+    const nodeLabelMap = new Map();
+    svg.querySelectorAll("[data-node-id]").forEach(n => {
+      nodeLabelMap.set(n.getAttribute("data-node-id"), n.getAttribute("data-node-label") || n.getAttribute("data-node-id"));
+    });
+
+    svg.setAttribute("data-step-active", "true");
+    svg.querySelectorAll("[data-edge-id]").forEach(edge => {
+      const from = edge.getAttribute("data-edge-from");
+      const to = edge.getAttribute("data-edge-to");
+      const label = edge.getAttribute("data-edge-label") || "";
+      if (from === nodeId || to === nodeId) {
+        edge.setAttribute("data-step-match", "true");
+        if (from === nodeId && to) {
+          neighborNodes.add(to);
+          outgoingList.push({ id: to, name: nodeLabelMap.get(to) || to, edgeLabel: label });
+        }
+        if (to === nodeId && from) {
+          neighborNodes.add(from);
+          incomingList.push({ id: from, name: nodeLabelMap.get(from) || from, edgeLabel: label });
+        }
+      } else {
+        edge.removeAttribute("data-step-match");
+      }
+    });
+
+    svg.querySelectorAll("[data-node-id]").forEach(node => {
+      const nid = node.getAttribute("data-node-id");
+      node.toggleAttribute("data-node-focused", nid === nodeId);
+      if (neighborNodes.has(nid)) {
+        node.setAttribute("data-step-match", "true");
+      } else {
+        node.removeAttribute("data-step-match");
+      }
+    });
+
+    const inspector = document.getElementById("archify-inspector-" + diagId);
+    if (inspector) {
+      const nodeTitle = nodeLabelMap.get(nodeId) || nodeId;
+      const renderPeerChips = list => {
+        if (!list.length) return '<span class="viewer-muted">无</span>';
+        return list.map(item =>
+          '<button type="button" class="inspector-peer-chip" onclick="focusDiagramNode(' + escapeJsArgAttr(diagId) + "," + escapeJsArgAttr(item.id) + ')">' +
+          '<strong>' + escapeHtml(item.name) + "</strong>" +
+          (item.edgeLabel ? ' <span>(' + escapeHtml(item.edgeLabel) + ")</span>" : "") +
+          "</button>"
+        ).join("");
+      };
+      inspector.innerHTML =
+        '<div class="inspector-head">' +
+        '<span>🔍 <strong>节点聚焦：' + escapeHtml(nodeTitle) + "</strong></span>" +
+        '<button type="button" class="viewer-btn viewer-btn-xs" onclick="resetDiagramSteps(' + escapeJsArgAttr(diagId) + ')">退出聚焦</button>' +
+        "</div>" +
+        '<div class="inspector-flows">' +
+        '<div class="inspector-flow-row"><span class="inspector-flow-label">← 上游流入：</span><div class="inspector-chip-list">' + renderPeerChips(incomingList) + "</div></div>" +
+        '<div class="inspector-flow-row"><span class="inspector-flow-label">→ 下游流出：</span><div class="inspector-chip-list">' + renderPeerChips(outgoingList) + "</div></div>" +
+        "</div>";
+      inspector.classList.remove("viewer-hidden");
+    }
+  };
+
+  window.toggleDiagramMotion = function(diagId, btn) {
+    const svg = document.querySelector('svg[data-archify-id="' + CSS.escape(diagId) + '"]');
+    if (!svg) return;
+    const isTrace = svg.getAttribute("data-animation") === "trace";
+    if (isTrace) {
+      svg.setAttribute("data-animation", "still");
+      if (btn) {
+        btn.textContent = "流光: 关";
+        btn.classList.remove("is-active-tool");
+      }
+    } else {
+      svg.setAttribute("data-animation", "trace");
+      if (btn) {
+        btn.textContent = "流光: 开";
+        btn.classList.add("is-active-tool");
+      }
+    }
+  };
+
+  window.toggleDiagramZoom = function(diagId, btn) {
+    const card = document.querySelector('.archify-card[data-archify-card-id="' + CSS.escape(diagId) + '"]');
+    const canvas = document.getElementById("archify-canvas-" + diagId);
+    if (!card || !canvas) return;
+    const svg = canvas.querySelector("svg");
+    if (!svg) return;
+    const isZoomed = canvas.classList.toggle("is-zoomed");
+    const nativeW = parseInt(card.getAttribute("data-native-width") || "900", 10);
+    if (isZoomed) {
+      svg.style.width = Math.max(760, nativeW) + "px";
+      svg.style.maxWidth = "none";
+      if (btn) {
+        btn.textContent = "适应窗口";
+        btn.classList.add("is-active-tool");
+      }
+    } else {
+      svg.style.width = "";
+      svg.style.maxWidth = "";
+      if (btn) {
+        btn.textContent = "1:1 尺寸";
+        btn.classList.remove("is-active-tool");
+      }
+    }
+  };
+
   window.resetDiagramSteps = function(diagId) {
     if (diagId) {
       const svg = document.querySelector('svg[data-archify-id="' + CSS.escape(diagId) + '"]');
       if (svg) {
         svg.removeAttribute("data-step-active");
         svg.querySelectorAll("[data-step-match]").forEach(n => n.removeAttribute("data-step-match"));
+        svg.querySelectorAll("[data-node-focused]").forEach(n => n.removeAttribute("data-node-focused"));
       }
-      document.querySelectorAll('.study-steps-card[data-steps-for="' + CSS.escape(diagId) + '"] .study-step-item').forEach(li => {
-        li.classList.remove("is-active");
+      const inspector = document.getElementById("archify-inspector-" + diagId);
+      if (inspector) inspector.classList.add("viewer-hidden");
+      document.querySelectorAll('.study-steps-card[data-steps-for="' + CSS.escape(diagId) + '"]').forEach(card => {
+        card.setAttribute("data-active-step", "-1");
+        const items = card.querySelectorAll(".study-step-item");
+        items.forEach(li => li.classList.remove("is-active"));
+        const counter = card.querySelector("[data-step-counter]");
+        if (counter) counter.textContent = "未选步骤 (共 " + items.length + " 步)";
       });
     }
   };
 
+  function setupDiagramInteractivity(root) {
+    root.querySelectorAll(".archify-svg").forEach(svg => {
+      if (svg.dataset.interactiveBound === "true") return;
+      svg.dataset.interactiveBound = "true";
+      const diagId = svg.getAttribute("data-archify-id");
+      svg.addEventListener("click", function(e) {
+        const nodeEl = e.target.closest("[data-node-id]");
+        if (nodeEl && svg.contains(nodeEl)) {
+          e.stopPropagation();
+          const nodeId = nodeEl.getAttribute("data-node-id");
+          if (nodeEl.hasAttribute("data-node-focused")) {
+            resetDiagramSteps(diagId);
+          } else {
+            focusDiagramNode(diagId, nodeId);
+          }
+        } else if (svg.hasAttribute("data-step-active")) {
+          resetDiagramSteps(diagId);
+        }
+      });
+    });
+  }
+
+  function setupModalPanZoom() {
+    const stage = document.getElementById("diagram-modal-stage");
+    if (!stage || stage.dataset.panBound === "true") return;
+    stage.dataset.panBound = "true";
+    stage.addEventListener("wheel", function(e) {
+      if (e.ctrlKey || e.metaKey || Math.abs(e.deltaY) > 0) {
+        e.preventDefault();
+        zoomDiagramModal(e.deltaY < 0 ? 0.12 : -0.12);
+      }
+    }, { passive: false });
+  }
+
   window.openDiagramModal = function(diagId, title) {
+    setupModalPanZoom();
     const modal = document.getElementById("diagram-modal");
     const stage = document.getElementById("diagram-modal-stage");
     const titleEl = document.getElementById("diagram-modal-title");
@@ -833,6 +1044,11 @@
     MODAL_ZOOM = 1;
     if (titleEl) titleEl.textContent = title || "图表全屏检视";
     stage.innerHTML = canvas.innerHTML;
+    const modalSvg = stage.querySelector("svg");
+    if (modalSvg) {
+      modalSvg.style.width = "";
+      modalSvg.style.maxWidth = "";
+    }
     modal.classList.remove("viewer-hidden");
   };
 
@@ -1344,6 +1560,7 @@
 
   async function postProcessContent(el) {
     const article = el.querySelector("#markdown-article") || el;
+    setupDiagramInteractivity(el);
     enhanceCallouts(article);
     enhanceComparisonBadges(article);
     enhanceCodeBlocks(article);
@@ -1922,6 +2139,16 @@
   };
 
   window.toggleDrawer = function(target) {
+    if (target === "nav" && window.innerWidth > 780) {
+      document.body.classList.toggle("collapse-nav");
+      syncDrawerButtons();
+      return;
+    }
+    if (target === "panel" && window.innerWidth > 1120) {
+      document.body.classList.toggle("collapse-aside");
+      syncDrawerButtons();
+      return;
+    }
     const className = target === "nav" ? "show-nav" : "show-aside";
     const shouldOpen = !document.body.classList.contains(className);
     closeDrawers(false);

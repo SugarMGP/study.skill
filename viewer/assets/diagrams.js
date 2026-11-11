@@ -89,13 +89,12 @@
     return Math.ceil(textUnits(str) * (size * 0.56));
   }
 
-  // Split long node labels into at most 2 balanced lines so nodes stay compact
-  function wrapNodeLabel(label, maxUnitsPerLine) {
+  // Split long text into at most 2 balanced lines
+  function wrapTextTwoLines(label, maxUnitsPerLine) {
     const text = String(label || "").trim();
-    const limit = maxUnitsPerLine || 24;
-    if (textUnits(text) <= limit) return [text];
+    const limit = maxUnitsPerLine || 22;
+    if (!text || textUnits(text) <= limit) return [text];
 
-    // Find split point near middle unit count, preferring punctuation/spaces
     const total = textUnits(text);
     const target = total / 2;
     let acc = 0;
@@ -105,16 +104,25 @@
     for (let i = 1; i < text.length - 1; i++) {
       acc += charUnits(text.charCodeAt(i - 1));
       const ch = text[i];
-      const isBreakChar = /[\s:：,，/(\uff08\-~]/.test(ch);
-      const dist = Math.abs(acc - target) - (isBreakChar ? 3.5 : 0);
+      const isBreakChar = /[\s:：,，/(\uff08\-~·]/.test(ch);
+      const dist = Math.abs(acc - target) - (isBreakChar ? 4.2 : 0);
       if (dist < bestScore) {
         bestScore = dist;
-        bestIdx = isBreakChar && ch === " " ? i + 1 : i;
+        bestIdx = isBreakChar && (ch === " " || ch === ":" || ch === "：") ? i + 1 : i;
       }
     }
     const line1 = text.slice(0, bestIdx).trim();
     const line2 = text.slice(bestIdx).trim();
     return line1 && line2 ? [line1, line2] : [text];
+  }
+
+  function measureChipDimensions(label) {
+    if (!label) return { lines: [], w: 0, h: 0 };
+    const lines = wrapTextTwoLines(label, 20);
+    const maxW = Math.max(...lines.map(l => measureTextPx(l, 10.8)));
+    const w = Math.max(38, maxW + 16);
+    const h = lines.length > 1 ? 32 : 20;
+    return { lines, w, h };
   }
 
   function normalizeTone(raw) {
@@ -249,18 +257,19 @@
       },
       placeChip(cx, cy, label, textCls, altAnchors) {
         if (!label) return { svg: "", box: null };
-        const w = Math.max(36, measureTextPx(label, 11) + 16);
-        const h = 20;
+        const { lines, w, h } = measureChipDimensions(label);
 
         const anchors = [[cx, cy]].concat(altAnchors || []);
-        const offsets = [[0, 0]];
-        const ySteps = [0, -18, 18, -32, 32, -46, 46, -62, 62, -78, 78, -96, 96, -116, 116, -138, 138];
-        const xSteps = [0, -24, 24, -48, 48, -76, 76, -108, 108, -140, 140];
+        const offsets = [];
+        const ySteps = [0, -22, 22, -40, 40, -58, 58, -76, 76, -96, 96, -116, 116];
+        const xSteps = [0, -20, 20, -42, 42, -68, 68];
         for (const dy of ySteps) {
           for (const dx of xSteps) {
-            if (dx !== 0 || dy !== 0) offsets.push([dx, dy]);
+            offsets.push([dx, dy]);
           }
         }
+        // Prefer staying centered in the corridor (small |dx|) and shifting vertically first
+        offsets.sort((a, b) => (Math.abs(a[0]) * 2.2 + Math.abs(a[1])) - (Math.abs(b[0]) * 2.2 + Math.abs(b[1])));
 
         let chosenX = cx;
         let chosenY = cy;
@@ -276,10 +285,10 @@
 
             let penalty = aIdx * 4;
             for (const nb of nodeBoxes) {
-              if (boxesOverlap(candBox, nb, 3)) penalty += 8000;
+              if (boxesOverlap(candBox, nb, 8)) penalty += 8000;
             }
             for (const cb of chipBoxes) {
-              if (boxesOverlap(candBox, cb, 3)) penalty += 3000;
+              if (boxesOverlap(candBox, cb, 5)) penalty += 3000;
             }
             penalty += Math.hypot(dx, dy) * 0.12;
 
@@ -300,9 +309,18 @@
         const finalBox = { x: chosenX - w / 2, y: chosenY - h / 2, w, h };
         chipBoxes.push(finalBox);
 
+        let textSvg = "";
+        if (lines.length <= 1) {
+          textSvg = '<text x="' + chosenX.toFixed(1) + '" y="' + (chosenY + 3.8).toFixed(1) + '" text-anchor="middle" font-size="10.8" font-weight="500" class="' + esc(textCls || "t-edge-default") + '">' + esc(lines[0] || label) + "</text>";
+        } else {
+          textSvg =
+            '<text x="' + chosenX.toFixed(1) + '" y="' + (chosenY - 2.5).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="600" class="' + esc(textCls || "t-edge-default") + '">' + esc(lines[0]) + "</text>" +
+            '<text x="' + chosenX.toFixed(1) + '" y="' + (chosenY + 10.5).toFixed(1) + '" text-anchor="middle" font-size="9.8" font-weight="500" class="t-muted">' + esc(lines[1]) + "</text>";
+        }
+
         const svg =
           '<rect x="' + finalBox.x.toFixed(1) + '" y="' + finalBox.y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="6" class="c-mask edge-chip"/>' +
-          '<text x="' + chosenX.toFixed(1) + '" y="' + (chosenY + 4).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="500" class="' + esc(textCls || "t-edge-default") + '">' + esc(label) + "</text>";
+          textSvg;
         return { svg, box: finalBox };
       },
       getBounds() {
@@ -317,6 +335,19 @@
     };
   }
 
+  // Hexagonal flat-top decision card so text is 100% contained inside the flat middle and never clips slanted edges
+  function hexagonPoints(x, y, w, h) {
+    const tip = 16;
+    return [
+      (x + tip).toFixed(1) + "," + y.toFixed(1),
+      (x + w - tip).toFixed(1) + "," + y.toFixed(1),
+      (x + w).toFixed(1) + "," + (y + h / 2).toFixed(1),
+      (x + w - tip).toFixed(1) + "," + (y + h).toFixed(1),
+      (x + tip).toFixed(1) + "," + (y + h).toFixed(1),
+      x.toFixed(1) + "," + (y + h / 2).toFixed(1)
+    ].join(" ");
+  }
+
   function renderNodeBox(node, stepIndex) {
     const tone = normalizeTone(node.rawKind || node.tone);
     const x = node.x;
@@ -324,27 +355,19 @@
     const w = node.w;
     const h = node.h;
     const isDecision = Boolean(node.isDecision);
+    const hexPts = isDecision ? hexagonPoints(x, y, w, h) : "";
+
     const shape = isDecision
-      ? '<polygon points="' +
-        (x + w / 2).toFixed(1) + "," + y.toFixed(1) + " " +
-        (x + w).toFixed(1) + "," + (y + h / 2).toFixed(1) + " " +
-        (x + w / 2).toFixed(1) + "," + (y + h).toFixed(1) + " " +
-        x.toFixed(1) + "," + (y + h / 2).toFixed(1) +
-        '" class="c-' + esc(tone) + ' node-shape"/>'
+      ? '<polygon points="' + hexPts + '" class="c-' + esc(tone) + ' node-shape"/>'
       : '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="9" class="c-' + esc(tone) + ' node-shape"/>';
 
     const maskShape = isDecision
-      ? '<polygon points="' +
-        (x + w / 2).toFixed(1) + "," + y.toFixed(1) + " " +
-        (x + w).toFixed(1) + "," + (y + h / 2).toFixed(1) + " " +
-        (x + w / 2).toFixed(1) + "," + (y + h).toFixed(1) + " " +
-        x.toFixed(1) + "," + (y + h / 2).toFixed(1) +
-        '" class="c-mask"/>'
+      ? '<polygon points="' + hexPts + '" class="c-mask"/>'
       : '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="9" class="c-mask"/>';
 
-    const sigil = isDecision ? "" : renderSigil(node.rawKind || node.tone, x + 8, y + 7);
+    const sigil = renderSigil(node.rawKind || node.tone, x + (isDecision ? 14 : 8), y + 7);
     const lines = Array.isArray(node.lines) && node.lines.length > 0 ? node.lines : [node.label];
-    const textX = (x + w / 2 + (isDecision ? 0 : 4)).toFixed(1);
+    const textX = (x + w / 2 + 4).toFixed(1);
 
     let textSvg = "";
     if (lines.length === 1) {
@@ -363,7 +386,7 @@
       : "";
 
     return (
-      '<g data-node-id="' + esc(node.id) + '" data-node-label="' + esc(node.label) + '" data-node-kind="' + esc(tone) + '" style="--step:' + (stepIndex || 0) + '">' +
+      '<g data-node-id="' + esc(node.id) + '" data-node-label="' + esc(node.label) + '" data-node-kind="' + esc(tone) + '" tabindex="0" role="button" style="--step:' + (stepIndex || 0) + '">' +
       "<title>" + esc(node.label + (node.sublabel ? " · " + node.sublabel : "")) + "</title>" +
       maskShape +
       shape +
@@ -415,7 +438,7 @@
       if (!goBelow) {
         const sy = fromNode.y;
         const ey = toNode.y;
-        const archY = Math.max(14, Math.min(sy, ey) - 34 - rank * 26);
+        const archY = Math.max(14, Math.min(sy, ey) - 38 - rank * 30);
         d = "M " + fx.toFixed(1) + " " + sy.toFixed(1) +
             " C " + fx.toFixed(1) + " " + archY.toFixed(1) + ", " +
             tx.toFixed(1) + " " + archY.toFixed(1) + ", " +
@@ -425,7 +448,7 @@
       } else {
         const sy = fromNode.y + fromNode.h;
         const ey = toNode.y + toNode.h;
-        const archY = Math.max(sy, ey) + 36 + rank * 26;
+        const archY = Math.max(sy, ey) + 40 + rank * 30;
         d = "M " + fx.toFixed(1) + " " + sy.toFixed(1) +
             " C " + fx.toFixed(1) + " " + archY.toFixed(1) + ", " +
             tx.toFixed(1) + " " + archY.toFixed(1) + ", " +
@@ -435,25 +458,25 @@
       }
     } else if (Math.abs(dx) >= Math.abs(dy) * 0.75) {
       const dir = dx >= 0 ? 1 : -1;
-      const portShiftY = pairOffset * 11;
+      const portShiftY = pairOffset * 12;
       const sx = dir > 0 ? fromNode.x + fromNode.w : fromNode.x;
       const sy = fy + portShiftY;
       const ex = dir > 0 ? toNode.x : toNode.x + toNode.w;
       const ey = ty + portShiftY;
       const mx = (sx + ex) / 2;
 
-      if (pairOffset !== 0 && Math.abs(sy - ey) < 20) {
-        const curveBulge = pairOffset * 24;
+      if (pairOffset !== 0 && Math.abs(sy - ey) < 24) {
+        const curveBulge = pairOffset * 28;
         const cy = (sy + ey) / 2 + curveBulge;
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
             " Q " + mx.toFixed(1) + " " + cy.toFixed(1) + " " +
             ex.toFixed(1) + " " + ey.toFixed(1);
         lx = mx;
-        ly = (sy + ey) / 2 + curveBulge * 0.75;
+        ly = (sy + ey) / 2 + curveBulge * 0.85;
       } else if (Math.abs(sy - ey) < 4) {
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) + " L " + ex.toFixed(1) + " " + ey.toFixed(1);
         lx = mx;
-        ly = sy - 14;
+        ly = sy - 16;
       } else {
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
             " C " + mx.toFixed(1) + " " + sy.toFixed(1) + ", " +
@@ -468,20 +491,20 @@
       ];
     } else {
       const dir = dy >= 0 ? 1 : -1;
-      const portShiftX = pairOffset * 14;
+      const portShiftX = pairOffset * 15;
       const sx = fx + portShiftX;
       const sy = dir > 0 ? fromNode.y + fromNode.h : fromNode.y;
       const ex = tx + portShiftX;
       const ey = dir > 0 ? toNode.y : toNode.y + toNode.h;
       const my = (sy + ey) / 2;
 
-      if (pairOffset !== 0 && Math.abs(sx - ex) < 20) {
-        const curveBulge = pairOffset * 32;
+      if (pairOffset !== 0 && Math.abs(sx - ex) < 24) {
+        const curveBulge = pairOffset * 34;
         const cx = (sx + ex) / 2 + curveBulge;
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
             " Q " + cx.toFixed(1) + " " + my.toFixed(1) + " " +
             ex.toFixed(1) + " " + ey.toFixed(1);
-        lx = (sx + ex) / 2 + curveBulge * 0.75;
+        lx = (sx + ex) / 2 + curveBulge * 0.82;
         ly = my;
       } else {
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
@@ -503,7 +526,7 @@
       : "";
 
     return (
-      '<g data-edge-id="' + esc(edgeId) + '" data-edge-from="' + esc(edge.from) + '" data-edge-to="' + esc(edge.to) + '" style="--step:' + (index || 0) + '">' +
+      '<g data-edge-id="' + esc(edgeId) + '" data-edge-from="' + esc(edge.from) + '" data-edge-to="' + esc(edge.to) + '" data-edge-label="' + esc(edge.label || "") + '" style="--step:' + (index || 0) + '">' +
       '<path d="' + d + '" class="edge-line ' + vp.cls + '" stroke-width="1.65" fill="none" marker-end="' + vp.marker + '"' + vp.dash + "/>" +
       chipSvg +
       "</g>"
@@ -514,8 +537,8 @@
     const pairCounts = new Map();
     const pairSeen = new Map();
     edges.forEach(e => {
-      const key = [e.from, e.to].sort().join("::");
-      pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+      const pairKey = [e.from, e.to].sort().join("::");
+      pairCounts.set(pairKey, (pairCounts.get(pairKey) || 0) + 1);
     });
 
     let bypassCounter = 0;
@@ -610,8 +633,9 @@
       const fi = participants.findIndex(p => p.id === msg.from);
       const ti = participants.findIndex(p => p.id === msg.to);
       const span = Math.max(1, Math.abs(ti - fi));
-      const needed = (measureTextPx(msg.label, 11) + 46) / span;
-      if (needed > colGap) colGap = Math.min(310, Math.ceil(needed));
+      const chipDim = measureChipDimensions(msg.label);
+      const needed = (chipDim.w + 34) / span;
+      if (needed > colGap) colGap = Math.min(280, Math.ceil(needed));
     });
 
     const marginX = 52;
@@ -646,7 +670,7 @@
         curY += 24;
       }
       msg.y = curY;
-      curY += 52;
+      curY += 54;
     });
     if (activeBand) {
       activeBand.endY = curY - 18;
@@ -693,9 +717,9 @@
         const y = msg.y;
         const loopW = 42;
         const d = "M " + x + " " + (y - 8) + " H " + (x + loopW) + " V " + (y + 12) + " H " + x;
-        const chip = placer.placeChip(x + loopW + measureTextPx(msg.label, 11) / 2 + 14, y + 2, msg.label, vp.textCls);
+        const chip = placer.placeChip(x + loopW + measureChipDimensions(msg.label).w / 2 + 12, y + 2, msg.label, vp.textCls);
         parts.push(
-          '<g data-edge-id="' + esc(msg.id) + '" data-edge-from="' + esc(msg.from) + '" data-edge-to="' + esc(msg.to) + '" style="--step:' + idx + '">' +
+          '<g data-edge-id="' + esc(msg.id) + '" data-edge-from="' + esc(msg.from) + '" data-edge-to="' + esc(msg.to) + '" data-edge-label="' + esc(msg.label || "") + '" style="--step:' + idx + '">' +
           '<path d="' + d + '" class="edge-line ' + vp.cls + '" stroke-width="1.6" fill="none" marker-end="' + vp.marker + '"' + vp.dash + "/>" +
           chip.svg +
           "</g>"
@@ -705,9 +729,9 @@
         const x2 = toP.cx;
         const y = msg.y;
         const midX = (x1 + x2) / 2;
-        const chip = placer.placeChip(midX, y - 12, msg.label, vp.textCls);
+        const chip = placer.placeChip(midX, y - 14, msg.label, vp.textCls);
         parts.push(
-          '<g data-edge-id="' + esc(msg.id) + '" data-edge-from="' + esc(msg.from) + '" data-edge-to="' + esc(msg.to) + '" style="--step:' + idx + '">' +
+          '<g data-edge-id="' + esc(msg.id) + '" data-edge-from="' + esc(msg.from) + '" data-edge-to="' + esc(msg.to) + '" data-edge-label="' + esc(msg.label || "") + '" style="--step:' + idx + '">' +
           '<line x1="' + x1.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y.toFixed(1) + '" class="edge-line ' + vp.cls + '" stroke-width="1.65" marker-end="' + vp.marker + '"' + vp.dash + "/>" +
           chip.svg +
           "</g>"
@@ -718,54 +742,38 @@
     return { width: canvasW, height: canvasH, innerSvg: parts.join("\n") };
   }
 
+  // Cycle-safe rank assignment using forward declaration order so loops never break downstream ranks
   function assignTopologicalRanks(nodes, edges, explicitColMap) {
-    const idSet = new Set(nodes.map(n => n.id));
-    const indegree = new Map(nodes.map(n => [n.id, 0]));
-    const adj = new Map(nodes.map(n => [n.id, []]));
-    edges.forEach(e => {
-      if (idSet.has(e.from) && idSet.has(e.to) && e.from !== e.to) {
-        adj.get(e.from).push(e.to);
-        indegree.set(e.to, (indegree.get(e.to) || 0) + 1);
-      }
-    });
-
+    const declOrder = new Map(nodes.map((n, idx) => [n.id, idx]));
     const rank = new Map();
-    const queue = [];
+
     nodes.forEach(n => {
       if (explicitColMap && explicitColMap.has(n.id)) {
         rank.set(n.id, explicitColMap.get(n.id));
-      } else if ((indegree.get(n.id) || 0) === 0) {
+      } else {
         rank.set(n.id, 0);
-        queue.push(n.id);
       }
     });
 
-    if (queue.length === 0 && nodes.length > 0 && rank.size === 0) {
-      rank.set(nodes[0].id, 0);
-      queue.push(nodes[0].id);
+    // Forward pass over declaration-ordered edges (strictly acyclic DAG)
+    for (let pass = 0; pass < nodes.length; pass++) {
+      let changed = false;
+      edges.forEach(e => {
+        if (!declOrder.has(e.from) || !declOrder.has(e.to) || e.from === e.to) return;
+        if (explicitColMap && explicitColMap.has(e.to)) return;
+        const fromIdx = declOrder.get(e.from);
+        const toIdx = declOrder.get(e.to);
+        if (fromIdx < toIdx) {
+          const cand = (rank.get(e.from) || 0) + 1;
+          if (cand > (rank.get(e.to) || 0)) {
+            rank.set(e.to, cand);
+            changed = true;
+          }
+        }
+      });
+      if (!changed) break;
     }
 
-    const visited = new Set(queue);
-    while (queue.length > 0) {
-      const curr = queue.shift();
-      const currRank = rank.get(curr) || 0;
-      for (const next of adj.get(curr) || []) {
-        if (!explicitColMap || !explicitColMap.has(next)) {
-          rank.set(next, Math.max(rank.get(next) || 0, currRank + 1));
-        }
-        indegree.set(next, (indegree.get(next) || 1) - 1);
-        if ((indegree.get(next) || 0) <= 0 && !visited.has(next)) {
-          visited.add(next);
-          queue.push(next);
-        }
-      }
-    }
-
-    nodes.forEach((n, idx) => {
-      if (!rank.has(n.id)) {
-        rank.set(n.id, idx % 5);
-      }
-    });
     return rank;
   }
 
@@ -803,7 +811,7 @@
       const internalEdges = edges.filter(e => mSet.has(e.from) && mSet.has(e.to));
       const maxInternalLabelW = Math.max(
         0,
-        ...internalEdges.map(e => measureTextPx(e.label, 11) + 36)
+        ...internalEdges.map(e => measureChipDimensions(e.label).w + 28)
       );
 
       const colsCount = cl.members.length > 4 ? 2 : 1;
@@ -858,7 +866,7 @@
       const contentW = colOffsets[colsCount - 1] + colWidths[colsCount - 1] + padX;
       const headerChipW = cl.isGroup ? Math.max(72, measureTextPx(cl.label, 10.5) + 24) : 0;
       cl.w = Math.max(contentW, headerChipW + 32);
-      cl.h = padTop + Math.max(1, numRows - 1) * innerRowGap + 54 + padBottom;
+      cl.h = padTop + Math.max(0, numRows - 1) * innerRowGap + 54 + padBottom;
       cl.headerChipW = headerChipW;
     });
 
@@ -872,7 +880,6 @@
     });
 
     if (crossEdges.length === 0 || clusters.length <= 4) {
-      // Respect author declaration order: first group on the left, stacking smaller follower groups vertically when 3 groups exist
       if (clusters.length === 3 && clusters[0].members.length >= clusters[1].members.length + clusters[2].members.length) {
         clusters[0].mCol = 0; clusters[0].mRow = 0;
         clusters[1].mCol = 1; clusters[1].mRow = 0;
@@ -902,9 +909,9 @@
       Math.max(160, ...clusters.filter(cl => cl.mCol === c).map(cl => cl.w))
     );
 
-    const maxCrossLabelW = Math.max(0, ...crossEdges.map(e => measureTextPx(e.label, 11) + 56));
-    const macroColGap = Math.max(116, maxCrossLabelW);
-    const macroRowGap = 64;
+    const maxCrossLabelW = Math.max(0, ...crossEdges.map(e => measureChipDimensions(e.label).w + 42));
+    const macroColGap = Math.max(112, maxCrossLabelW);
+    const macroRowGap = 58;
     const leftMargin = 42;
     const topMargin = 42;
 
@@ -974,7 +981,7 @@
       if (byId.has(id)) return byId.get(id);
       const cleanLabel = label || id;
       const isDecision = type === "workflow" && (cleanLabel.endsWith("?") || cleanLabel.endsWith("？") || String(rawKind || "").toLowerCase() === "decision");
-      const lines = wrapNodeLabel(cleanLabel, isDecision ? 20 : 24);
+      const lines = wrapTextTwoLines(cleanLabel, isDecision ? 20 : 22);
       const maxLinePx = Math.max(...lines.map(l => measureTextPx(l, 12.5)));
       const node = {
         id,
@@ -985,8 +992,8 @@
         isDecision,
         containerId: containerId || ""
       };
-      node.w = Math.max(isDecision ? 136 : 122, maxLinePx + (isDecision ? 48 : 38));
-      node.h = lines.length > 1 ? (isDecision ? 66 : 58) : (isDecision ? 54 : 46);
+      node.w = Math.max(isDecision ? 142 : 122, maxLinePx + (isDecision ? 52 : 38));
+      node.h = lines.length > 1 ? (isDecision ? 62 : 58) : (isDecision ? 50 : 46);
       nodes.push(node);
       byId.set(id, node);
       return node;
@@ -1045,17 +1052,80 @@
     }
 
     const ranks = assignTopologicalRanks(nodes, edges, explicitColMap.size > 0 ? explicitColMap : null);
-    const maxColsPerBand = 5;
 
-    nodes.forEach(n => {
-      const r = ranks.get(n.id) || 0;
-      if (r >= maxColsPerBand && type !== "dataflow") {
-        n.col = r % maxColsPerBand;
-        n.bandRow = Math.floor(r / maxColsPerBand);
-      } else {
-        n.col = r;
+    // Swimlane-aware 2D placement: cross-lane edges drop vertically in the same column when the target lane slot is free
+    const uniqueMainIds = Array.from(new Set(mainPathIds));
+    if (lanes.size > 0) {
+      const defaultLaneId = Array.from(lanes.keys())[0];
+      nodes.forEach(n => {
+        if (!n.containerId || !lanes.has(n.containerId)) {
+          n.containerId = defaultLaneId;
+        }
+      });
+      const declOrder = new Map(nodes.map((n, idx) => [n.id, idx]));
+      const occupied = new Set();
+      // Order nodes by topological rank then declaration order
+      const ordered = nodes.slice().sort((a, b) => (ranks.get(a.id) || 0) - (ranks.get(b.id) || 0) || (declOrder.get(a.id) - declOrder.get(b.id)));
+      ordered.forEach(n => {
+        let minCol = 0;
+        edges.forEach(e => {
+          if (e.to !== n.id || e.from === n.id) return;
+          const fn = byId.get(e.from);
+          if (!fn || fn.col === undefined) return;
+          if (declOrder.get(e.from) > declOrder.get(n.id)) return; // ignore back-edges
+          const sameLane = fn.containerId === n.containerId;
+          const needed = sameLane ? fn.col + 1 : fn.col;
+          if (needed > minCol) minCol = needed;
+        });
+        let col = minCol;
+        while (occupied.has(col + ":" + n.containerId)) {
+          col += 1;
+        }
+        n.col = col;
         n.bandRow = 0;
-      }
+        occupied.add(col + ":" + n.containerId);
+      });
+    } else if (type === "lifecycle" && uniqueMainIds.length > 0) {
+      const mainSet = new Set(uniqueMainIds);
+      nodes.forEach(n => {
+        if (mainSet.has(n.id)) {
+          n.col = explicitColMap.get(n.id) || 0;
+          n.bandRow = 0;
+        } else {
+          // Find incoming from main or outgoing to main to anchor column
+          let anchorCol = null;
+          edges.forEach(e => {
+            if (e.to === n.id && mainSet.has(e.from) && anchorCol === null) {
+              anchorCol = explicitColMap.get(e.from);
+            } else if (e.from === n.id && mainSet.has(e.to) && anchorCol === null) {
+              anchorCol = explicitColMap.get(e.to);
+            }
+          });
+          n.col = anchorCol !== null ? anchorCol : Math.min(uniqueMainIds.length - 1, ranks.get(n.id) || 1);
+          n.bandRow = 1;
+        }
+      });
+    } else {
+      const maxColsPerBand = 5;
+      nodes.forEach(n => {
+        const r = ranks.get(n.id) || 0;
+        if (r >= maxColsPerBand && type !== "dataflow") {
+          const band = Math.floor(r / maxColsPerBand);
+          const rem = r % maxColsPerBand;
+          // Boustrophedon (snake) column order so band transitions drop straight down instead of flying right-to-left
+          n.col = band % 2 === 0 ? rem : (maxColsPerBand - 1 - rem);
+          n.bandRow = band;
+        } else {
+          n.col = r;
+          n.bandRow = 0;
+        }
+      });
+    }
+
+    // Compact used columns so there are never empty column gaps
+    const usedCols = Array.from(new Set(nodes.map(n => n.col))).sort((a, b) => a - b);
+    nodes.forEach(n => {
+      n.col = Math.max(0, usedCols.indexOf(n.col));
     });
 
     const parts = [renderDefs()];
@@ -1084,8 +1154,8 @@
             const tn = byId.get(e.to);
             return fn && tn && Math.min(fn.col, tn.col) === c && Math.abs(fn.col - tn.col) === 1;
           })
-          .map(e => measureTextPx(e.label, 11) + 40);
-        return Math.max(92, ...labelLengths);
+          .map(e => measureChipDimensions(e.label).w + 34);
+        return Math.max(82, ...labelLengths);
       });
 
       const leftMargin = 54;
@@ -1105,7 +1175,7 @@
           byCol.set(n.col, list);
         });
         const maxStack = Math.max(1, ...Array.from(byCol.values()).map(l => l.length));
-        const laneH = Math.max(118, 48 + maxStack * 84);
+        const laneH = Math.max(116, 48 + maxStack * 82);
 
         extraObstacles.push({
           x: 38,
@@ -1124,7 +1194,7 @@
         byCol.forEach((stack, colIdx) => {
           stack.forEach((n, sIdx) => {
             n.x = colX[colIdx] + (colWidths[colIdx] - n.w) / 2;
-            n.y = curLaneY + 38 + sIdx * 82;
+            n.y = curLaneY + 38 + sIdx * 80;
           });
         });
 
@@ -1133,12 +1203,8 @@
       canvasH = Math.max(240, curLaneY + 20);
     } else {
       const cellMap = new Map();
-      const uniqueMainIds = Array.from(new Set(mainPathIds));
       nodes.forEach(n => {
-        let rowIdx = n.bandRow || 0;
-        if (type === "lifecycle" && uniqueMainIds.length > 0 && !uniqueMainIds.includes(n.id)) {
-          rowIdx = 1;
-        }
+        const rowIdx = n.bandRow || 0;
         const key = n.col + ":" + rowIdx;
         while (cellMap.has(key + ":" + (n.subRow || 0))) {
           n.subRow = (n.subRow || 0) + 1;
@@ -1165,13 +1231,13 @@
             const tn = byId.get(e.to);
             return fn && tn && Math.min(fn.col, tn.col) === c && Math.abs(fn.col - tn.col) === 1;
           })
-          .map(e => measureTextPx(e.label, 11) + 46);
-        return Math.max(96, ...labelLengths);
+          .map(e => measureChipDimensions(e.label).w + 38);
+        return Math.max(92, ...labelLengths);
       });
 
       const leftMargin = 48;
-      const topMargin = 62;
-      const rowGap = 112;
+      const topMargin = 66;
+      const rowGap = type === "lifecycle" ? 148 : 118;
       const colX = [leftMargin];
       for (let c = 0; c < maxCol; c++) {
         colX.push(colX[c] + colWidths[c] + colGaps[c]);
@@ -1183,7 +1249,7 @@
       });
 
       canvasW = Math.max(620, colX[maxCol] + colWidths[maxCol] + leftMargin);
-      canvasH = Math.max(220, topMargin + maxRow * rowGap + 104);
+      canvasH = Math.max(220, topMargin + maxRow * rowGap + 108);
     }
 
     const placer = createLabelPlacer(nodes, extraObstacles);
@@ -1209,7 +1275,7 @@
       const label = row[1] || id;
       const parent = row[2] && row[2] !== "-" ? row[2] : null;
       const rawKind = row[3] || (parent ? "backend" : "database");
-      const lines = wrapNodeLabel(label, 28);
+      const lines = wrapTextTwoLines(label, 28);
       const maxLinePx = Math.max(...lines.map(l => measureTextPx(l, 12.5)));
       const node = {
         id,
@@ -1362,7 +1428,7 @@
       variant: "emphasis"
     }));
 
-    const maxEdgeLabelW = Math.max(0, ...erdEdges.map(e => measureTextPx(e.label, 11) + 48));
+    const maxEdgeLabelW = Math.max(0, ...erdEdges.map(e => measureChipDimensions(e.label).w + 42));
     const maxCol = Math.max(0, ...entities.map(e => e.col));
     const maxRow = Math.max(0, ...entities.map(e => e.row));
     const colWidths = Array.from({ length: maxCol + 1 }, (_, c) =>
@@ -1372,7 +1438,7 @@
       Math.max(90, ...entities.filter(e => e.row === r).map(e => e.h))
     );
 
-    const colGap = Math.max(120, maxEdgeLabelW);
+    const colGap = Math.max(116, maxEdgeLabelW);
     const rowGap = 92;
     const leftMargin = 48;
     const topMargin = 44;
@@ -1408,7 +1474,7 @@
       });
 
       parts.push(
-        '<g data-node-id="' + esc(ent.id) + '" data-node-label="' + esc(ent.label) + '" data-node-kind="database" style="--step:' + idx + '">' +
+        '<g data-node-id="' + esc(ent.id) + '" data-node-label="' + esc(ent.label) + '" data-node-kind="database" tabindex="0" role="button" style="--step:' + idx + '">' +
         '<rect x="' + ent.x + '" y="' + ent.y + '" width="' + ent.w + '" height="' + ent.h + '" rx="9" class="c-mask"/>' +
         '<rect x="' + ent.x + '" y="' + ent.y + '" width="' + ent.w + '" height="' + ent.h + '" rx="9" class="c-database node-shape"/>' +
         '<line x1="' + ent.x + '" y1="' + (ent.y + 36) + '" x2="' + (ent.x + ent.w) + '" y2="' + (ent.y + 36) + '" class="c-lane-rule" stroke-width="1"/>' +
@@ -1490,7 +1556,7 @@
       const midY = topMargin + lIdx * laneH + laneH / 2;
       ev.y = midY - ev.h / 2;
       parts.push(
-        '<g data-node-id="' + esc(ev.id) + '" data-node-label="' + esc(ev.title) + '" data-node-kind="' + esc(ev.tone) + '" style="--step:' + idx + '">' +
+        '<g data-node-id="' + esc(ev.id) + '" data-node-label="' + esc(ev.title) + '" data-node-kind="' + esc(ev.tone) + '" tabindex="0" role="button" style="--step:' + idx + '">' +
         '<rect x="' + ev.x + '" y="' + ev.y + '" width="' + ev.w + '" height="' + ev.h + '" rx="8" class="c-mask"/>' +
         '<rect x="' + ev.x + '" y="' + ev.y + '" width="' + ev.w + '" height="' + ev.h + '" rx="8" class="c-' + esc(ev.tone) + ' node-shape"/>' +
         '<text x="' + (ev.x + 12) + '" y="' + (ev.y + 19) + '" font-size="10.5" font-weight="700" class="t-' + esc(ev.tone) + '">' + esc(ev.at) + "</text>" +
@@ -1550,7 +1616,7 @@
       const bw = Math.max(10, (sp.duration / maxEnd) * trackW);
       const indent = sp.parent ? 14 : 0;
       parts.push(
-        '<g data-node-id="' + esc(sp.id) + '" data-node-label="' + esc(sp.label) + '" data-node-kind="' + esc(sp.tone) + '" style="--step:' + idx + '">' +
+        '<g data-node-id="' + esc(sp.id) + '" data-node-label="' + esc(sp.label) + '" data-node-kind="' + esc(sp.tone) + '" tabindex="0" role="button" style="--step:' + idx + '">' +
         '<rect x="16" y="' + (ry - 4) + '" width="' + (canvasW - 32) + '" height="' + (rowH - 4) + '" rx="6" fill="transparent" class="wf-row-hit"/>' +
         '<text x="' + (24 + indent) + '" y="' + (ry + 15) + '" font-size="12" font-weight="' + (sp.parent ? "500" : "700") + '" class="t-primary">' + esc(sp.label) + "</text>" +
         '<rect x="' + bx.toFixed(1) + '" y="' + (ry + 1) + '" width="' + bw.toFixed(1) + '" height="20" rx="5" class="c-' + esc(sp.tone) + ' node-shape"/>' +
@@ -1579,7 +1645,6 @@
       compiled = compileGraphDiagram(parsed);
     }
 
-    // Compute tight bounding box across all rendered rect/polygon/line/path/text coordinates so the diagram is always centered
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = 0;
@@ -1591,11 +1656,25 @@
       const ry = parseFloat(rm[2]);
       const rw = parseFloat(rm[3]);
       const rh = parseFloat(rm[4]);
-      if (rw >= compiled.width - 40 && rx <= 20) continue; // skip full-bleed hit rects
+      if (rw >= compiled.width - 40 && rx <= 20) continue;
       if (rx < minX) minX = rx;
       if (ry < minY) minY = ry;
       if (rx + rw > maxX) maxX = rx + rw;
       if (ry + rh > maxY) maxY = ry + rh;
+    }
+    const polyRegex = /<polygon points="([^"]+)"/g;
+    let pm;
+    while ((pm = polyRegex.exec(compiled.innerSvg)) !== null) {
+      const pairs = pm[1].trim().split(/\s+/);
+      pairs.forEach(pair => {
+        const [px, py] = pair.split(",").map(Number);
+        if (Number.isFinite(px) && Number.isFinite(py)) {
+          if (px < minX) minX = px;
+          if (py < minY) minY = py;
+          if (px > maxX) maxX = px;
+          if (py > maxY) maxY = py;
+        }
+      });
     }
     const pad = 28;
     const vbX = Number.isFinite(minX) ? Math.max(0, Math.floor(minX - pad)) : 0;
@@ -1615,8 +1694,8 @@
       id: parsed.id,
       type: parsed.type,
       title: parsed.title,
-      width: Math.ceil(compiled.width),
-      height: Math.ceil(compiled.height),
+      width: vbW,
+      height: vbH,
       svg
     };
   }

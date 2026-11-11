@@ -223,6 +223,7 @@ html, body {
 .viewer-breadcrumb {
   min-width: 0;
   flex: 1;
+  margin-right: 16px;
   overflow: hidden;
 }
 .breadcrumb-trail {
@@ -296,7 +297,7 @@ html, body {
   color: var(--viewer-primary);
 }
 .viewer-icon-btn {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 34px;
@@ -319,12 +320,16 @@ html, body {
   top: 58px;
   left: 0;
   bottom: 0;
-  width: 276px;
+  width: 272px;
   z-index: 900;
   background: var(--viewer-nav-bg);
   border-right: 1px solid var(--viewer-border);
   display: flex;
   flex-direction: column;
+  transition: transform 0.2s ease;
+}
+body.collapse-nav .viewer-side {
+  transform: translateX(-100%);
 }
 .viewer-side-tabs {
   display: grid;
@@ -365,17 +370,21 @@ html, body {
 .viewer-body {
   position: fixed;
   top: 58px;
-  left: 276px;
-  right: 328px;
+  left: 272px;
+  right: 316px;
   bottom: 0;
   background: var(--viewer-bg);
   overflow: hidden;
+  transition: left 0.2s ease, right 0.2s ease;
 }
+body.collapse-nav .viewer-body { left: 0; }
+body.collapse-aside .viewer-body { right: 0; }
+
 .viewer-content {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 28px 36px 56px;
+  padding: 22px 26px 56px;
   scroll-behavior: smooth;
 }
 
@@ -384,7 +393,7 @@ html, body {
   top: 58px;
   right: 0;
   bottom: 0;
-  width: 328px;
+  width: 316px;
   z-index: 900;
   overflow-y: auto;
   padding: 14px 16px 28px;
@@ -393,6 +402,10 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: transform 0.2s ease;
+}
+body.collapse-aside .viewer-aside {
+  transform: translateX(100%);
 }
 
 /* Course Navigation Tree */
@@ -589,6 +602,8 @@ html, body {
   color: var(--viewer-text);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -631,9 +646,9 @@ html, body {
 
 /* Main Reading Article & On-This-Page TOC */
 .markdown-body {
-  max-width: 840px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 32px 38px;
+  padding: 28px 34px;
   background: var(--viewer-surface);
   border: 1px solid var(--viewer-border);
   border-radius: 16px;
@@ -1434,7 +1449,7 @@ html, body {
 
 /* Session Finish & Prev/Next Footer */
 .session-finish {
-  max-width: 840px;
+  max-width: 960px;
   margin: 22px auto 0;
   padding: 18px 22px;
   border-radius: 14px;
@@ -1461,7 +1476,7 @@ html, body {
 }
 
 .section-pager {
-  max-width: 840px;
+  max-width: 960px;
   margin: 16px auto 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1876,4 +1891,110 @@ html, body {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--viewer-muted);
+}
+
+
+/* Unified Archify Workbench & Node Inspector & Signal Flow */
+.viewer-btn.is-active-tool {
+  border-color: var(--viewer-primary);
+  background: var(--viewer-primary-soft);
+  color: var(--viewer-primary-ink);
+}
+.archify-canvas.is-zoomed {
+  text-align: left;
+  cursor: grab;
+}
+@keyframes archifyDashFlow {
+  to { stroke-dashoffset: -28; }
+}
+.archify-svg[data-animation="trace"] .edge-line.a-emphasis,
+.archify-svg[data-step-active="true"] [data-step-match="true"] .edge-line {
+  stroke-dasharray: 9, 5;
+  animation: archifyDashFlow 1.15s linear infinite;
+}
+.archify-svg [data-node-focused] > .node-shape {
+  stroke-width: 2.4px !important;
+  filter: drop-shadow(0 0 10px var(--viewer-primary));
+}
+
+.archify-inspector {
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--viewer-primary-soft) 55%, var(--viewer-surface));
+  border-top: 1px solid var(--viewer-border);
+  font-size: 12.5px;
+}
+.inspector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: var(--viewer-text);
+}
+.inspector-flows {
+  display: grid;
+  gap: 6px;
+}
+.inspector-flow-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.inspector-flow-label {
+  font-weight: 600;
+  color: var(--viewer-muted);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+.inspector-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.inspector-peer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--viewer-border-strong);
+  background: var(--viewer-surface);
+  color: var(--viewer-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.inspector-peer-chip:hover {
+  border-color: var(--viewer-primary);
+  color: var(--viewer-primary);
+}
+.inspector-peer-chip span {
+  color: var(--viewer-muted);
+  font-size: 11px;
+}
+
+.study-steps-card.is-embedded {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--viewer-border);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--viewer-sunk) 45%, var(--viewer-surface));
+}
+.study-steps-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.study-steps-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.study-steps-counter {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--viewer-text);
+  font-variant-numeric: tabular-nums;
 }
