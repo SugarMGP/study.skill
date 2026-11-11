@@ -164,7 +164,7 @@ After `syllabus.md` is written, generate all remaining modules **sequentially on
 ⛔ **Anti-Compression Rule (Never dump the whole course in a single hurried batch):**
 Attempting to write 5–10 modules in one unverified breath causes severe token dilution and 800-word summary sections. You MUST execute the following loop **for each module in order (`01-*`, `02-*`, ...)**:
 
-1. **Draft one module completely**: Write `{module}/content.md` and every `{module}/{section}/content.md` in that module, fulfilling every point in the `syllabus.md` section blueprint, the 4-layer concept anatomy (`GC6`), the `archify` + `study-steps` visual triggers, and the mode prose depth (`system >= 1800` chars/section, `exam/interview >= 1100`, `speedrun >= 800`).
+1. **Draft one module completely**: Write `{module}/content.md` and every `{module}/{section}/content.md` in that module, fulfilling every point in the `syllabus.md` section blueprint, the 4-layer concept anatomy (`GC6`), the `archify` + `study-steps` visual triggers, and the mode prose depth (`system >= 1600` chars/section across 6-12 atomic sections per module, `exam/interview >= 1100`, `speedrun >= 800`).
 2. **Run the per-module strict gate immediately**:
    ```bash
    python {skill_dir}/scripts/check-course-depth.py {learning_root}/courses/{course-slug}/{module} --mode {system|exam|interview|speedrun} --strict
@@ -172,9 +172,9 @@ Attempting to write 5–10 modules in one unverified breath causes severe token 
 3. **Repair before advancing**: If `--strict` exits non-zero (short section, 0 `archify` diagrams, 0 `study-*` exercises, `handwaving-trace` such as "限于篇幅/此处不展开", `template-answer`, `math-delimiter`, or `archify-syntax` error), expand and fix that module immediately and re-run `--strict` until it passes. Never proceed to the next module while the current module fails `--strict`.
 4. **Interleaved quality checkpoint (every 3 modules)**: Check that exercise density is not dropping (>=80% of the first 3 modules' average), `anti-ai-writing.md` §7 passes (0 unjustified Tier 1 terms, <=1 Tier 2 term), and `courseware-format.md` GC1-GC6 hold.
 
-**Course structure guard:** one course should stay within <=12 modules and <=60 section pages. If the outline exceeds either limit, split it into a series of separate courses before writing modules. Do not use "batch generation" to hide an oversized single course. Batches are only for context management inside a course that already passes the structure guard.
+**Course structure guard:** one course should stay within <=15 modules and <=120 section pages. If the outline exceeds either limit, split it into a series of separate courses before writing modules. Do not use "batch generation" to hide an oversized single course. Batches are only for context management inside a course that already passes the structure guard.
 
-The fixed `99-content-supplements` module is outside this structure guard. Do not count it as one of the <=12 main modules or its future supplement sections as part of the <=60 main section pages.
+The fixed `99-content-supplements` module is outside this structure guard. Do not count it as one of the <=15 main modules or its future supplement sections as part of the <=120 main section pages.
 
 For each module:
 

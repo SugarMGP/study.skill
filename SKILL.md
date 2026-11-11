@@ -61,7 +61,7 @@ Pipeline:
 Units:
 
 - **一小节 (Section / 单次学习页)**: one main question or concept, stored as its own `{module}/{section}/content.md`.
-- **一模块 (Module / 可折叠章节)**: a short preface in `{module}/content.md` plus 2-7 section pages.
+- **一模块 (Module / 可折叠章节)**: a short preface in `{module}/content.md` plus 5-12 atomic section pages (1 core concept/mechanism per section; never cram multiple subtopics into 3-4 dense sections).
 - **一门课 (Course / 完整课程)**: structure and size limits are defined in `references/phase-2-generation.md`.
 
 Iron Law:

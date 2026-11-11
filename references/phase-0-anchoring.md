@@ -33,7 +33,7 @@ No teaching without anchoring first. If the user has not confirmed a learning go
 ## Units and Course Size
 
 - **一小节 (Section)**: one main question or concept, stored as its own `{module}/{section}/content.md`. This is the primary reading page in the local viewer.
-- **一模块 (Module)**: a collapsible chapter. It has a short preface in `{module}/content.md` and usually 2-7 section pages below it.
+- **一模块 (Module)**: a collapsible chapter. It has a short preface in `{module}/content.md` and usually 5-12 atomic section pages below it (1 core concept, mechanism, or problem per section).
 - **一门课 (Course)**: structure and size limits are defined in `references/phase-2-generation.md`. Split larger topics into a course series.
 
 默认逐题问，一次一条。用户回答已经覆盖的问题时自动跳过，不再重复问。
@@ -81,16 +81,16 @@ The selected mode's prose band is a post-generation diagnostic, not a generation
 Prose length & depth gate guidance:
 
 - Code blocks, `archify` diagrams, `study-steps`, tables, images, and `study-*` metadata do not count as prose; their explanation does.
-- Every mode has a strict per-section non-symbol character floor enforced by `scripts/check-course-depth.py --mode <mode> --strict` (`system=1800`, `exam=1100`, `interview=1100`, `speedrun=800`).
+- Every mode has a strict per-section non-symbol character floor enforced by `scripts/check-course-depth.py --mode <mode> --strict` (`system=1600`, `exam=1100`, `interview=1100`, `speedrun=800`).
 - If a section falls below the mode floor, expand the 4-layer concept anatomy (`courseware-format.md` GC6): concrete pain/counterexample, internal state/data walkthrough, trade-offs & failure boundaries, and runnable engineering example. Never pad with generic fluff.
 - If a section is very long (>5500 chars), split only when the learner question, example, prerequisite, or practice type changes.
 
-| Mode (`--mode`) | 目标正文规模/模块 | 小节规模建议（含 `--strict` 硬下限） | 结构覆盖与图表要求/模块 | 粗略学习负荷 | 解释深度 |
+| Mode (`--mode`) | 目标正文规模/模块 | 小节拆分粒度建议（原子化单概念小节） | 结构覆盖与图表要求/模块 | 粗略学习负荷 | 解释深度与语言风格 |
 |------|------------------|----------------|----------------|--------------|----------|
-| 速成导览 (`speedrun`) | 中文 2400-5000 字；英文 1400-3000 words | 2-3 节，每节中文 900-1800 字（硬下限 **800 字**） / 英文 500-1050 words | 1 条主路径；≥1 张 `archify` 图表；1 个可运行/可检查例子；1-2 个互动题 | 短到中；通常一坐能完成 | 精简解释，先跑通主路径，讲清会阻塞上手的核心机制 |
-| 系统精讲 (`system`) | 中文 9000-20000 字；英文 5200-12000 words | 4-7 节，每节中文 2000-4200 字（硬下限 **1800 字**） / 英文 1200-2500 words | 3-6 个概念块（执行四层概念解剖 GC6）；每节推荐 1 张 `archify` 图表（模块 ≥1 张）+ `study-steps` 走查；2 个以上完整案例/代码；4-7 个互动题 | 长；分小节深度精学 | 四层解剖：具象痛点 → 黑盒内部状态走查 → 设计权衡与失效边界 → 工程落地与决策表 |
-| 面试冲刺 (`interview`) | 中文 3500-7500 字；英文 2000-4400 words | 2-4 节，每节中文 1200-2600 字（硬下限 **1100 字**） / 英文 700-1500 words | 1 个高频考点簇；≥1 张 `archify` 原理/时序图；2-4 个深水区追问；1 套回答评分标准；2-3 个面试型 `study-input` / `study-choice` | 中等；以输出高分回答为目标 | 用场景题组织底层机制、回答要点、追问方向、反例和判分标准 |
-| 考试备考 (`exam`) | 中文 4500-10000 字；英文 2600-6000 words | 3-6 节，每节中文 1200-2600 字（硬下限 **1100 字**） / 英文 700-1500 words | 对齐考纲/材料；≥1 张 `archify` 结构/流程图；1-2 个完整推导例题；3-6 个考试型练习；给出评分点或判分依据 | 中到长；以做题和订正为目标 | 讲透必考点的定义、完整推导、题型套路、分值权重和易混边界；不考的不展开 |
+| 速成导览 (`speedrun`) | 中文 3000-6500 字；英文 1800-3800 words | 3-5 节，每节中文 900-1800 字（硬下限 **800 字**） / 英文 500-1050 words | 1 条主路径；≥1 张 `archify` 图表；1 个可运行/可检查例子；2-3 个互动题 | 短到中；通常一坐能完成 | 日常白话直奔主题，先跑通主路径，讲清会卡手的底层原因 |
+| 系统精讲 (`system`) | 中文 12000-32000 字；英文 7000-18000 words | **6-12 节（原子化细拆：一节只讲透一个机制或一道大题）**，每节中文 1800-3600 字（硬下限 **1600 字**） / 英文 1000-2200 words | 每个原子概念独占一节，循序渐进引导；每节推荐配 `archify` 图表或 `study-walkthrough` 分步推导讲台；模块 5-12 个互动题 | 长；按原子小节轻松推进 | 先用生活大白话和身边小账本讲懂道理，再顺手点明课本专业叫法；一步一搭梯子，绝不跳步或堆砌学术黑话 |
+| 面试冲刺 (`interview`) | 中文 5000-11000 字；英文 3000-6500 words | **4-8 节**，每节中文 1200-2400 字（硬下限 **1100 字**） / 英文 700-1400 words | 每个高频考点或深水区追问独立成节；≥2 张 `archify` 原理/时序图；配面试型 `study-input` / `study-choice` | 中等；以输出高分回答为目标 | 先用大白话把原理说透，再给面试官想听的规范表达、追问方向和反例 |
+| 考试备考 (`exam`) | 中文 7000-16000 字；英文 4200-9500 words | **5-10 节**，每节中文 1200-2500 字（硬下限 **1100 字**） / 英文 700-1500 words | 每个必考机制、模型或计算题型独立成节；≥2 张 `archify` 图 + `study-walkthrough` 分步算账；3-8 个考试型练习 | 中到长；以做题和拿分为目标 | 先用日常人话把来龙去脉讲明白，再对齐考卷上的标准词和给分步骤；不考的不展开 |
 
 Code examples, diagrams, images, tables, formulas, and source excerpts are not constrained by prose length. Include them whenever they reduce cognitive load or make the learner's answer checkable.
 

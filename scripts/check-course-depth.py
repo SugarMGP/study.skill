@@ -40,8 +40,8 @@ sys.stderr.reconfigure(encoding="utf-8")
 
 
 MODE_MIN_SECTION_CHARS: Final[dict[str, int]] = {
-    "system": 1800,
-    "systematic": 1800,
+    "system": 1600,
+    "systematic": 1600,
     "exam": 1100,
     "interview": 1100,
     "speedrun": 800,
