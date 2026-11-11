@@ -136,7 +136,7 @@ class StrictDepthAndArchifyGateTest(unittest.TestCase):
             # Case 2: sufficient prose (>= 800 chars for speedrun), valid archify diagram + study-steps + exercise
             long_prose = "这是一段深入拆解内部状态流转与工程边界的正文内容，包含具体输入数据与执行跟踪。" * 25
             valid_section = (
-                f"# 第一节：缓存读取与穿透防护\n\n{long_prose}\n\n"
+                f"# 第一节：缓存读取与穿透防护\n\n"f"## 一、为什么直接查数据库会撑爆连接池？\n\n"f"- **缓存命中（Cache Hit）**：请求直接在内存中拿到结果。\n"f"- **缓存未命中（Cache Miss）**：请求需要回源查询数据库并写回缓存。\n\n"f"> [!TIP]\n> **核心结论：高并发热点 Key 一旦失效，必须限制回源并发数。**\n\n"f"## 二、跟着一条查询请求走完回源全流程\n\n"f"当收到请求时，**第一步是检查 Redis 缓存**，若未命中则**第二步加互斥锁查询数据库**。{long_prose}\n\n"
                 "```archify\n"
                 'type=sequence id=cache-flow title="Cache Miss Flow"\n'
                 "| actor client | Client | frontend |\n"

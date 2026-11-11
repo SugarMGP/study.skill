@@ -164,6 +164,12 @@
       .replace(/'/g, "&#39;");
   }
 
+  function formatInlineMarkup(s) {
+    return escapeHtml(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  }
+
   function escapeAttr(s) {
     return escapeHtml(s);
   }
@@ -770,7 +776,7 @@
         '<span class="study-step-num">' + (idx + 1) + "</span>" +
         '<div class="study-step-body">' +
         '<div class="study-step-title">' + escapeHtml(step.title) + "</div>" +
-        (step.detail ? '<div class="study-step-detail">' + escapeHtml(step.detail) + "</div>" : "") +
+        (step.detail ? '<div class="study-step-detail">' + formatInlineMarkup(step.detail) + "</div>" : "") +
         "</div>" +
         "</li>";
     });
@@ -1104,7 +1110,7 @@
         ? '<div class="walkthrough-state"><span class="walkthrough-state-label">当前状态快照</span><code>' + escapeHtml(String(step.state)) + "</code></div>"
         : "";
       const promptHtml = step.question && idx < steps.length - 1
-        ? '<div class="walkthrough-prompt">💭 <strong>先想一步：</strong>' + escapeHtml(String(step.question)) + "</div>"
+        ? '<div class="walkthrough-prompt">💭 <strong>先想一步：</strong>' + formatInlineMarkup(String(step.question)) + "</div>"
         : "";
       stepsHtml +=
         '<div class="walkthrough-step' + (isFirst ? " is-revealed is-current" : " viewer-hidden") + '" data-walk-step="' + idx + '">' +

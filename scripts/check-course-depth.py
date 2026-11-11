@@ -131,6 +131,7 @@ STRICT_BLOCKING_CATEGORIES: Final[frozenset[str]] = frozenset({
     "pure-practice-risk",
     "math-delimiter",
     "slide-structure",
+    "markdown-flatness",
 })
 
 
@@ -158,7 +159,7 @@ def count_non_symbol_chars(markdown: str) -> int:
     """Count letters, digits, underscores, and CJK characters outside non-prose fenced blocks."""
     def _keep_walkthrough(match: re.Match[str]) -> str:
         fence_line = match.group(0).splitlines()[0].lstrip("`").strip().lower()
-        if fence_line in {"study-walkthrough", "study-tutor"}:
+        if fence_line in {"study-steps", "study-walkthrough", "study-tutor"}:
             return match.group(0)
         return ""
     text = FENCED_BLOCK_PATTERN.sub(_keep_walkthrough, markdown)
@@ -587,6 +588,47 @@ def scan_study_block_answers(depths: list[MarkdownDepth]) -> list[ScanFinding]:
     return findings
 
 
+def scan_markdown_flatness(depths: list[MarkdownDepth], root: Path) -> list[ScanFinding]:
+    """Ensure non-practice section pages use ## subheadings, **bold** signposts, and lists/callouts instead of flat text walls."""
+    findings: list[ScanFinding] = []
+    for item in depths:
+        if not is_section_content(item.path, root):
+            continue
+        mod_name = module_name_for_item(item.path, root)
+        if mod_name == SUPPLEMENT_MODULE_ID or SUPPLEMENT_MODULE_ID in item.path.parts:
+            continue
+        markdown = item.path.read_text(encoding="utf-8-sig")
+        lines = visible_lines(markdown)
+        if is_pure_practice_section(item.path, lines):
+            continue
+
+        prose = FENCED_BLOCK_PATTERN.sub("", markdown)
+        h2_count = len(re.findall(r"^##\s+\S+", prose, flags=re.MULTILINE))
+        bold_count = len(re.findall(r"\*\*[^*\n]+\*\*", prose))
+        list_count = len(re.findall(r"^\s*(?:[-*]|\d+\.)\s+\S+", prose, flags=re.MULTILINE))
+        callout_count = len(re.findall(r"^>\s*\S+", prose, flags=re.MULTILINE))
+
+        if h2_count == 0:
+            findings.append(ScanFinding(
+                path=item.path,
+                category="markdown-flatness",
+                detail="section has 0 '##' subheadings; use topic-specific '##' headings to structure the lesson and build page TOC",
+            ))
+        if bold_count == 0:
+            findings.append(ScanFinding(
+                path=item.path,
+                category="markdown-flatness",
+                detail="section has 0 '**bold**' spans; use bold for key terms, list anchors, and core takeaways instead of flat plain text",
+            ))
+        if list_count == 0 and callout_count == 0:
+            findings.append(ScanFinding(
+                path=item.path,
+                category="markdown-flatness",
+                detail="section has 0 bullet/numbered lists and 0 blockquotes/callouts; use lists or '> [!TIP]' callouts to break up plain paragraph walls",
+            ))
+    return findings
+
+
 def scan_slide_structure(depths: list[MarkdownDepth]) -> list[ScanFinding]:
     """Detect slide-by-slide content organization (5+ consecutive page-numbered headings)."""
     findings: list[ScanFinding] = []
@@ -710,6 +752,7 @@ def main() -> int:
     findings += scan_markdown_risks(depths)
     findings += scan_study_block_answers(depths)
     findings += scan_slide_structure(depths)
+    findings += scan_markdown_flatness(depths, root)
     findings += scan_archify_blocks(depths)
 
     exercise_counts, diagram_counts = count_blocks_by_module(depths, root)
