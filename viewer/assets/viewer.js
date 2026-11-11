@@ -574,7 +574,8 @@
       const status = node.status || "available";
       const statusMeta = skillTreeStatus(status);
       const progress = Math.max(0, Math.min(100, Number(node.progress || 0)));
-      const name = (node.name || id).replace(/^\d{2}-/, "").replace(/-/g, " ");
+      const matchedMod = (STATE.modules || []).find(item => item.id === (node.module || id));
+      const name = (node.name || (matchedMod && matchedMod.name) || id).replace(/^\d{2}-/, "").replace(/-/g, " ");
       const nextStep = renderSkillNodeStep(skillNodeNextStep(id, node, status));
       return '<div class="skill-map-item is-' + escapeAttr(status) + '">' +
         '<span class="skill-map-dot"></span>' +
@@ -880,10 +881,14 @@
     };
   }
 
-  function questionHeader(label, question, title) {
-    const text = title || question || "";
-    return '<div class="study-block-header"><span class="study-type-badge">' + escapeHtml(label) +
-      '</span><span class="study-title">' + escapeHtml(text) + "</span></div>";
+  function questionHeader(label, question, title, rawTags) {
+    const customTitle = title && String(title).trim() !== String(question || "").trim() ? String(title).trim() : "";
+    const tags = normalizeTags(rawTags).split(",").map(s => s.trim()).filter(Boolean);
+    const tagHtml = tags.length > 0
+      ? '<span class="study-tag-pills">' + tags.map(t => '<span class="study-tag-pill">' + escapeHtml(evidenceLabel(t)) + "</span>").join("") + "</span>"
+      : "";
+    return '<div class="study-block-header"><div class="study-header-left"><span class="study-type-badge">' + escapeHtml(label) +
+      "</span>" + (customTitle ? '<span class="study-title">' + escapeHtml(customTitle) + "</span>" : "") + "</div>" + tagHtml + "</div>";
   }
 
   function renderChoiceQuestion(data, rawType) {
@@ -909,7 +914,7 @@
       'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(normalizeAnswer(data.answer)) + '" ' +
       'data-study-explanation="' + escapeAttr(data.explanation || data.reason || "") + '" data-study-multiple="' + escapeAttr(multiple ? "true" : "false") + '" ' +
       'data-study-mastery-tags="' + escapeAttr(normalizeTags(data.mastery_tags || data.skill_tags)) + '">' +
-      questionHeader(multiple ? "多选题" : "单选题", data.question, data.title || "") +
+      questionHeader(multiple ? "多选题" : "单选题", data.question, data.title || "", data.mastery_tags || data.skill_tags) +
       '<div class="study-block-body">' +
       '<div class="study-question">' + escapeHtml(data.question) + "</div>" +
       renderHintTools(data.hints) +
@@ -930,7 +935,7 @@
       'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(answerValue) + '" ' +
       'data-study-explanation="' + escapeAttr(data.explanation || data.reason || "") + '" ' +
       'data-study-mastery-tags="' + escapeAttr(normalizeTags(data.mastery_tags || data.skill_tags)) + '">' +
-      questionHeader("判断题", data.question, data.title || "") +
+      questionHeader("判断题", data.question, data.title || "", data.mastery_tags || data.skill_tags) +
       '<div class="study-block-body">' +
       '<div class="study-question">' + escapeHtml(data.question) + "</div>" +
       renderHintTools(data.hints) +
@@ -960,7 +965,7 @@
       'data-study-question="' + escapeAttr(data.question) + '" data-study-answer="' + escapeAttr(data.answer || "") + '" ' +
       'data-study-explanation="' + escapeAttr(data.explanation || data.reason || "") + '" data-study-min-words="' + escapeAttr(minWords) + '" ' +
       'data-study-mastery-tags="' + escapeAttr(normalizeTags(data.mastery_tags || data.skill_tags)) + '" data-study-concept="' + escapeAttr(data.concept || "") + '">' +
-      questionHeader(label, data.question, data.title || "") +
+      questionHeader(label, data.question, data.title || "", data.mastery_tags || data.skill_tags) +
       '<div class="study-block-body">' +
       '<div class="study-question">' + escapeHtml(data.question) + "</div>" +
       (data.prompt ? '<div class="viewer-muted study-prompt">' + escapeHtml(data.prompt) + "</div>" : "") +

@@ -62,23 +62,24 @@
       .replace(/'/g, "&#39;");
   }
 
+  function charUnits(code) {
+    if (
+      (code >= 0x1100 && code <= 0x11ff) ||
+      (code >= 0x2e80 && code <= 0xd7af) ||
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0xfe30 && code <= 0xfe6f) ||
+      (code >= 0xff00 && code <= 0xff60)
+    ) {
+      return 1.9;
+    }
+    return 1;
+  }
+
   function textUnits(str) {
     let units = 0;
     const text = String(str || "");
     for (let i = 0; i < text.length; i++) {
-      const code = text.charCodeAt(i);
-      // CJK / fullwidth ranges count as 2 units, ASCII as 1
-      if (
-        (code >= 0x1100 && code <= 0x11ff) ||
-        (code >= 0x2e80 && code <= 0xd7af) ||
-        (code >= 0xf900 && code <= 0xfaff) ||
-        (code >= 0xfe30 && code <= 0xfe6f) ||
-        (code >= 0xff00 && code <= 0xff60)
-      ) {
-        units += 1.9;
-      } else {
-        units += 1;
-      }
+      units += charUnits(text.charCodeAt(i));
     }
     return Math.max(1, units);
   }
@@ -86,6 +87,34 @@
   function measureTextPx(str, fontSize) {
     const size = fontSize || 12;
     return Math.ceil(textUnits(str) * (size * 0.56));
+  }
+
+  // Split long node labels into at most 2 balanced lines so nodes stay compact
+  function wrapNodeLabel(label, maxUnitsPerLine) {
+    const text = String(label || "").trim();
+    const limit = maxUnitsPerLine || 24;
+    if (textUnits(text) <= limit) return [text];
+
+    // Find split point near middle unit count, preferring punctuation/spaces
+    const total = textUnits(text);
+    const target = total / 2;
+    let acc = 0;
+    let bestIdx = Math.floor(text.length / 2);
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let i = 1; i < text.length - 1; i++) {
+      acc += charUnits(text.charCodeAt(i - 1));
+      const ch = text[i];
+      const isBreakChar = /[\s:：,，/(\uff08\-~]/.test(ch);
+      const dist = Math.abs(acc - target) - (isBreakChar ? 3.5 : 0);
+      if (dist < bestScore) {
+        bestScore = dist;
+        bestIdx = isBreakChar && ch === " " ? i + 1 : i;
+      }
+    }
+    const line1 = text.slice(0, bestIdx).trim();
+    const line2 = text.slice(bestIdx).trim();
+    return line1 && line2 ? [line1, line2] : [text];
   }
 
   function normalizeTone(raw) {
@@ -134,9 +163,9 @@
     if (!ARCHIFY_TYPES.has(type)) {
       throw new Error("Unsupported or missing archify type: " + (header.type || "(none)"));
     }
+    const rows = lines.slice(1).filter(l => l.includes("|")).map(parsePipeRow);
     const id = header.id || ("diag-" + type + "-" + rows.length);
     const title = header.title || id;
-    const rows = lines.slice(1).filter(l => l.includes("|")).map(parsePipeRow);
     if (rows.length === 0) {
       throw new Error("Archify diagram '" + id + "' has no pipe rows");
     }
@@ -205,16 +234,87 @@
     return { cls: "a-default", textCls: "t-edge-default", marker: "url(#arch-arrow-default)", dash: "" };
   }
 
-  function renderEdgeLabelChip(cx, cy, label, textCls) {
-    if (!label) return "";
-    const w = Math.max(36, measureTextPx(label, 11) + 16);
-    const h = 20;
-    const rx = cx - w / 2;
-    const ry = cy - h / 2;
-    return (
-      '<rect x="' + rx.toFixed(1) + '" y="' + ry.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="6" class="c-mask edge-chip"/>' +
-      '<text x="' + cx.toFixed(1) + '" y="' + (cy + 4).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="500" class="' + esc(textCls || "t-edge-default") + '">' + esc(label) + "</text>"
-    );
+  function boxesOverlap(a, b, pad) {
+    const p = pad || 0;
+    return a.x - p < b.x + b.w && a.x + a.w + p > b.x && a.y - p < b.y + b.h && a.y + a.h + p > b.y;
+  }
+
+  function createLabelPlacer(nodes, extraObstacles) {
+    const nodeBoxes = (nodes || []).map(n => ({ x: n.x, y: n.y, w: n.w, h: n.h }));
+    const chipBoxes = (extraObstacles || []).slice();
+
+    return {
+      addObstacle(box) {
+        chipBoxes.push(box);
+      },
+      placeChip(cx, cy, label, textCls, altAnchors) {
+        if (!label) return { svg: "", box: null };
+        const w = Math.max(36, measureTextPx(label, 11) + 16);
+        const h = 20;
+
+        const anchors = [[cx, cy]].concat(altAnchors || []);
+        const offsets = [[0, 0]];
+        const ySteps = [0, -18, 18, -32, 32, -46, 46, -62, 62, -78, 78, -96, 96, -116, 116, -138, 138];
+        const xSteps = [0, -24, 24, -48, 48, -76, 76, -108, 108, -140, 140];
+        for (const dy of ySteps) {
+          for (const dx of xSteps) {
+            if (dx !== 0 || dy !== 0) offsets.push([dx, dy]);
+          }
+        }
+
+        let chosenX = cx;
+        let chosenY = cy;
+        let bestPenalty = Number.POSITIVE_INFINITY;
+
+        outer:
+        for (let aIdx = 0; aIdx < anchors.length; aIdx++) {
+          const [ax, ay] = anchors[aIdx];
+          for (const [dx, dy] of offsets) {
+            const tx = Math.max(w / 2 + 8, ax + dx);
+            const ty = Math.max(h / 2 + 8, ay + dy);
+            const candBox = { x: tx - w / 2, y: ty - h / 2, w, h };
+
+            let penalty = aIdx * 4;
+            for (const nb of nodeBoxes) {
+              if (boxesOverlap(candBox, nb, 3)) penalty += 8000;
+            }
+            for (const cb of chipBoxes) {
+              if (boxesOverlap(candBox, cb, 3)) penalty += 3000;
+            }
+            penalty += Math.hypot(dx, dy) * 0.12;
+
+            if (penalty < 15) {
+              chosenX = tx;
+              chosenY = ty;
+              bestPenalty = penalty;
+              break outer;
+            }
+            if (penalty < bestPenalty) {
+              bestPenalty = penalty;
+              chosenX = tx;
+              chosenY = ty;
+            }
+          }
+        }
+
+        const finalBox = { x: chosenX - w / 2, y: chosenY - h / 2, w, h };
+        chipBoxes.push(finalBox);
+
+        const svg =
+          '<rect x="' + finalBox.x.toFixed(1) + '" y="' + finalBox.y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="6" class="c-mask edge-chip"/>' +
+          '<text x="' + chosenX.toFixed(1) + '" y="' + (chosenY + 4).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="500" class="' + esc(textCls || "t-edge-default") + '">' + esc(label) + "</text>";
+        return { svg, box: finalBox };
+      },
+      getBounds() {
+        let maxX = 0;
+        let maxY = 0;
+        for (const b of nodeBoxes.concat(chipBoxes)) {
+          if (b.x + b.w > maxX) maxX = b.x + b.w;
+          if (b.y + b.h > maxY) maxY = b.y + b.h;
+        }
+        return { maxX, maxY };
+      }
+    };
   }
 
   function renderNodeBox(node, stepIndex) {
@@ -243,9 +343,23 @@
       : '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="9" class="c-mask"/>';
 
     const sigil = isDecision ? "" : renderSigil(node.rawKind || node.tone, x + 8, y + 7);
-    const textY = node.sublabel ? y + h / 2 - 2 : y + h / 2 + 4.5;
+    const lines = Array.isArray(node.lines) && node.lines.length > 0 ? node.lines : [node.label];
+    const textX = (x + w / 2 + (isDecision ? 0 : 4)).toFixed(1);
+
+    let textSvg = "";
+    if (lines.length === 1) {
+      const textY = node.sublabel ? y + h / 2 - 2 : y + h / 2 + 4.5;
+      textSvg = '<text x="' + textX + '" y="' + textY.toFixed(1) + '" text-anchor="middle" font-size="12.5" font-weight="600" class="t-primary">' + esc(lines[0]) + "</text>";
+    } else {
+      const y1 = y + h / 2 - 4;
+      const y2 = y + h / 2 + 13;
+      textSvg =
+        '<text x="' + textX + '" y="' + y1.toFixed(1) + '" text-anchor="middle" font-size="12" font-weight="600" class="t-primary">' + esc(lines[0]) + "</text>" +
+        '<text x="' + textX + '" y="' + y2.toFixed(1) + '" text-anchor="middle" font-size="12" font-weight="600" class="t-primary">' + esc(lines[1]) + "</text>";
+    }
+
     const sublabelSvg = node.sublabel
-      ? '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (y + h / 2 + 13).toFixed(1) + '" text-anchor="middle" font-size="10" class="t-muted">' + esc(node.sublabel) + "</text>"
+      ? '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (y + h - 7).toFixed(1) + '" text-anchor="middle" font-size="10" class="t-muted">' + esc(node.sublabel) + "</text>"
       : "";
 
     return (
@@ -254,14 +368,33 @@
       maskShape +
       shape +
       sigil +
-      '<text x="' + (x + w / 2 + (isDecision ? 0 : 4)).toFixed(1) + '" y="' + textY.toFixed(1) + '" text-anchor="middle" font-size="12.5" font-weight="600" class="t-primary">' + esc(node.label) + "</text>" +
+      textSvg +
       sublabelSvg +
       "</g>"
     );
   }
 
-  function renderCurvedOrOrthoEdge(edge, fromNode, toNode, index) {
+  function hasIntermediateHorizontalBlocker(fromNode, toNode, allNodes) {
+    if (Math.abs((fromNode.y + fromNode.h / 2) - (toNode.y + toNode.h / 2)) > 36) return false;
+    const minX = Math.min(fromNode.x + fromNode.w, toNode.x + toNode.w);
+    const maxX = Math.max(fromNode.x, toNode.x);
+    if (maxX - minX < 20) return false;
+    const rowY = (fromNode.y + fromNode.h / 2 + toNode.y + toNode.h / 2) / 2;
+    return allNodes.some(n => {
+      if (n.id === fromNode.id || n.id === toNode.id) return false;
+      const nxCenter = n.x + n.w / 2;
+      const nyCenter = n.y + n.h / 2;
+      return nxCenter > minX - 10 && nxCenter < maxX + 10 && Math.abs(nyCenter - rowY) < 38;
+    });
+  }
+
+  function renderSmartEdge(edge, fromNode, toNode, index, context) {
     const vp = edgeVariantProps(edge.variant);
+    const allNodes = (context && context.nodes) || [];
+    const placer = context && context.placer;
+    const pairOffset = (context && context.pairOffset) || 0;
+    const bypassSlot = (context && context.bypassSlot) || 0;
+
     const fx = fromNode.x + fromNode.w / 2;
     const fy = fromNode.y + fromNode.h / 2;
     const tx = toNode.x + toNode.w / 2;
@@ -269,46 +402,151 @@
     const dx = tx - fx;
     const dy = ty - fy;
 
-    let sx, sy, ex, ey, d, lx, ly;
-    if (Math.abs(dx) >= Math.abs(dy) * 0.85) {
+    let d = "";
+    let lx = (fx + tx) / 2;
+    let ly = (fy + ty) / 2;
+    let altAnchors = [];
+
+    const blockedHorizontally = hasIntermediateHorizontalBlocker(fromNode, toNode, allNodes);
+
+    if (blockedHorizontally) {
+      const goBelow = dx < 0 || (bypassSlot % 2 === 1);
+      const rank = Math.floor(bypassSlot / 2);
+      if (!goBelow) {
+        const sy = fromNode.y;
+        const ey = toNode.y;
+        const archY = Math.max(14, Math.min(sy, ey) - 34 - rank * 26);
+        d = "M " + fx.toFixed(1) + " " + sy.toFixed(1) +
+            " C " + fx.toFixed(1) + " " + archY.toFixed(1) + ", " +
+            tx.toFixed(1) + " " + archY.toFixed(1) + ", " +
+            tx.toFixed(1) + " " + ey.toFixed(1);
+        lx = (fx + tx) / 2;
+        ly = archY + 6;
+      } else {
+        const sy = fromNode.y + fromNode.h;
+        const ey = toNode.y + toNode.h;
+        const archY = Math.max(sy, ey) + 36 + rank * 26;
+        d = "M " + fx.toFixed(1) + " " + sy.toFixed(1) +
+            " C " + fx.toFixed(1) + " " + archY.toFixed(1) + ", " +
+            tx.toFixed(1) + " " + archY.toFixed(1) + ", " +
+            tx.toFixed(1) + " " + ey.toFixed(1);
+        lx = (fx + tx) / 2;
+        ly = archY - 6;
+      }
+    } else if (Math.abs(dx) >= Math.abs(dy) * 0.75) {
       const dir = dx >= 0 ? 1 : -1;
-      sx = dir > 0 ? fromNode.x + fromNode.w : fromNode.x;
-      sy = fy;
-      ex = dir > 0 ? toNode.x : toNode.x + toNode.w;
-      ey = ty;
+      const portShiftY = pairOffset * 11;
+      const sx = dir > 0 ? fromNode.x + fromNode.w : fromNode.x;
+      const sy = fy + portShiftY;
+      const ex = dir > 0 ? toNode.x : toNode.x + toNode.w;
+      const ey = ty + portShiftY;
       const mx = (sx + ex) / 2;
-      if (Math.abs(sy - ey) < 4) {
+
+      if (pairOffset !== 0 && Math.abs(sy - ey) < 20) {
+        const curveBulge = pairOffset * 24;
+        const cy = (sy + ey) / 2 + curveBulge;
+        d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
+            " Q " + mx.toFixed(1) + " " + cy.toFixed(1) + " " +
+            ex.toFixed(1) + " " + ey.toFixed(1);
+        lx = mx;
+        ly = (sy + ey) / 2 + curveBulge * 0.75;
+      } else if (Math.abs(sy - ey) < 4) {
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) + " L " + ex.toFixed(1) + " " + ey.toFixed(1);
+        lx = mx;
+        ly = sy - 14;
       } else {
         d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
             " C " + mx.toFixed(1) + " " + sy.toFixed(1) + ", " +
             mx.toFixed(1) + " " + ey.toFixed(1) + ", " +
             ex.toFixed(1) + " " + ey.toFixed(1);
+        lx = mx;
+        ly = (sy + ey) / 2;
       }
-      lx = mx;
-      ly = (sy + ey) / 2 - (Math.abs(sy - ey) < 8 ? 12 : 0);
+      altAnchors = [
+        [sx + (ex - sx) * 0.34, sy + (ey - sy) * 0.25],
+        [sx + (ex - sx) * 0.66, sy + (ey - sy) * 0.75]
+      ];
     } else {
       const dir = dy >= 0 ? 1 : -1;
-      sx = fx;
-      sy = dir > 0 ? fromNode.y + fromNode.h : fromNode.y;
-      ex = tx;
-      ey = dir > 0 ? toNode.y : toNode.y + toNode.h;
+      const portShiftX = pairOffset * 14;
+      const sx = fx + portShiftX;
+      const sy = dir > 0 ? fromNode.y + fromNode.h : fromNode.y;
+      const ex = tx + portShiftX;
+      const ey = dir > 0 ? toNode.y : toNode.y + toNode.h;
       const my = (sy + ey) / 2;
-      d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
-          " C " + sx.toFixed(1) + " " + my.toFixed(1) + ", " +
-          ex.toFixed(1) + " " + my.toFixed(1) + ", " +
-          ex.toFixed(1) + " " + ey.toFixed(1);
-      lx = (sx + ex) / 2;
-      ly = my;
+
+      if (pairOffset !== 0 && Math.abs(sx - ex) < 20) {
+        const curveBulge = pairOffset * 32;
+        const cx = (sx + ex) / 2 + curveBulge;
+        d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
+            " Q " + cx.toFixed(1) + " " + my.toFixed(1) + " " +
+            ex.toFixed(1) + " " + ey.toFixed(1);
+        lx = (sx + ex) / 2 + curveBulge * 0.75;
+        ly = my;
+      } else {
+        d = "M " + sx.toFixed(1) + " " + sy.toFixed(1) +
+            " C " + sx.toFixed(1) + " " + my.toFixed(1) + ", " +
+            ex.toFixed(1) + " " + my.toFixed(1) + ", " +
+            ex.toFixed(1) + " " + ey.toFixed(1);
+        lx = (sx + ex) / 2;
+        ly = my;
+      }
+      altAnchors = [
+        [sx + (ex - sx) * 0.25, sy + (ey - sy) * 0.34],
+        [sx + (ex - sx) * 0.75, sy + (ey - sy) * 0.66]
+      ];
     }
 
     const edgeId = edge.id || (edge.from + "-to-" + edge.to + "-" + (index + 1));
+    const chipSvg = placer
+      ? placer.placeChip(lx, ly, edge.label, vp.textCls, altAnchors).svg
+      : "";
+
     return (
       '<g data-edge-id="' + esc(edgeId) + '" data-edge-from="' + esc(edge.from) + '" data-edge-to="' + esc(edge.to) + '" style="--step:' + (index || 0) + '">' +
       '<path d="' + d + '" class="edge-line ' + vp.cls + '" stroke-width="1.65" fill="none" marker-end="' + vp.marker + '"' + vp.dash + "/>" +
-      renderEdgeLabelChip(lx, ly, edge.label, vp.textCls) +
+      chipSvg +
       "</g>"
     );
+  }
+
+  function renderEdgeSet(edges, byId, allNodes, placer) {
+    const pairCounts = new Map();
+    const pairSeen = new Map();
+    edges.forEach(e => {
+      const key = [e.from, e.to].sort().join("::");
+      pairCounts.set(key, (pairCounts.get(key) || 0) + 1);
+    });
+
+    let bypassCounter = 0;
+    const svgParts = [];
+    edges.forEach((edge, idx) => {
+      const fn = byId.get(edge.from);
+      const tn = byId.get(edge.to);
+      if (!fn || !tn) return;
+      const pairKey = [edge.from, edge.to].sort().join("::");
+      const total = pairCounts.get(pairKey) || 1;
+      const seen = pairSeen.get(pairKey) || 0;
+      pairSeen.set(pairKey, seen + 1);
+
+      let pairOffset = 0;
+      if (total > 1) {
+        pairOffset = seen % 2 === 0 ? -1 : 1;
+      }
+
+      const blocked = hasIntermediateHorizontalBlocker(fn, tn, allNodes);
+      const bypassSlot = blocked ? (bypassCounter++) : 0;
+
+      svgParts.push(
+        renderSmartEdge(edge, fn, tn, idx, {
+          nodes: allNodes,
+          placer,
+          pairOffset,
+          bypassSlot
+        })
+      );
+    });
+    return svgParts.join("\n");
   }
 
   // 1. Sequence Renderer
@@ -368,13 +606,12 @@
     const maxBoxW = Math.max(120, ...boxWidths);
     let colGap = Math.max(maxBoxW + 36, 176);
 
-    // Ensure message labels fit between participant centers
     messages.forEach(msg => {
       const fi = participants.findIndex(p => p.id === msg.from);
       const ti = participants.findIndex(p => p.id === msg.to);
       const span = Math.max(1, Math.abs(ti - fi));
       const needed = (measureTextPx(msg.label, 11) + 46) / span;
-      if (needed > colGap) colGap = Math.min(280, Math.ceil(needed));
+      if (needed > colGap) colGap = Math.min(310, Math.ceil(needed));
     });
 
     const marginX = 52;
@@ -418,35 +655,34 @@
 
     const canvasH = Math.max(240, curY + 26);
     const parts = [renderDefs()];
+    const placer = createLabelPlacer(participants, []);
 
-    // Phase frames
     phaseBands.forEach((band, idx) => {
       const bx = 24;
       const bw = canvasW - 48;
       const bh = Math.max(38, band.endY - band.startY);
       const chipW = Math.max(64, measureTextPx(band.label, 10.5) + 20);
+      const chipBox = { x: bx + 10, y: band.startY - 9, w: chipW, h: 18 };
+      placer.addObstacle(chipBox);
       parts.push(
         '<g class="seq-phase" data-phase-index="' + idx + '">' +
         '<rect x="' + bx + '" y="' + band.startY + '" width="' + bw + '" height="' + bh + '" rx="8" class="c-lane" stroke-width="1"/>' +
-        '<rect x="' + (bx + 10) + '" y="' + (band.startY - 9) + '" width="' + chipW + '" height="18" rx="5" class="c-mask phase-chip"/>' +
-        '<text x="' + (bx + 10 + chipW / 2) + '" y="' + (band.startY + 4) + '" text-anchor="middle" font-size="10.5" font-weight="600" class="t-muted">' + esc(band.label) + "</text>" +
+        '<rect x="' + chipBox.x + '" y="' + chipBox.y + '" width="' + chipW + '" height="18" rx="5" class="c-mask phase-chip"/>' +
+        '<text x="' + (chipBox.x + chipW / 2) + '" y="' + (band.startY + 4) + '" text-anchor="middle" font-size="10.5" font-weight="600" class="t-muted">' + esc(band.label) + "</text>" +
         "</g>"
       );
     });
 
-    // Lifelines
     participants.forEach(p => {
       parts.push(
         '<line x1="' + p.cx.toFixed(1) + '" y1="' + (headerY + headerH) + '" x2="' + p.cx.toFixed(1) + '" y2="' + (canvasH - 18) + '" class="c-lane-rule" stroke-width="1.25" stroke-dasharray="5,5"/>'
       );
     });
 
-    // Participant boxes
     participants.forEach((p, idx) => {
       parts.push(renderNodeBox(p, idx));
     });
 
-    // Messages
     messages.forEach((msg, idx) => {
       const fromP = byId.get(msg.from);
       const toP = byId.get(msg.to);
@@ -457,10 +693,11 @@
         const y = msg.y;
         const loopW = 42;
         const d = "M " + x + " " + (y - 8) + " H " + (x + loopW) + " V " + (y + 12) + " H " + x;
+        const chip = placer.placeChip(x + loopW + measureTextPx(msg.label, 11) / 2 + 14, y + 2, msg.label, vp.textCls);
         parts.push(
           '<g data-edge-id="' + esc(msg.id) + '" data-edge-from="' + esc(msg.from) + '" data-edge-to="' + esc(msg.to) + '" style="--step:' + idx + '">' +
           '<path d="' + d + '" class="edge-line ' + vp.cls + '" stroke-width="1.6" fill="none" marker-end="' + vp.marker + '"' + vp.dash + "/>" +
-          renderEdgeLabelChip(x + loopW + measureTextPx(msg.label, 11) / 2 + 14, y + 2, msg.label, vp.textCls) +
+          chip.svg +
           "</g>"
         );
       } else {
@@ -468,10 +705,11 @@
         const x2 = toP.cx;
         const y = msg.y;
         const midX = (x1 + x2) / 2;
+        const chip = placer.placeChip(midX, y - 12, msg.label, vp.textCls);
         parts.push(
           '<g data-edge-id="' + esc(msg.id) + '" data-edge-from="' + esc(msg.from) + '" data-edge-to="' + esc(msg.to) + '" style="--step:' + idx + '">' +
           '<line x1="' + x1.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y.toFixed(1) + '" class="edge-line ' + vp.cls + '" stroke-width="1.65" marker-end="' + vp.marker + '"' + vp.dash + "/>" +
-          renderEdgeLabelChip(midX, y - 12, msg.label, vp.textCls) +
+          chip.svg +
           "</g>"
         );
       }
@@ -480,7 +718,6 @@
     return { width: canvasW, height: canvasH, innerSvg: parts.join("\n") };
   }
 
-  // Shared topological rank layout for workflow / architecture / dataflow / lifecycle
   function assignTopologicalRanks(nodes, edges, explicitColMap) {
     const idSet = new Set(nodes.map(n => n.id));
     const indegree = new Map(nodes.map(n => [n.id, 0]));
@@ -532,6 +769,168 @@
     return rank;
   }
 
+  function layoutGroupedArchitecture(groups, nodes, byId, edges) {
+    const groupList = Array.from(groups.values());
+    const ungrouped = nodes.filter(n => !n.containerId || !groups.has(n.containerId));
+    const clusters = [];
+
+    groupList.forEach(grp => {
+      const members = nodes.filter(n => n.containerId === grp.id);
+      if (members.length === 0) return;
+      clusters.push({
+        id: grp.id,
+        label: grp.label,
+        tone: grp.tone,
+        isGroup: true,
+        members
+      });
+    });
+
+    ungrouped.forEach(n => {
+      clusters.push({
+        id: "__ungrouped_" + n.id,
+        label: "",
+        tone: n.tone,
+        isGroup: false,
+        members: [n]
+      });
+    });
+
+    const memberToCluster = new Map();
+    clusters.forEach(cl => {
+      cl.members.forEach(m => memberToCluster.set(m.id, cl));
+      const mSet = new Set(cl.members.map(m => m.id));
+      const internalEdges = edges.filter(e => mSet.has(e.from) && mSet.has(e.to));
+      const maxInternalLabelW = Math.max(
+        0,
+        ...internalEdges.map(e => measureTextPx(e.label, 11) + 36)
+      );
+
+      const colsCount = cl.members.length > 4 ? 2 : 1;
+      const innerColGap = Math.max(96, maxInternalLabelW);
+      const innerRowGap = Math.max(82, internalEdges.some(e => e.label) ? 98 : 78);
+
+      cl.members.forEach((m, idx) => {
+        m.localCol = idx % colsCount;
+        m.localRow = Math.floor(idx / colsCount);
+      });
+
+      const numRows = Math.ceil(cl.members.length / colsCount);
+      const colWidths = Array.from({ length: colsCount }, (_, c) =>
+        Math.max(130, ...cl.members.filter(m => m.localCol === c).map(m => m.w))
+      );
+
+      const padX = cl.isGroup ? 24 : 0;
+      const padTop = cl.isGroup ? 42 : 0;
+      const padBottom = cl.isGroup ? 22 : 0;
+
+      const colOffsets = [padX];
+      for (let c = 0; c < colsCount - 1; c++) {
+        colOffsets.push(colOffsets[c] + colWidths[c] + innerColGap);
+      }
+
+      cl.members.forEach(m => {
+        m.relX = colOffsets[m.localCol] + (colWidths[m.localCol] - m.w) / 2;
+        m.relY = padTop + m.localRow * innerRowGap;
+      });
+
+      const contentW = colOffsets[colsCount - 1] + colWidths[colsCount - 1] + padX;
+      const headerChipW = cl.isGroup ? Math.max(72, measureTextPx(cl.label, 10.5) + 24) : 0;
+      cl.w = Math.max(contentW, headerChipW + 32);
+      cl.h = padTop + Math.max(1, numRows - 1) * innerRowGap + 54 + padBottom;
+      cl.headerChipW = headerChipW;
+    });
+
+    const crossEdges = [];
+    edges.forEach(e => {
+      const cFrom = memberToCluster.get(e.from);
+      const cTo = memberToCluster.get(e.to);
+      if (cFrom && cTo && cFrom.id !== cTo.id) {
+        crossEdges.push({ from: cFrom.id, to: cTo.id, label: e.label || "" });
+      }
+    });
+
+    if (crossEdges.length === 0) {
+      const colsPerRow = Math.min(3, Math.max(1, clusters.length));
+      clusters.forEach((cl, idx) => {
+        cl.mCol = idx % colsPerRow;
+        cl.mRow = Math.floor(idx / colsPerRow);
+      });
+    } else {
+      const macroRanks = assignTopologicalRanks(clusters, crossEdges, null);
+      const byCol = new Map();
+      clusters.forEach(cl => {
+        const mc = Math.min(3, macroRanks.get(cl.id) || 0);
+        cl.mCol = mc;
+        const list = byCol.get(mc) || [];
+        cl.mRow = list.length;
+        list.push(cl);
+        byCol.set(mc, list);
+      });
+    }
+
+    const maxMCol = Math.max(0, ...clusters.map(c => c.mCol));
+    const mColWidths = Array.from({ length: maxMCol + 1 }, (_, c) =>
+      Math.max(160, ...clusters.filter(cl => cl.mCol === c).map(cl => cl.w))
+    );
+
+    const maxCrossLabelW = Math.max(0, ...crossEdges.map(e => measureTextPx(e.label, 11) + 56));
+    const macroColGap = Math.max(116, maxCrossLabelW);
+    const macroRowGap = 64;
+    const leftMargin = 42;
+    const topMargin = 42;
+
+    const mColX = [leftMargin];
+    for (let c = 0; c < maxMCol; c++) {
+      mColX.push(mColX[c] + mColWidths[c] + macroColGap);
+    }
+
+    for (let c = 0; c <= maxMCol; c++) {
+      const colClusters = clusters.filter(cl => cl.mCol === c).sort((a, b) => a.mRow - b.mRow);
+      let curY = topMargin;
+      colClusters.forEach(cl => {
+        cl.x = mColX[c] + (mColWidths[c] - cl.w) / 2;
+        cl.y = curY;
+        cl.members.forEach(m => {
+          m.x = cl.x + m.relX;
+          m.y = cl.y + m.relY;
+        });
+        curY += cl.h + macroRowGap;
+      });
+    }
+
+    const parts = [renderDefs()];
+    const headerChips = [];
+
+    clusters.forEach(cl => {
+      if (!cl.isGroup) return;
+      const chipBox = { x: cl.x + 14, y: cl.y - 9, w: cl.headerChipW, h: 18 };
+      headerChips.push(chipBox);
+      parts.push(
+        '<g class="arch-group">' +
+        '<rect x="' + cl.x.toFixed(1) + '" y="' + cl.y.toFixed(1) + '" width="' + cl.w.toFixed(1) + '" height="' + cl.h.toFixed(1) + '" rx="10" class="c-region" stroke-width="1.2"/>' +
+        '<rect x="' + chipBox.x.toFixed(1) + '" y="' + chipBox.y.toFixed(1) + '" width="' + cl.headerChipW + '" height="18" rx="5" class="c-mask phase-chip"/>' +
+        '<text x="' + (chipBox.x + cl.headerChipW / 2).toFixed(1) + '" y="' + (cl.y + 4).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="600" class="t-' + esc(cl.tone) + '">' + esc(cl.label) + "</text>" +
+        "</g>"
+      );
+    });
+
+    const placer = createLabelPlacer(nodes, headerChips);
+    parts.push(renderEdgeSet(edges, byId, nodes, placer));
+
+    nodes.forEach((node, idx) => {
+      parts.push(renderNodeBox(node, idx));
+    });
+
+    const bounds = placer.getBounds();
+    const maxClX = Math.max(0, ...clusters.map(cl => cl.x + cl.w));
+    const maxClY = Math.max(0, ...clusters.map(cl => cl.y + cl.h));
+    const canvasW = Math.max(640, bounds.maxX + 42, maxClX + 42);
+    const canvasH = Math.max(220, bounds.maxY + 36, maxClY + 36);
+
+    return { width: canvasW, height: canvasH, innerSvg: parts.join("\n") };
+  }
+
   // 2, 3, 4, 5: Graph Layout (workflow, architecture, dataflow, lifecycle)
   function compileGraphDiagram(parsed) {
     const type = parsed.type;
@@ -547,16 +946,19 @@
       if (byId.has(id)) return byId.get(id);
       const cleanLabel = label || id;
       const isDecision = type === "workflow" && (cleanLabel.endsWith("?") || cleanLabel.endsWith("？") || String(rawKind || "").toLowerCase() === "decision");
+      const lines = wrapNodeLabel(cleanLabel, isDecision ? 20 : 24);
+      const maxLinePx = Math.max(...lines.map(l => measureTextPx(l, 12.5)));
       const node = {
         id,
         label: cleanLabel,
+        lines,
         rawKind: isDecision ? "decision" : (rawKind || "backend"),
         tone: normalizeTone(isDecision ? "decision" : (rawKind || "backend")),
         isDecision,
         containerId: containerId || ""
       };
-      node.w = Math.max(isDecision ? 136 : 122, measureTextPx(node.label, 12.5) + (isDecision ? 48 : 38));
-      node.h = isDecision ? 54 : 46;
+      node.w = Math.max(isDecision ? 136 : 122, maxLinePx + (isDecision ? 48 : 38));
+      node.h = lines.length > 1 ? (isDecision ? 66 : 58) : (isDecision ? 54 : 46);
       nodes.push(node);
       byId.set(id, node);
       return node;
@@ -579,7 +981,9 @@
           .split(">")
           .map(s => s.trim())
           .filter(Boolean);
-        mainPathIds.forEach((id, idx) => explicitColMap.set(id, idx));
+        mainPathIds.forEach((id, idx) => {
+          if (!explicitColMap.has(id)) explicitColMap.set(id, idx);
+        });
         continue;
       }
 
@@ -608,13 +1012,16 @@
       }
     }
 
+    if (groups.size > 0 && lanes.size === 0) {
+      return layoutGroupedArchitecture(groups, nodes, byId, edges);
+    }
+
     const ranks = assignTopologicalRanks(nodes, edges, explicitColMap.size > 0 ? explicitColMap : null);
     const maxColsPerBand = 5;
 
-    // Wrap wide graphs (> 5 columns) into bands if no explicit lanes
     nodes.forEach(n => {
       const r = ranks.get(n.id) || 0;
-      if (lanes.size === 0 && r >= maxColsPerBand && type !== "dataflow") {
+      if (r >= maxColsPerBand && type !== "dataflow") {
         n.col = r % maxColsPerBand;
         n.bandRow = Math.floor(r / maxColsPerBand);
       } else {
@@ -624,6 +1031,7 @@
     });
 
     const parts = [renderDefs()];
+    const extraObstacles = [];
     let canvasW = 680;
     let canvasH = 220;
 
@@ -640,15 +1048,24 @@
       const colWidths = Array.from({ length: maxCol + 1 }, (_, c) =>
         Math.max(132, ...nodes.filter(n => n.col === c).map(n => n.w))
       );
-      const colGap = 86;
+
+      const colGaps = Array.from({ length: Math.max(1, maxCol) }, (_, c) => {
+        const labelLengths = edges
+          .filter(e => {
+            const fn = byId.get(e.from);
+            const tn = byId.get(e.to);
+            return fn && tn && Math.min(fn.col, tn.col) === c && Math.abs(fn.col - tn.col) === 1;
+          })
+          .map(e => measureTextPx(e.label, 11) + 40);
+        return Math.max(92, ...labelLengths);
+      });
+
       const leftMargin = 54;
-      const colX = [];
-      let accX = leftMargin;
-      for (let c = 0; c <= maxCol; c++) {
-        colX.push(accX);
-        accX += colWidths[c] + colGap;
+      const colX = [leftMargin];
+      for (let c = 0; c < maxCol; c++) {
+        colX.push(colX[c] + colWidths[c] + colGaps[c]);
       }
-      canvasW = Math.max(660, accX - colGap + 54);
+      canvasW = Math.max(660, colX[maxCol] + colWidths[maxCol] + leftMargin);
 
       let curLaneY = 32;
       laneList.forEach(lane => {
@@ -660,7 +1077,14 @@
           byCol.set(n.col, list);
         });
         const maxStack = Math.max(1, ...Array.from(byCol.values()).map(l => l.length));
-        const laneH = Math.max(104, 42 + maxStack * 68);
+        const laneH = Math.max(118, 48 + maxStack * 84);
+
+        extraObstacles.push({
+          x: 38,
+          y: curLaneY + 6,
+          w: measureTextPx(lane.label, 11) + 16,
+          h: 20
+        });
 
         parts.push(
           '<g class="wf-lane">' +
@@ -672,19 +1096,19 @@
         byCol.forEach((stack, colIdx) => {
           stack.forEach((n, sIdx) => {
             n.x = colX[colIdx] + (colWidths[colIdx] - n.w) / 2;
-            n.y = curLaneY + 34 + sIdx * 66;
+            n.y = curLaneY + 38 + sIdx * 82;
           });
         });
 
-        curLaneY += laneH + 18;
+        curLaneY += laneH + 22;
       });
-      canvasH = Math.max(220, curLaneY + 14);
+      canvasH = Math.max(240, curLaneY + 20);
     } else {
-      // Grid placement (also handles lifecycle off-main states and architecture groups)
       const cellMap = new Map();
+      const uniqueMainIds = Array.from(new Set(mainPathIds));
       nodes.forEach(n => {
         let rowIdx = n.bandRow || 0;
-        if (type === "lifecycle" && mainPathIds.length > 0 && !mainPathIds.includes(n.id)) {
+        if (type === "lifecycle" && uniqueMainIds.length > 0 && !uniqueMainIds.includes(n.id)) {
           rowIdx = 1;
         }
         const key = n.col + ":" + rowIdx;
@@ -706,7 +1130,6 @@
         Math.max(132, ...nodes.filter(n => n.col === c).map(n => n.w))
       );
 
-      // Widen column gaps for edge labels between adjacent columns
       const colGaps = Array.from({ length: Math.max(1, maxCol) }, (_, c) => {
         const labelLengths = edges
           .filter(e => {
@@ -714,13 +1137,13 @@
             const tn = byId.get(e.to);
             return fn && tn && Math.min(fn.col, tn.col) === c && Math.abs(fn.col - tn.col) === 1;
           })
-          .map(e => measureTextPx(e.label, 11) + 34);
-        return Math.max(84, ...labelLengths);
+          .map(e => measureTextPx(e.label, 11) + 46);
+        return Math.max(96, ...labelLengths);
       });
 
       const leftMargin = 48;
-      const topMargin = groups.size > 0 ? 52 : 36;
-      const rowGap = groups.size > 0 ? 96 : 84;
+      const topMargin = 62;
+      const rowGap = 112;
       const colX = [leftMargin];
       for (let c = 0; c < maxCol; c++) {
         colX.push(colX[c] + colWidths[c] + colGaps[c]);
@@ -732,38 +1155,19 @@
       });
 
       canvasW = Math.max(620, colX[maxCol] + colWidths[maxCol] + leftMargin);
-      canvasH = Math.max(200, topMargin + maxRow * rowGap + 86);
-
-      // Render architecture boundary groups behind nodes
-      groups.forEach(grp => {
-        const members = nodes.filter(n => n.containerId === grp.id);
-        if (members.length === 0) return;
-        const minX = Math.min(...members.map(m => m.x)) - 18;
-        const minY = Math.min(...members.map(m => m.y)) - 28;
-        const maxX = Math.max(...members.map(m => m.x + m.w)) + 18;
-        const maxY = Math.max(...members.map(m => m.y + m.h)) + 16;
-        const chipW = Math.max(68, measureTextPx(grp.label, 10.5) + 20);
-        parts.push(
-          '<g class="arch-group">' +
-          '<rect x="' + minX.toFixed(1) + '" y="' + minY.toFixed(1) + '" width="' + (maxX - minX).toFixed(1) + '" height="' + (maxY - minY).toFixed(1) + '" rx="10" class="c-region" stroke-width="1.2"/>' +
-          '<rect x="' + (minX + 12).toFixed(1) + '" y="' + (minY - 9).toFixed(1) + '" width="' + chipW + '" height="18" rx="5" class="c-mask phase-chip"/>' +
-          '<text x="' + (minX + 12 + chipW / 2).toFixed(1) + '" y="' + (minY + 4).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="600" class="t-' + esc(grp.tone) + '">' + esc(grp.label) + "</text>" +
-          "</g>"
-        );
-      });
+      canvasH = Math.max(220, topMargin + maxRow * rowGap + 104);
     }
 
-    // Draw edges first, then nodes on top so node masks stay clean
-    edges.forEach((edge, idx) => {
-      const fn = byId.get(edge.from);
-      const tn = byId.get(edge.to);
-      if (!fn || !tn) return;
-      parts.push(renderCurvedOrOrthoEdge(edge, fn, tn, idx));
-    });
+    const placer = createLabelPlacer(nodes, extraObstacles);
+    parts.push(renderEdgeSet(edges, byId, nodes, placer));
 
     nodes.forEach((node, idx) => {
       parts.push(renderNodeBox(node, idx));
     });
+
+    const bounds = placer.getBounds();
+    canvasW = Math.max(canvasW, bounds.maxX + 42);
+    canvasH = Math.max(canvasH, bounds.maxY + 36);
 
     return { width: canvasW, height: canvasH, innerSvg: parts.join("\n") };
   }
@@ -777,15 +1181,18 @@
       const label = row[1] || id;
       const parent = row[2] && row[2] !== "-" ? row[2] : null;
       const rawKind = row[3] || (parent ? "backend" : "database");
+      const lines = wrapNodeLabel(label, 28);
+      const maxLinePx = Math.max(...lines.map(l => measureTextPx(l, 12.5)));
       const node = {
         id,
         label,
+        lines,
         parent,
         rawKind,
         tone: normalizeTone(rawKind),
         children: [],
-        w: Math.max(124, measureTextPx(label, 12.5) + 38),
-        h: 44
+        w: Math.max(124, maxLinePx + 38),
+        h: lines.length > 1 ? 56 : 44
       };
       nodes.push(node);
       byId.set(id, node);
@@ -824,7 +1231,7 @@
       colX.push(colX[d] + (depthMaxW.get(d) || 140) + 74);
     }
 
-    const rowSpacing = 66;
+    const rowSpacing = 70;
     const topMargin = 34;
     nodes.forEach(n => {
       const colW = depthMaxW.get(n.depth || 0) || n.w;
@@ -833,22 +1240,24 @@
     });
 
     const canvasW = Math.max(600, colX[maxDepth] + (depthMaxW.get(maxDepth) || 150) + 48);
-    const canvasH = Math.max(200, topMargin + Math.max(1, leafCursor) * rowSpacing + 28);
+    const canvasH = Math.max(200, topMargin + Math.max(1, leafCursor) * rowSpacing + 32);
 
     const parts = [renderDefs()];
-    let edgeIdx = 0;
+    const treeEdges = [];
     nodes.forEach(n => {
       n.children.forEach(ch => {
-        const edge = {
+        treeEdges.push({
           id: n.id + "-to-" + ch.id,
           from: n.id,
           to: ch.id,
           label: "",
           variant: "default"
-        };
-        parts.push(renderCurvedOrOrthoEdge(edge, n, ch, edgeIdx++));
+        });
       });
     });
+
+    const placer = createLabelPlacer(nodes, []);
+    parts.push(renderEdgeSet(treeEdges, byId, nodes, placer));
 
     nodes.forEach((n, idx) => {
       parts.push(renderNodeBox(n, idx));
@@ -917,6 +1326,15 @@
       ent.row = Math.floor(idx / colsPerRow);
     });
 
+    const erdEdges = relationships.map(rel => ({
+      id: rel.id,
+      from: rel.from,
+      to: rel.to,
+      label: rel.cardinality ? rel.cardinality + (rel.label ? " · " + rel.label : "") : rel.label,
+      variant: "emphasis"
+    }));
+
+    const maxEdgeLabelW = Math.max(0, ...erdEdges.map(e => measureTextPx(e.label, 11) + 48));
     const maxCol = Math.max(0, ...entities.map(e => e.col));
     const maxRow = Math.max(0, ...entities.map(e => e.row));
     const colWidths = Array.from({ length: maxCol + 1 }, (_, c) =>
@@ -926,10 +1344,10 @@
       Math.max(90, ...entities.filter(e => e.row === r).map(e => e.h))
     );
 
-    const colGap = 96;
-    const rowGap = 72;
-    const leftMargin = 44;
-    const topMargin = 36;
+    const colGap = Math.max(120, maxEdgeLabelW);
+    const rowGap = 92;
+    const leftMargin = 48;
+    const topMargin = 44;
 
     const colX = [leftMargin];
     for (let c = 0; c < maxCol; c++) colX.push(colX[c] + colWidths[c] + colGap);
@@ -941,25 +1359,9 @@
       ent.y = rowY[ent.row];
     });
 
-    const canvasW = Math.max(620, colX[maxCol] + colWidths[maxCol] + leftMargin);
-    const canvasH = Math.max(220, rowY[maxRow] + rowHeights[maxRow] + topMargin);
-
     const parts = [renderDefs()];
-
-    relationships.forEach((rel, idx) => {
-      const fe = byId.get(rel.from);
-      const te = byId.get(rel.to);
-      if (!fe || !te) return;
-      const edgeLabel = (rel.cardinality ? rel.cardinality + (rel.label ? " · " + rel.label : "") : rel.label);
-      parts.push(
-        renderCurvedOrOrthoEdge(
-          { id: rel.id, from: rel.from, to: rel.to, label: edgeLabel, variant: "emphasis" },
-          fe,
-          te,
-          idx
-        )
-      );
-    });
+    const placer = createLabelPlacer(entities, []);
+    parts.push(renderEdgeSet(erdEdges, byId, entities, placer));
 
     entities.forEach((ent, idx) => {
       let rowsSvg = "";
@@ -989,6 +1391,10 @@
         "</g>"
       );
     });
+
+    const bounds = placer.getBounds();
+    const canvasW = Math.max(620, colX[maxCol] + colWidths[maxCol] + leftMargin, bounds.maxX + 42);
+    const canvasH = Math.max(220, rowY[maxRow] + rowHeights[maxRow] + topMargin, bounds.maxY + 36);
 
     return { width: canvasW, height: canvasH, innerSvg: parts.join("\n") };
   }
@@ -1099,7 +1505,6 @@
 
     const parts = [renderDefs()];
 
-    // Time ruler ticks
     const tickCount = 5;
     for (let t = 0; t <= tickCount; t++) {
       const ratio = t / tickCount;

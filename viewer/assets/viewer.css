@@ -680,11 +680,44 @@ html, body {
 .markdown-body ul,
 .markdown-body ol {
   margin: 10px 0 14px;
-  padding-left: 22px;
+  padding-left: 24px;
   color: var(--viewer-secondary);
+}
+.markdown-body ul {
+  list-style-type: disc;
+}
+.markdown-body ul ul {
+  list-style-type: circle;
+}
+.markdown-body ul ul ul {
+  list-style-type: square;
+}
+.markdown-body ol {
+  list-style-type: decimal;
+}
+.markdown-body ol ol {
+  list-style-type: lower-alpha;
+}
+.markdown-body li {
+  display: list-item;
+}
+.markdown-body li::marker {
+  color: var(--viewer-primary);
+  font-weight: 600;
 }
 .markdown-body li + li {
   margin-top: 5px;
+}
+.markdown-body .page-toc-list,
+.markdown-body .study-steps-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.markdown-body .page-toc-list li,
+.markdown-body .study-steps-list li {
+  display: flex;
+  margin-top: 0;
 }
 .markdown-body a {
   color: var(--viewer-accent);
@@ -1200,12 +1233,52 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 9px 16px;
   background: var(--viewer-primary-soft);
   border-bottom: 1px solid color-mix(in srgb, var(--viewer-primary) 24%, var(--viewer-border));
   color: var(--viewer-primary-ink);
   font-size: 12.5px;
+}
+.study-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.study-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--viewer-primary) 16%, transparent);
+  color: var(--viewer-primary-ink);
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.study-title {
+  font-weight: 600;
+  color: var(--viewer-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.study-tag-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.study-tag-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--viewer-surface);
+  border: 1px solid color-mix(in srgb, var(--viewer-primary) 28%, var(--viewer-border));
+  color: var(--viewer-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .study-block-body {
   padding: 16px 18px;

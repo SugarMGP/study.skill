@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const diagramsSource = fs.readFileSync(__dirname + "/assets/diagrams.js", "utf8");
 const source = fs.readFileSync(__dirname + "/assets/viewer.js", "utf8").replace(
   /\}\)\(\);\s*$/,
-  "window.__test = { renderMarkdown, splitStudyBlocks, renderArchifyBlock, renderStudyStepsBlock, COURSE_MATH_DELIMITERS, isCurrentLearningPage, mainCourseLearningPages, evidenceLabel, skillTreeStatus, skillNodeNextStep, masteryChallengeQuestion, currentSessionPageKey, hasCurrentPageView, countReviewForSession, beginReviewForSession, finishReviewForSession, persistQuestionChange, setState: value => { STATE = value; }, setSessionStartedAt: value => { SESSION_STARTED_AT = value; }, setLastPageSessionKey: value => { LAST_PAGE_SESSION_KEY = value; }, reviewCount: () => SESSION_REVIEW_RATED_COUNT, pendingReviewCount: () => SESSION_PENDING_REVIEW_COUNT, hasPendingQuestionSave: () => PENDING_QUESTION_SAVE_SESSION === SESSION_STARTED_AT }; })();"
+  "window.__test = { renderMarkdown, splitStudyBlocks, renderArchifyBlock, renderStudyStepsBlock, renderStudyBlock, COURSE_MATH_DELIMITERS, isCurrentLearningPage, mainCourseLearningPages, evidenceLabel, skillTreeStatus, skillNodeNextStep, masteryChallengeQuestion, currentSessionPageKey, hasCurrentPageView, countReviewForSession, beginReviewForSession, finishReviewForSession, persistQuestionChange, setState: value => { STATE = value; }, setSessionStartedAt: value => { SESSION_STARTED_AT = value; }, setLastPageSessionKey: value => { LAST_PAGE_SESSION_KEY = value; }, reviewCount: () => SESSION_REVIEW_RATED_COUNT, pendingReviewCount: () => SESSION_PENDING_REVIEW_COUNT, hasPendingQuestionSave: () => PENDING_QUESTION_SAVE_SESSION === SESSION_STARTED_AT }; })();"
 );
 const sandbox = {
   window: { matchMedia: () => ({ matches: false }) },
@@ -98,6 +98,19 @@ const splitBlocks = api.splitStudyBlocks(
 assert.deepEqual(Array.from(splitBlocks, b => b.type), ["markdown", "archify", "steps", "study"]);
 assert.equal(api.renderArchifyBlock('type=tree id=t1 title="T"\n| a | Root | - |').includes('data-archify-card-id="t1"'), true);
 assert.equal(api.renderStudyStepsBlock('diagram=t1\n| s1 | Step | Detail | a |').includes('data-steps-for="t1"'), true);
+
+// 2.5 Exercise block header should not duplicate the question stem
+sandbox.jsyaml = {
+  load: () => ({
+    id: "q-no-dup",
+    question: "这是一道很长的测试题干，不应该在卡片顶栏重复出现第二次",
+    answer: "参考答案",
+    mastery_tags: ["apply", "exam"]
+  })
+};
+const renderedInputHtml = api.renderStudyBlock("study-input", "dummy");
+assert.equal(renderedInputHtml.includes('class="study-title"'), false, "Question stem should not be duplicated as .study-title in header");
+assert.equal(renderedInputHtml.includes("独立应用"), true, "Header should display mastery tag pills");
 
 // 3. Learning state & skill tree checks
 api.setState({
