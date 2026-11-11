@@ -210,7 +210,7 @@ Before outputting any module, check against this tiered checklist.
 | Inline authoritative links | [SHOULD] for APIs/core concepts | [MUST] for official API/library concepts and important primary sources | [SHOULD] |
 | Real pitfalls or misconceptions | [SHOULD] when source-backed or practice-backed; integrate near the relevant concept | [SHOULD] when source-backed or practice-backed; integrate near the relevant concept | [OPTIONAL] |
 | Interview/exam practice | [SHOULD] in interview/exam mode | [MUST] in interview mode | [SHOULD] |
-| Analogy or concrete mental model + decision criteria | [MUST] | [MUST] | [SHOULD] |
+| Concrete mental model (via minimal real example) + decision criteria | [MUST] | [MUST] | [SHOULD] |
 | Source-to-section coverage | [MUST] important material points are taught or scoped out with reason | [MUST] every important researched/source point has a section home and enough explanation | [MUST] optional points are clearly marked as optional, not silently lost |
 | Teaching asset adoption | [MUST] each section uses a concrete researched example, explanation move, figure, or exercise where available | [MUST] the strongest source teaching assets are visibly transformed into the lesson; citations alone do not pass | [SHOULD] |
 | Image/source-question explanation | [MUST] explain how to read reused figures, tables, source questions, or code | [MUST] explain how each reused source artifact becomes understanding, answer, code, or judgment | [SHOULD] when source artifacts are included |
